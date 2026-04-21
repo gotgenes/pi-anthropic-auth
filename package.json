@@ -1,0 +1,27 @@
+{
+  "name": "pi-anthropic-auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pi extension package for Anthropic OAuth compatibility",
+  "keywords": [
+    "pi-package"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm run build"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@mariozechner/pi-ai": "^0.68.0",
+    "@mariozechner/pi-coding-agent": "^0.68.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
