@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
-    "check": "pnpm run build"
+    "test": "tsx --test test/**/*.test.ts",
+    "check": "pnpm run build && pnpm run test"
   },
   "pi": {
     "extensions": [
@@ -22,6 +23,7 @@
     "@mariozechner/pi-coding-agent": "^0.68.0"
   },
   "devDependencies": {
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }
