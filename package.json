@@ -46,18 +46,17 @@
       "./dist/index.js"
     ]
   },
-  "dependencies": {},
   "peerDependencies": {
     "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
     "@biomejs/biome": "^2.4.12",
     "@mariozechner/pi-ai": "^0.68.0",
     "@mariozechner/pi-coding-agent": "^0.68.0",
-    "@anthropic-ai/sdk": "^0.52.0",
     "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }
