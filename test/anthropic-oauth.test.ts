@@ -161,3 +161,115 @@ test("loginAnthropic rejects a pasted callback URL with a mismatched state", asy
     /OAuth state mismatch/,
   );
 });
+
+// --- Callback parsing edge cases ---
+
+/**
+ * Helper: extracts the expected OAuth state from the auth URL emitted by
+ * loginAnthropic, then calls loginAnthropic with the given manualInput and
+ * promptFallback strings.  Returns the promise so callers can assert on
+ * resolution or rejection.
+ */
+function loginWithManualInput(
+  t: { after: (fn: () => void) => void },
+  manualInput: string | ((state: string, redirectUri: string) => string),
+  options: {
+    promptFallback?: string;
+    stubFetch?: boolean;
+  } = {},
+): Promise<{ access: string; refresh: string; expires: number }> {
+  const { promptFallback = "", stubFetch = false } = options;
+  let authUrl = "";
+  const originalFetch = globalThis.fetch;
+
+  if (stubFetch) {
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        access_token: "access-token",
+        refresh_token: "refresh-token",
+        expires_in: 3600,
+      })) as typeof fetch;
+  }
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  return loginAnthropic({
+    onAuth: (info) => {
+      authUrl = info.url;
+    },
+    onPrompt: async () => promptFallback,
+    onManualCodeInput: async () => {
+      const url = new URL(authUrl);
+      const state = url.searchParams.get("state") ?? "";
+      const redirectUri = url.searchParams.get("redirect_uri") ?? "";
+
+      return typeof manualInput === "function"
+        ? manualInput(state, redirectUri)
+        : manualInput;
+    },
+  }) as Promise<{ access: string; refresh: string; expires: number }>;
+}
+
+test("loginAnthropic throws when callback URL has no code parameter", async (t) => {
+  await assert.rejects(
+    () =>
+      loginWithManualInput(
+        t,
+        (_state, redirectUri) => `${redirectUri}?foo=bar`,
+      ),
+    /Missing authorization code/,
+  );
+});
+
+test("loginAnthropic throws on empty string manual input", async (t) => {
+  await assert.rejects(
+    () => loginWithManualInput(t, ""),
+    /Missing authorization code/,
+  );
+});
+
+test("loginAnthropic throws on whitespace-only manual input", async (t) => {
+  await assert.rejects(
+    () => loginWithManualInput(t, "   "),
+    /Missing authorization code/,
+  );
+});
+
+test("loginAnthropic accepts a callback URL with extra query parameters", async (t) => {
+  const credentials = await loginWithManualInput(
+    t,
+    (state, redirectUri) =>
+      `${redirectUri}?code=extra-params-code&state=${state}&extra=ignored&another=param`,
+    { stubFetch: true },
+  );
+
+  assert.equal(credentials.access, "access-token");
+});
+
+test("loginAnthropic accepts URL-encoded values in callback parameters", async (t) => {
+  const credentials = await loginWithManualInput(
+    t,
+    (state, redirectUri) =>
+      `${redirectUri}?code=${encodeURIComponent("code/with+special=chars")}&state=${state}`,
+    { stubFetch: true },
+  );
+
+  assert.equal(credentials.access, "access-token");
+});
+
+test("loginAnthropic accepts a bare authorization code as manual input", async (t) => {
+  const credentials = await loginWithManualInput(t, "bare-auth-code", {
+    stubFetch: true,
+  });
+
+  assert.equal(credentials.access, "access-token");
+});
+
+test("loginAnthropic rejects a non-URL string with a mismatched state fragment", async (t) => {
+  await assert.rejects(
+    () => loginWithManualInput(t, "some-code#wrong-state"),
+    /OAuth state mismatch/,
+  );
+});
