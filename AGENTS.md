@@ -37,6 +37,7 @@ The current implementation does the following:
 3. Hardens refresh behavior so missing rotated refresh tokens fall back to the previous refresh token
 4. Uses `before_provider_request` to shape only built-in Anthropic OAuth payloads
 5. Prepends an Anthropic billing/content-consistency header block to `system[]`
+6. Replaces Pi's default system prompt preamble with a minimal neutral prompt (inside `before_provider_request`, gated by the same OAuth detection)
 
 It does not currently replace Pi's built-in Anthropic streaming transport.
 
@@ -72,6 +73,8 @@ It currently uses two Pi extension seams:
 
 1. `pi.registerProvider("anthropic", { oauth })`
 2. `pi.on("before_provider_request", ...)`
+
+All provider-specific logic (billing header injection, message ordering, system prompt shaping) is consolidated in `before_provider_request`, gated by `isOAuthAnthropicPayload`.
 
 Important upstream behavior confirmed from `pi-mono`:
 
@@ -182,6 +185,18 @@ Priority areas:
 
 `before_provider_request` only exposes the built payload, not the provider name.
 Request-shaping logic therefore needs a reliable Anthropic OAuth guard based on payload structure, not provider metadata from the hook event.
+
+### `model_select` Does Not Fire At Startup
+
+Pi's `model_select` event only fires from `setModel` and `cycleModel`.
+The initial model assigned during `createAgentSession` goes directly to `agent.state.model` without emitting the event.
+Do not rely on `model_select` to track the provider for logic that must run on the first turn.
+
+### `before_agent_start` Has No Provider Context
+
+The `BeforeAgentStartEvent` does not expose which provider or model is active.
+Provider-specific logic cannot be reliably gated in `before_agent_start`.
+Use `before_provider_request` instead, where the payload structure identifies the provider.
 
 ### Avoid Over-Porting From OpenCode
 

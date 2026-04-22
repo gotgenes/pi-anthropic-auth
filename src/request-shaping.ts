@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { shapeSystemBlocks } from "./system-prompt-shaping.js";
 
 const ANTHROPIC_OAUTH_BETAS = ["claude-code-20250219", "oauth-2025-04-20"];
 const BILLING_HEADER_SALT = "59cf53e54c78";
@@ -76,15 +77,6 @@ function hasOAuthAnthropicSystemMarker(block: unknown): boolean {
   );
 }
 
-function _hasClaudeCodeIdentity(block: unknown): boolean {
-  return (
-    isRecord(block) &&
-    block.type === "text" &&
-    typeof block.text === "string" &&
-    block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX)
-  );
-}
-
 function getFirstUserText(messages: MessageParam[]): string {
   const firstUserMessage = messages.find((message) => message.role === "user");
   if (!firstUserMessage) return "";
@@ -138,7 +130,7 @@ function normalizeSystemBlock(block: unknown): TextBlock {
   if (isRecord(block) && typeof block.text === "string") {
     return {
       ...block,
-      type: block.type === "text" ? "text" : "text",
+      type: "text",
       text: block.text,
     };
   }
@@ -183,6 +175,15 @@ function mergeAnthropicBetas(betaHeader: string | undefined): string {
   return [...new Set([...ANTHROPIC_OAUTH_BETAS, ...existing])].join(",");
 }
 
+/**
+ * Splits assistant messages that interleave text and tool_use blocks.
+ *
+ * The Anthropic API rejects assistant turns where non-tool_use blocks follow
+ * a tool_use block.  Pi's serializer can produce this ordering, so we split
+ * the message into two consecutive assistant turns: one with text blocks and
+ * one with tool_use blocks.  The reordering is safe because the text and
+ * tool_use blocks are semantically independent within a single turn.
+ */
 function splitAssistantToolUseTrailingContent(
   messages: MessageParam[],
 ): MessageParam[] {
@@ -229,10 +230,14 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
 
   const normalizedMessages = splitAssistantToolUseTrailingContent(messages);
 
+  const shapedSystem = Array.isArray(payload.system)
+    ? shapeSystemBlocks(payload.system as TextBlock[])
+    : payload.system;
+
   const shapedPayload: AnthropicPayload = {
     ...payload,
     messages: normalizedMessages,
-    system: prependBillingHeader(payload.system, normalizedMessages),
+    system: prependBillingHeader(shapedSystem, normalizedMessages),
   };
 
   if (typeof payload["anthropic-beta"] === "string") {

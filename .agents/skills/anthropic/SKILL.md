@@ -76,11 +76,16 @@ This workflow has already been used successfully in this repo to validate:
 - cache-control adjustments
 - assistant message ordering normalization
 - OAuth-only payload shaping
+- system prompt de-fingerprinting (replaces Pi's default preamble with a minimal neutral prompt)
 
-### Prefer `before_agent_start` for
+### Why not `before_agent_start` for prompt shaping
 
-- minimal prompt de-fingerprinting of Pi's assembled default system prompt
-- preserving project context while replacing unsafe harness boilerplate
+`before_agent_start` has no provider or model context.  There is no reliable way to gate provider-specific logic there:
+
+- `model_select` does not fire for the initial model at startup (Pi assigns it directly to `agent.state.model` without calling `setModel`).
+- The event itself does not expose which provider is active.
+
+System prompt shaping was originally in `before_agent_start` and was moved to `before_provider_request` to fix a bug where the first turn was always skipped.  The `isOAuthAnthropicPayload` guard in `before_provider_request` is the single reliable Anthropic OAuth detection point.
 
 ### Avoid by default
 
