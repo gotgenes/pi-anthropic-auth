@@ -28,53 +28,63 @@ The extension currently does the following:
 
 The extension does not currently replace Pi's built-in Anthropic streaming transport.
 
-## Requirements
+## Install
+
+```bash
+pi install npm:@gotgenes/pi-anthropic-auth
+```
+
+To try it without permanently installing:
+
+```bash
+pi -e npm:@gotgenes/pi-anthropic-auth
+```
+
+## Usage Notes
+
+1. `/login anthropic` should continue using Pi's native Anthropic UX.
+2. API-key Anthropic behavior should remain the baseline behavior.
+3. The extension's compatibility logic is intended to affect only Anthropic OAuth requests.
+
+## Development
+
+### Requirements
 
 1. `pnpm`
 2. a local `pi` installation
 3. Anthropic OAuth credentials configured through Pi
 
-## Install Dependencies
+### Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-## Development
-
-Typecheck:
-
-```bash
-pnpm run build
-```
-
-Run tests:
-
-```bash
-pnpm test
-```
-
-Run both:
+### Typecheck
 
 ```bash
 pnpm run check
 ```
 
-## Load In Pi
-
-You can load the extension directly from the local source file:
+### Run Tests
 
 ```bash
-pi -e /absolute/path/to/pi-anthropic-auth/src/index.ts
+pnpm test
 ```
 
-Example:
+### Build
 
 ```bash
-pi -e /Users/chris/development/pi-anthropic-auth/src/index.ts
+pnpm run build
 ```
 
-## Fast Repro Loop
+### Load Local Build In Pi
+
+```bash
+pi -e /absolute/path/to/pi-anthropic-auth/dist/index.js
+```
+
+### Fast Repro Loop
 
 The most useful non-interactive repro loop is:
 
@@ -83,7 +93,7 @@ pi \
   --model anthropic/claude-sonnet-4-6 \
   --no-session \
   --tools read,grep,find,ls \
-  -e /Users/chris/development/pi-anthropic-auth/src/index.ts \
+  -e /Users/chris/development/pi-anthropic-auth/dist/index.js \
   -p "How many lines are in @AGENTS.md ?"
 ```
 
@@ -94,12 +104,6 @@ That path was used to validate:
 3. multi-turn continuation
 4. structured output
 5. expired-token refresh
-
-## Usage Notes
-
-1. `/login anthropic` should continue using Pi's native Anthropic UX.
-2. API-key Anthropic behavior should remain the baseline behavior.
-3. The extension's compatibility logic is intended to affect only Anthropic OAuth requests.
 
 ## Project Skills
 
