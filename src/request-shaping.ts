@@ -131,10 +131,7 @@ function prependBillingHeader(system: unknown, messages: MessageParam[]): TextBl
     return systemBlocks
   }
 
-  const anchorBlock = systemBlocks[0]
-  const billingBlock: TextBlock = anchorBlock?.cache_control
-    ? { type: "text", text: billingHeader, cache_control: anchorBlock.cache_control }
-    : { type: "text", text: billingHeader }
+  const billingBlock: TextBlock = { type: "text", text: billingHeader }
 
   return [billingBlock, ...systemBlocks]
 }

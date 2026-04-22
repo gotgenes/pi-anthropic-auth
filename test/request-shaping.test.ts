@@ -62,7 +62,7 @@ test("shapes only OAuth Anthropic payloads", () => {
   assert.equal(shaped, payload)
 })
 
-test("prepends the billing header block and keeps cache control on OAuth payloads", () => {
+test("prepends the billing header block without adding cache control on OAuth payloads", () => {
   const payload = createOAuthPayload({ "anthropic-beta": "existing-beta" })
 
   const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload
@@ -71,9 +71,43 @@ test("prepends the billing header block and keeps cache control on OAuth payload
 
   assert.notEqual(shaped, payload)
   assert.equal(systemBlocks[0]?.text, expectedHeader)
-  assert.deepEqual(systemBlocks[0]?.cache_control, { type: "ephemeral" })
+  assert.equal(systemBlocks[0]?.cache_control, undefined)
   assert.equal(systemBlocks[1]?.text, payload.system[0]?.text)
   assert.equal(shaped["anthropic-beta"], "claude-code-20250219,oauth-2025-04-20,existing-beta")
+})
+
+test("does not increase the number of cache-controlled system blocks", () => {
+  const payload = createOAuthPayload({
+    system: [
+      {
+        type: "text",
+        text: "You are Claude Code, Anthropic's official CLI for Claude.",
+        cache_control: { type: "ephemeral" },
+      },
+      {
+        type: "text",
+        text: "Block 2",
+        cache_control: { type: "ephemeral" },
+      },
+      {
+        type: "text",
+        text: "Block 3",
+        cache_control: { type: "ephemeral" },
+      },
+      {
+        type: "text",
+        text: "Block 4",
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+  })
+
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload
+  const systemBlocks = shaped.system as Array<{ cache_control?: unknown }>
+
+  assert.equal(systemBlocks.length, 5)
+  assert.equal(systemBlocks.filter((block) => block.cache_control != null).length, 4)
+  assert.equal(systemBlocks[0]?.cache_control, undefined)
 })
 
 test("does not duplicate an existing billing header block", () => {
