@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  CLAUDE_CODE_IDENTITY_PREFIX,
+  MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
+} from "./constants.js";
 import { shapeSystemBlocks } from "./system-prompt-shaping.js";
 
 const ANTHROPIC_OAUTH_BETAS = ["claude-code-20250219", "oauth-2025-04-20"];
@@ -6,10 +10,6 @@ const BILLING_HEADER_SALT = "59cf53e54c78";
 const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
 const CLAUDE_CODE_VERSION = "2.1.87";
 const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
-const CLAUDE_CODE_IDENTITY_PREFIX =
-  "You are Claude Code, Anthropic's official CLI";
-const PI_MINIMAL_ANTHROPIC_PROMPT_PREFIX =
-  "You are an expert coding assistant.";
 
 type TextBlock = {
   type: "text";
@@ -73,7 +73,7 @@ function hasOAuthAnthropicSystemMarker(block: unknown): boolean {
   return (
     block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX) ||
     block.text.includes("x-anthropic-billing-header:") ||
-    block.text.startsWith(PI_MINIMAL_ANTHROPIC_PROMPT_PREFIX)
+    block.text.startsWith(MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX)
   );
 }
 
