@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.2.0...v0.2.1) (2026-04-22)
+
+
+### Documentation
+
+* add badges and acknowledgments to README ([e963e64](https://github.com/gotgenes/pi-anthropic-auth/commit/e963e642414e73e1724d7ee3e28bc00cc9a73e5b))
+
+
+### Miscellaneous Chores
+
+* upgrade TypeScript 5 -&gt; 6.0.3 ([bd227e0](https://github.com/gotgenes/pi-anthropic-auth/commit/bd227e0bfd8165d7dd68a517fd405f1bb1ecb33a))
+
 ## [0.2.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.1.0...v0.2.0) (2026-04-22)
 
 
