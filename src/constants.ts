@@ -39,3 +39,35 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
  */
 export const CLAUDE_CODE_IDENTITY_PREFIX =
   "You are Claude Code, Anthropic's official CLI";
+
+// ---------------------------------------------------------------------------
+// Billing header constants
+//
+// These values are used to build the x-anthropic-billing-header injected into
+// OAuth requests.  They must match the values Anthropic's backend expects for
+// the current Claude Code release.
+//
+// CLAUDE_CODE_VERSION must be updated when Anthropic ships a new Claude Code
+// version.  There is no upstream source to import it from; check the current
+// version at https://github.com/anthropics/claude-code or in a working Claude
+// Code installation (`claude --version`).
+// ---------------------------------------------------------------------------
+
+/**
+ * Claude Code version string embedded in the billing header.
+ *
+ * **Must be kept in sync with the current Claude Code release.**
+ * Update this value when a new Claude Code version ships.  If it drifts
+ * too far from what Anthropic expects, OAuth requests may be rejected or
+ * counted incorrectly.
+ */
+export const CLAUDE_CODE_VERSION = "2.1.87";
+
+/** Salt used in the billing header suffix hash. */
+export const BILLING_HEADER_SALT = "59cf53e54c78";
+
+/** Character positions sampled from the first user message for the billing hash. */
+export const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
+
+/** Entrypoint identifier included in the billing header. */
+export const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";

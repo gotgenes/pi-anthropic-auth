@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
+import {
+  BILLING_HEADER_POSITIONS,
+  BILLING_HEADER_SALT,
+  CLAUDE_CODE_VERSION,
+} from "../src/constants.js";
 import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
-
-const BILLING_HEADER_SALT = "59cf53e54c78";
-const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
-const CLAUDE_CODE_VERSION = "2.1.87";
 
 function buildExpectedBillingHeader(messageText: string): string {
   const cch = createHash("sha256")

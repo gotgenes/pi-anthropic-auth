@@ -1,15 +1,15 @@
 import { createHash } from "node:crypto";
 import {
+  BILLING_HEADER_POSITIONS,
+  BILLING_HEADER_SALT,
+  CLAUDE_CODE_ENTRYPOINT,
   CLAUDE_CODE_IDENTITY_PREFIX,
+  CLAUDE_CODE_VERSION,
   MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
 } from "./constants.js";
 import { shapeSystemBlocks } from "./system-prompt-shaping.js";
 
 const ANTHROPIC_OAUTH_BETAS = ["claude-code-20250219", "oauth-2025-04-20"];
-const BILLING_HEADER_SALT = "59cf53e54c78";
-const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
-const CLAUDE_CODE_VERSION = "2.1.87";
-const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
 
 type TextBlock = {
   type: "text";
