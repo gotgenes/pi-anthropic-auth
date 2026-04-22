@@ -32,22 +32,22 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "check": "tsc -p tsconfig.json --noEmit",
+    "check": "tsc -p tsconfig.check.json --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:md": "markdownlint-cli2 '*.md'",
     "lint:all": "pnpm run lint && pnpm run lint:md",
     "format": "biome format --write .",
-    "test": "tsx --test test/**/*.test.ts"
+    "test": "tsx --test test/**/*.test.ts",
+    "prepublishOnly": "pnpm run check && pnpm run test && pnpm run build"
   },
   "pi": {
     "extensions": [
       "./dist/index.js"
     ]
   },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0"
-  },
+  "dependencies": {},
+
   "peerDependencies": {
     "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*"
@@ -56,6 +56,7 @@
     "@biomejs/biome": "^2.4.12",
     "@mariozechner/pi-ai": "^0.68.0",
     "@mariozechner/pi-coding-agent": "^0.68.0",
+    "@anthropic-ai/sdk": "^0.52.0",
     "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"

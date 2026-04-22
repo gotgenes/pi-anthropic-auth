@@ -72,7 +72,8 @@ test("shapes only OAuth Anthropic payloads", () => {
 test("prepends the billing header block without adding cache control on OAuth payloads", () => {
   const payload = createOAuthPayload({ "anthropic-beta": "existing-beta" });
 
-  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload &
+    Record<string, unknown>;
   const systemBlocks = shaped.system as Array<{
     text: string;
     cache_control?: unknown;
@@ -188,6 +189,67 @@ test("shapes OAuth payloads detected by the injected billing header marker", () 
   const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
 
   assert.equal(shaped.system[0]?.text, payload.system[0]?.text);
+});
+
+test("shapes Pi default system prompt in OAuth payloads", () => {
+  const piDefaultPrompt =
+    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read\n- bash\n\n# Project Context\n\nThis is a test project.";
+  const payload = createOAuthPayload({
+    system: [
+      {
+        type: "text",
+        text: "You are Claude Code, Anthropic's official CLI for Claude.",
+      },
+      {
+        type: "text",
+        text: piDefaultPrompt,
+      },
+    ],
+  });
+
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
+
+  // The billing header is prepended
+  assert.ok(systemBlocks[0]?.text.includes("x-anthropic-billing-header:"));
+  // The Claude Code identity block is unchanged
+  assert.equal(
+    systemBlocks[1]?.text,
+    "You are Claude Code, Anthropic's official CLI for Claude.",
+  );
+  // The Pi default prompt preamble is replaced with the minimal prompt,
+  // but project context is preserved
+  assert.ok(
+    systemBlocks[2]?.text.startsWith("You are an expert coding assistant.\n"),
+  );
+  assert.ok(systemBlocks[2]?.text.includes("# Project Context"));
+  assert.ok(systemBlocks[2]?.text.includes("This is a test project."));
+  assert.ok(
+    !systemBlocks[2]?.text.includes(
+      "operating inside pi, a coding agent harness",
+    ),
+  );
+});
+
+test("does not shape system prompt in non-OAuth payloads", () => {
+  const piDefaultPrompt =
+    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users.";
+  const payload = {
+    model: "claude-sonnet-4-20250514",
+    stream: true,
+    messages: [{ role: "user", content: "Hello" }],
+    system: [
+      {
+        type: "text",
+        text: piDefaultPrompt,
+      },
+    ],
+  };
+
+  const shaped = shapeAnthropicOAuthPayload(payload);
+
+  // Non-OAuth payload is returned unchanged
+  assert.equal(shaped, payload);
 });
 
 test("shapes OAuth payloads detected by the minimal neutral system prompt marker", () => {
