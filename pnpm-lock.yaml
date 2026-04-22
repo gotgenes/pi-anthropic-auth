@@ -7,11 +7,10 @@ settings:
 importers:
 
   .:
-    dependencies:
+    devDependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.52.0
         version: 0.52.0
-    devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.12
         version: 2.4.12
