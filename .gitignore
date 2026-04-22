@@ -1,4 +1,10 @@
 ########
+# Build #
+########
+dist/
+*.tsbuildinfo
+
+########
 # Node #
 ########
 # Logs

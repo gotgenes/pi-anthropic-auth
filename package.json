@@ -1,20 +1,48 @@
 {
-  "name": "pi-anthropic-auth",
+  "name": "@gotgenes/pi-anthropic-auth",
   "version": "0.1.0",
-  "private": true,
-  "type": "module",
   "description": "Pi extension package for Anthropic OAuth compatibility",
-  "keywords": [
-    "pi-package"
+  "author": {
+    "name": "Chris Lasher"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
   ],
+  "keywords": [
+    "pi",
+    "pi-package",
+    "anthropic",
+    "oauth"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gotgenes/pi-anthropic-auth.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/**/*.test.ts",
-    "check": "pnpm run build && pnpm run test"
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:md": "markdownlint-cli2 '*.md'",
+    "lint:all": "pnpm run lint && pnpm run lint:md",
+    "format": "biome format --write .",
+    "test": "tsx --test test/**/*.test.ts"
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ]
   },
   "dependencies": {
@@ -23,6 +51,8 @@
     "@mariozechner/pi-coding-agent": "^0.68.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }

@@ -1,0 +1,24 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "builtin"
+hooks = [
+    { id = "trailing-whitespace" },
+    { id = "end-of-file-fixer" },
+    { id = "check-added-large-files" },
+]
+
+[[repos]]
+repo = "https://github.com/DavidAnson/markdownlint-cli2"
+rev = "v0.22.0"
+hooks = [
+    { id = "markdownlint-cli2" },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+    { id = "biome", name = "biome", entry = "pnpm exec biome check --files-ignore-unknown=true", language = "system", types = ["text"] },
+]
