@@ -5,6 +5,8 @@ const BILLING_HEADER_SALT = "59cf53e54c78"
 const BILLING_HEADER_POSITIONS = [4, 7, 20] as const
 const CLAUDE_CODE_VERSION = "2.1.87"
 const CLAUDE_CODE_ENTRYPOINT = "sdk-cli"
+const CLAUDE_CODE_IDENTITY_PREFIX = "You are Claude Code, Anthropic's official CLI"
+const PI_MINIMAL_ANTHROPIC_PROMPT_PREFIX = "You are an expert coding assistant."
 
 type TextBlock = {
   type: "text"
@@ -47,7 +49,23 @@ function isAnthropicMessagesPayload(payload: unknown): payload is AnthropicPaylo
 }
 
 function isOAuthAnthropicPayload(payload: AnthropicPayload): boolean {
-  return Array.isArray(payload.system) && payload.system.some(hasClaudeCodeIdentity)
+  if (!Array.isArray(payload.system)) {
+    return false
+  }
+
+  return payload.system.some(hasOAuthAnthropicSystemMarker)
+}
+
+function hasOAuthAnthropicSystemMarker(block: unknown): boolean {
+  if (!isRecord(block) || block.type !== "text" || typeof block.text !== "string") {
+    return false
+  }
+
+  return (
+    block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX) ||
+    block.text.includes("x-anthropic-billing-header:") ||
+    block.text.startsWith(PI_MINIMAL_ANTHROPIC_PROMPT_PREFIX)
+  )
 }
 
 function hasClaudeCodeIdentity(block: unknown): boolean {
@@ -55,7 +73,7 @@ function hasClaudeCodeIdentity(block: unknown): boolean {
     isRecord(block) &&
     block.type === "text" &&
     typeof block.text === "string" &&
-    block.text.includes("You are Claude Code, Anthropic's official CLI for Claude.")
+    block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX)
   )
 }
 
@@ -145,6 +163,32 @@ function mergeAnthropicBetas(betaHeader: string | undefined): string {
   return [...new Set([...ANTHROPIC_OAUTH_BETAS, ...existing])].join(",")
 }
 
+function splitAssistantToolUseTrailingContent(messages: MessageParam[]): MessageParam[] {
+  return messages.flatMap((message) => {
+    if (message.role !== "assistant" || !Array.isArray(message.content)) {
+      return [message]
+    }
+
+    const firstToolUseIndex = message.content.findIndex((block) => block?.type === "tool_use")
+    if (firstToolUseIndex === -1) {
+      return [message]
+    }
+
+    const trailingBlocks = message.content.slice(firstToolUseIndex)
+    if (!trailingBlocks.some((block) => block?.type !== "tool_use")) {
+      return [message]
+    }
+
+    const nonToolUseBlocks = message.content.filter((block) => block?.type !== "tool_use")
+    const toolUseBlocks = message.content.filter((block) => block?.type === "tool_use")
+
+    return [
+      { ...message, content: nonToolUseBlocks },
+      { ...message, content: toolUseBlocks },
+    ]
+  })
+}
+
 export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   if (!isAnthropicMessagesPayload(payload)) {
     return payload
@@ -155,9 +199,12 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
     return payload
   }
 
+  const normalizedMessages = splitAssistantToolUseTrailingContent(messages)
+
   const shapedPayload: AnthropicPayload = {
     ...payload,
-    system: prependBillingHeader(payload.system, messages),
+    messages: normalizedMessages,
+    system: prependBillingHeader(payload.system, normalizedMessages),
   }
 
   if (typeof payload["anthropic-beta"] === "string") {

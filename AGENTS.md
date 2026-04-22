@@ -4,6 +4,9 @@ This file contains shared context for agents working in this repository.
 Keep it focused on information that multiple agents need: repository purpose, current architecture, constraints, commands, and known gotchas.
 Do not turn this into a task log.
 
+Project-level reusable workflows belong in `.agents/skills/`.
+This repo currently includes skills for Anthropic OAuth debugging, Pi CLI repro loops, and Pi skill frontmatter conventions.
+
 ## Project
 
 ### Overview
@@ -83,6 +86,17 @@ Current source layout:
 1. `src/index.ts`: extension registration
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
 3. `src/request-shaping.ts`: OAuth-only request shaping helpers
+4. `src/system-prompt-shaping.ts`: minimal Anthropic OAuth prompt replacement for Pi's default prompt
+
+### Project Skills
+
+Project skills live in `.agents/skills/`.
+
+Current skills:
+
+1. `anthropic`: Anthropic OAuth compatibility lessons and debugging workflow
+2. `pi-cli-repro`: repeatable `pi -p ... -e ...` repro workflow
+3. `frontmatter`: Pi skill frontmatter template and rules
 
 ### Upstream Dependencies
 
@@ -184,5 +198,7 @@ Do that only if hooks are insufficient for the concrete compatibility issue bein
 
 1. `README.md`
 2. `docs/plans/minimal-anthropic-override.md`
-3. Upstream reference clone: `~/development/pi-mono`
-4. Example reference project: `~/development/opencode-anthropic-auth`
+3. `docs/plans/gap-analysis-and-next-steps.md`
+4. `.agents/skills/`
+5. Upstream reference clone: `~/development/pi-mono`
+6. Example reference project: `~/development/opencode-anthropic-auth`

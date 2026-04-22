@@ -143,3 +143,45 @@ test("leaves payloads without a user text message unchanged", () => {
 
   assert.deepEqual(shaped.system, payload.system)
 })
+
+test("shapes OAuth payloads detected by the injected billing header marker", () => {
+  const payload = {
+    model: "claude-sonnet-4-20250514",
+    stream: true,
+    messages: [{ role: "user", content: "Please summarize this repository status." }],
+    system: [
+      {
+        type: "text",
+        text: buildExpectedBillingHeader("Please summarize this repository status."),
+      },
+      {
+        type: "text",
+        text: "Follow the user's instructions.",
+      },
+    ],
+  }
+
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload
+
+  assert.equal(shaped.system[0]?.text, payload.system[0]?.text)
+})
+
+test("shapes OAuth payloads detected by the minimal neutral system prompt marker", () => {
+  const payload = {
+    model: "claude-sonnet-4-20250514",
+    stream: true,
+    messages: [{ role: "user", content: "Please summarize this repository status." }],
+    system: [
+      {
+        type: "text",
+        text: "You are an expert coding assistant.\nBe concise and helpful.",
+      },
+    ],
+  }
+
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload
+  const systemBlocks = shaped.system as Array<{ text: string }>
+
+  assert.equal(systemBlocks[0]?.text, buildExpectedBillingHeader("Please summarize this repository status."))
+  assert.equal(systemBlocks[1]?.text, payload.system[0]?.text)
+})
