@@ -11,14 +11,14 @@ hooks = [
 ]
 
 [[repos]]
-repo = "https://github.com/DavidAnson/markdownlint-cli2"
-rev = "v0.22.0"
+repo = "local"
 hooks = [
-    { id = "markdownlint-cli2" },
+    { id = "biome", name = "biome", entry = "pnpm exec biome check --write --files-ignore-unknown=true", language = "system", types_or = ["javascript", "jsx", "ts", "tsx", "json"] },
 ]
 
 [[repos]]
-repo = "local"
+repo = "https://github.com/DavidAnson/markdownlint-cli2"
+rev = "v0.22.0"
 hooks = [
-    { id = "biome", name = "biome", entry = "pnpm exec biome check --files-ignore-unknown=true", language = "system", types = ["text"] },
+    { id = "markdownlint-cli2", args = ["--fix"] },
 ]
