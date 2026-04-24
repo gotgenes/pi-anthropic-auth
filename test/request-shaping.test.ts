@@ -93,6 +93,18 @@ test("prepends the billing header block without adding cache control on OAuth pa
   );
 });
 
+test("always sets required OAuth betas even when anthropic-beta is absent from the payload", () => {
+  const payload = createOAuthPayload();
+
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload &
+    Record<string, unknown>;
+
+  assert.equal(
+    shaped["anthropic-beta"],
+    "claude-code-20250219,oauth-2025-04-20",
+  );
+});
+
 test("does not increase the number of cache-controlled system blocks", () => {
   const payload = createOAuthPayload({
     system: [

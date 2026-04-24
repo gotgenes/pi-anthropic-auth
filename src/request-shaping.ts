@@ -240,11 +240,11 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
     system: prependBillingHeader(shapedSystem, normalizedMessages),
   };
 
-  if (typeof payload["anthropic-beta"] === "string") {
-    shapedPayload["anthropic-beta"] = mergeAnthropicBetas(
-      payload["anthropic-beta"],
-    );
-  }
+  shapedPayload["anthropic-beta"] = mergeAnthropicBetas(
+    typeof payload["anthropic-beta"] === "string"
+      ? payload["anthropic-beta"]
+      : undefined,
+  );
 
   return shapedPayload;
 }
