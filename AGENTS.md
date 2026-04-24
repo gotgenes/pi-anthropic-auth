@@ -161,6 +161,30 @@ pnpm run check
 This repo uses `module` and `moduleResolution` set to `NodeNext`.
 Use `.js` import specifiers for local TypeScript module imports.
 
+### Commit Messages
+
+All commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
+
+Format: `<type>[optional scope]: <description>`
+
+Common types used in this repo:
+
+- `feat`: new behavior or capability
+- `fix`: bug fix or compatibility correction
+- `docs`: documentation-only changes
+- `chore`: maintenance, dependency updates, tooling
+- `refactor`: restructuring without behavior change
+- `test`: adding or updating tests
+
+Examples:
+
+```text
+feat: add refresh-token fallback for rotated OAuth tokens
+fix: always inject required OAuth betas regardless of upstream header
+docs: add ask_user tool usage guidelines to AGENTS.md
+chore: bump pi-ai peer dependency to 0.69.0
+```
+
 ### Editing Conventions
 
 1. Prefer ASCII unless the file already requires otherwise
