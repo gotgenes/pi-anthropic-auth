@@ -61,7 +61,7 @@ export const CLAUDE_CODE_IDENTITY_PREFIX =
  * too far from what Anthropic expects, OAuth requests may be rejected or
  * counted incorrectly.
  */
-export const CLAUDE_CODE_VERSION = "2.1.87";
+export const CLAUDE_CODE_VERSION = "2.1.108";
 
 /** Salt used in the billing header suffix hash. */
 export const BILLING_HEADER_SALT = "59cf53e54c78";
