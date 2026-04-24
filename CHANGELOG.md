@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.2.1...v0.3.0) (2026-04-24)
+
+
+### Features
+
+* add ask_user tool via pi-ask-user plugin ([8cb181a](https://github.com/gotgenes/pi-anthropic-auth/commit/8cb181a6824074f9fe3ad1f0e16bf608f3a99f68))
+
+
+### Bug Fixes
+
+* always inject required OAuth betas regardless of upstream anthropic-beta header ([a048535](https://github.com/gotgenes/pi-anthropic-auth/commit/a048535098d5ed8cfd189ac9c6e146e044b135b1))
+* bump CLAUDE_CODE_VERSION to 2.1.108 ([641c406](https://github.com/gotgenes/pi-anthropic-auth/commit/641c40628f9c665790da9f3ebbab492d133b1f78))
+
+
+### Documentation
+
+* add Conventional Commits guidelines to AGENTS.md ([72dc990](https://github.com/gotgenes/pi-anthropic-auth/commit/72dc990e154a708600902ed95a11c5d6e8a45c4d))
+* simplify README to focus on what, not how ([2becbd8](https://github.com/gotgenes/pi-anthropic-auth/commit/2becbd8b5c23a06ba2b52e39c5513bea4a311d6f))
+
 ## [0.2.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.2.0...v0.2.1) (2026-04-22)
 
 
