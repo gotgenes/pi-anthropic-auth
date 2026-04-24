@@ -167,6 +167,43 @@ Use `.js` import specifiers for local TypeScript module imports.
 2. Keep helper modules small and purpose-specific
 3. Avoid introducing a custom full Anthropic transport unless hook limitations force it
 
+## `ask_user` Tool Usage
+
+This project has `pi-ask-user` installed as a local Pi plugin.
+The `ask_user` tool renders as a compact dialog widget — not a document viewer.
+Keep invocations lean and put supporting context in regular message output.
+
+### When to use it
+
+Load the `ask-user` skill and invoke `ask_user` before:
+
+1. High-stakes architectural decisions (provider override strategy, seam changes, transport replacement).
+2. Irreversible or costly-to-undo changes (large refactors, breaking API-key behavior).
+3. Ambiguous requirements or conflicting constraints.
+4. Any step where multiple valid options exist and the trade-off is preference-dependent.
+
+A quick clarifying question is cheaper than 10 tool calls of inconclusive investigation.
+
+### Manual actions
+
+When a task requires a manual action from the user (e.g., run a `pi` command, log in via a browser flow, approve an OAuth prompt), use `ask_user` to gate on completion rather than printing instructions and continuing.
+
+Use options like: `Done`, `Need help`, `Something went wrong`.
+
+If the user selects `Need help` or `Something went wrong`, ask clarifying questions before retrying.
+
+### Context before, not inside
+
+Output all explanatory context — plan summaries, analysis results, trade-off notes — as regular message text **before** invoking `ask_user`.
+The `question` parameter should be a concise prompt, almost never more than one sentence.
+Options should be short and outcome-oriented.
+
+### One decision per call
+
+Each `ask_user` call should address a single independent decision.
+Do not combine unrelated decisions into one call with combinatorial options.
+For multiple independent decisions, make sequential calls — one per decision.
+
 ## Testing Guidance
 
 There is not yet a dedicated test harness in this repo.
