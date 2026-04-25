@@ -230,15 +230,45 @@ For multiple independent decisions, make sequential calls — one per decision.
 
 ## Testing Guidance
 
-There is not yet a dedicated test harness in this repo.
-When adding tests, keep them focused on compatibility helpers rather than broad end-to-end behavior.
+Tests live in `test/` and run via `vitest`.
 
-Priority areas:
+### Commands
+
+Run the full suite:
+
+```bash
+pnpm test
+```
+
+Watch mode:
+
+```bash
+pnpm run test:watch
+```
+
+### Conventions
+
+1. Test files are named `*.test.ts` and are collocated under `test/` (not next to source).
+2. Tests use `node:assert/strict` for assertions and `vitest`'s `test` (and `onTestFinished` for per-test cleanup) for the runner.  Existing files are the reference style — keep new tests consistent.
+3. Keep tests focused on compatibility helpers rather than broad end-to-end behavior.  Mock `globalThis.fetch` for OAuth flows; build payload fixtures inline rather than depending on Pi internals.
+4. When asserting on shaped system prompts, prefer regex matches that pin specific markers (`/^You are an expert coding assistant\./`, `/# Project Context/`) over deep-equal on full prompt strings, so tests survive harmless reformatting upstream.
+
+### Coverage areas
+
+Current suites map roughly to:
+
+1. `test/anthropic-oauth.test.ts` — OAuth callback parsing, manual-code edge cases, and refresh-token rotation fallback.
+2. `test/request-shaping.test.ts` — OAuth-only payload guarding, billing header injection, system block layering, and beta-header merging.
+3. `test/system-prompt-shaping.test.ts` — preamble replacement, appended-content preservation, and degraded-mode fallbacks.
+4. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
+
+Priority areas for new tests:
 
 1. OAuth callback parsing
 2. Refresh fallback when `refresh_token` is omitted
 3. Billing header generation
 4. OAuth-only request-body shaping
+5. System prompt shaping boundaries (preamble anchors, appended content preservation, fallback paths)
 
 ## Gotchas
 
