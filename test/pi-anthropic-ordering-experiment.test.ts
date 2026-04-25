@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-
 import {
   type Context,
   getModel,
   streamSimple,
   Type,
 } from "@mariozechner/pi-ai";
+import { test } from "vitest";
 
 import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
 

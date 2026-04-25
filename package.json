@@ -38,7 +38,8 @@
     "lint:md": "markdownlint-cli2 '*.md'",
     "lint:all": "pnpm run lint && pnpm run lint:md",
     "format": "biome format --write .",
-    "test": "tsx --test test/**/*.test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "pnpm run check && pnpm run test && pnpm run build"
   },
   "pi": {
@@ -56,7 +57,7 @@
     "@mariozechner/pi-ai": "^0.68.0",
     "@mariozechner/pi-coding-agent": "^0.68.0",
     "markdownlint-cli2": "^0.22.0",
-    "tsx": "^4.20.6",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }
