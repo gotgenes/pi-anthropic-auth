@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.3.0...v0.4.0) (2026-04-25)
+
+
+### Features
+
+* adopt anchor-driven sanitizer for system prompt shaping (issue [#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10)) ([f740a35](https://github.com/gotgenes/pi-anthropic-auth/commit/f740a3524e255b9153227e1f67eef342a5b57196))
+
+
+### Bug Fixes
+
+* preserve content appended after Pi default preamble for OAuth shaping ([52b2ca8](https://github.com/gotgenes/pi-anthropic-auth/commit/52b2ca83903d84c63471841c6ff90f3971c8643d)), closes [#9](https://github.com/gotgenes/pi-anthropic-auth/issues/9)
+* remove body-level anthropic-beta injection that caused 400 rejection ([4ab21db](https://github.com/gotgenes/pi-anthropic-auth/commit/4ab21dbafd30f2e1d8190370cfa04a7417e5f2c5))
+
+
+### Documentation
+
+* refresh AGENTS.md testing guidance for vitest harness ([ed1b344](https://github.com/gotgenes/pi-anthropic-auth/commit/ed1b3444e001dbff74ee5197d1c37b4fe21f7602))
+
+
+### Miscellaneous Chores
+
+* switch test runner from node:test to vitest ([e0200f9](https://github.com/gotgenes/pi-anthropic-auth/commit/e0200f9308b5ee2cb31a085ac1aa256ccc3f95dd))
+
 ## [0.3.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.2.1...v0.3.0) (2026-04-24)
 
 
