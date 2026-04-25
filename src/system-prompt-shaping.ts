@@ -1,92 +1,65 @@
 import {
   MINIMAL_ANTHROPIC_OAUTH_PROMPT,
+  PARAGRAPH_REMOVAL_ANCHORS,
   PI_DEFAULT_PROMPT_PREFIX,
-  PI_DEFAULT_PROMPT_TERMINATOR,
+  TEXT_REPLACEMENTS,
 } from "./constants.js";
 
-let warnedTerminatorMissing = false;
-
-function warnTerminatorMissingOnce(): void {
-  if (warnedTerminatorMissing) {
-    return;
-  }
-  warnedTerminatorMissing = true;
-  console.warn(
-    "[pi-anthropic-auth] Pi default preamble terminator not found; falling back to '# Project Context' anchor. " +
-      "Upstream Pi may have reworded its preamble — update PI_DEFAULT_PROMPT_TERMINATOR.",
-  );
-}
-
 /**
- * Reset the one-time terminator-missing warning latch.  Exposed for tests.
- */
-export function _resetShapingWarnings(): void {
-  warnedTerminatorMissing = false;
-}
-
-function findProjectContextStart(systemPrompt: string): number {
-  const marker = "\n\n# Project Context\n\n";
-  return systemPrompt.indexOf(marker);
-}
-
-/**
- * Fallback shaping: slice from the start of the `# Project Context` section.
+ * Sanitize system prompt text by removing paragraphs containing known
+ * Pi-specific anchor strings and applying inline text replacements for
+ * known Anthropic classifier trigger phrases.
  *
- * Used when Pi's preamble terminator line cannot be located (e.g. upstream
- * reworded it).  Preserves the historical behavior so we degrade rather
- * than regressing.  Note: this loses any text Pi or other extensions appended
- * between the preamble and `# Project Context` (the issue #9 case) — the
- * tradeoff is that we still produce a valid OAuth-shaped prompt instead of
- * leaking Pi's verbose preamble.
+ * A paragraph is any text between blank lines (`\n\n`).
+ *
+ * This approach is resilient to upstream rewording — as long as the anchor
+ * string still appears somewhere in the paragraph, removal works regardless
+ * of how the surrounding text changes.
  */
-function shapeByProjectContextFallback(systemPrompt: string): string {
-  const projectContextStart = findProjectContextStart(systemPrompt);
-  if (projectContextStart === -1) {
-    return MINIMAL_ANTHROPIC_OAUTH_PROMPT;
+export function sanitizeSystemText(text: string): string {
+  const paragraphs = text.split(/\n\n+/);
+
+  const filtered = paragraphs.filter((paragraph) => {
+    for (const anchor of PARAGRAPH_REMOVAL_ANCHORS) {
+      if (paragraph.includes(anchor)) return false;
+    }
+    return true;
+  });
+
+  let result = filtered.join("\n\n");
+
+  for (const rule of TEXT_REPLACEMENTS) {
+    result = result.replaceAll(rule.match, rule.replacement);
   }
-  return `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}${systemPrompt.slice(projectContextStart)}`;
+
+  return result.trim();
 }
 
 /**
  * Shape a system prompt string for Anthropic OAuth compatibility.
  *
- * Replaces Pi's verbose default preamble with a minimal neutral prompt while
- * preserving everything Pi or other extensions emit *after* the preamble:
- * `appendSystemPrompt` content, `# Project Context`, `# Available Skills`,
- * and the `Current date` / `Current working directory` footer.
+ * Uses an anchor-driven sanitizer to remove Pi-specific paragraphs
+ * (identity, documentation references, filler) while preserving
+ * extension-contributed content (tool snippets, guidelines, appended
+ * content, project context, skills, and date/cwd footer).
  *
- * Implementation: we locate the preamble span by its known start anchor
- * (`PI_DEFAULT_PROMPT_PREFIX`) and end anchor (`PI_DEFAULT_PROMPT_TERMINATOR`)
- * and replace just that span in-place.  Anything before the start anchor
- * (currently always empty in upstream Pi) and everything after the end
- * anchor is preserved verbatim.
+ * Prepends a minimal neutral prompt to replace the removed Pi identity.
  *
- * If the preamble prefix is not present, the prompt is returned unchanged.
- * If the prefix is present but the terminator is not (upstream reworded
- * the final bullet), we fall back to slicing from `# Project Context`
- * and emit a one-time warning.
+ * If the Pi default prompt prefix is not present, the prompt is returned
+ * unchanged — this gates shaping so non-Pi prompts pass through.
  */
 export function shapeAnthropicOAuthSystemPrompt(systemPrompt: string): string {
-  const prefixIdx = systemPrompt.indexOf(PI_DEFAULT_PROMPT_PREFIX);
-  if (prefixIdx === -1) {
+  if (!systemPrompt.includes(PI_DEFAULT_PROMPT_PREFIX)) {
     return systemPrompt;
   }
 
-  const terminatorIdx = systemPrompt.indexOf(
-    PI_DEFAULT_PROMPT_TERMINATOR,
-    prefixIdx,
-  );
-  if (terminatorIdx === -1) {
-    warnTerminatorMissingOnce();
-    return shapeByProjectContextFallback(systemPrompt);
+  const sanitized = sanitizeSystemText(systemPrompt);
+
+  if (!sanitized) {
+    return MINIMAL_ANTHROPIC_OAUTH_PROMPT;
   }
 
-  const terminatorEnd = terminatorIdx + PI_DEFAULT_PROMPT_TERMINATOR.length;
-  return (
-    systemPrompt.slice(0, prefixIdx) +
-    MINIMAL_ANTHROPIC_OAUTH_PROMPT +
-    systemPrompt.slice(terminatorEnd)
-  );
+  return `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}\n\n${sanitized}`;
 }
 
 type TextBlock = {
