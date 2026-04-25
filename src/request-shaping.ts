@@ -9,8 +9,6 @@ import {
 } from "./constants.js";
 import { shapeSystemBlocks } from "./system-prompt-shaping.js";
 
-const ANTHROPIC_OAUTH_BETAS = ["claude-code-20250219", "oauth-2025-04-20"];
-
 type TextBlock = {
   type: "text";
   text: string;
@@ -166,15 +164,6 @@ function prependBillingHeader(
   return [billingBlock, ...systemBlocks];
 }
 
-function mergeAnthropicBetas(betaHeader: string | undefined): string {
-  const existing = (betaHeader ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  return [...new Set([...ANTHROPIC_OAUTH_BETAS, ...existing])].join(",");
-}
-
 /**
  * Splits assistant messages that interleave text and tool_use blocks.
  *
@@ -234,17 +223,9 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
     ? shapeSystemBlocks(payload.system as TextBlock[])
     : payload.system;
 
-  const shapedPayload: AnthropicPayload = {
+  return {
     ...payload,
     messages: normalizedMessages,
     system: prependBillingHeader(shapedSystem, normalizedMessages),
   };
-
-  shapedPayload["anthropic-beta"] = mergeAnthropicBetas(
-    typeof payload["anthropic-beta"] === "string"
-      ? payload["anthropic-beta"]
-      : undefined,
-  );
-
-  return shapedPayload;
 }
