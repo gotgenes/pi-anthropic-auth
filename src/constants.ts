@@ -8,6 +8,23 @@ export const PI_DEFAULT_PROMPT_PREFIX =
   "You are an expert coding assistant operating inside pi, a coding agent harness.";
 
 /**
+ * Final line of Pi's built-in default system prompt preamble.
+ *
+ * Pi's `buildSystemPrompt` (`packages/coding-agent/src/core/system-prompt.ts`)
+ * always emits this exact line as the last bullet of the preamble, immediately
+ * before any `appendSystemPrompt` content, `# Project Context`, skills, or
+ * date/cwd footer.  We use it as the end anchor for in-place preamble
+ * replacement so that anything Pi or other extensions append after the
+ * preamble is preserved verbatim.
+ *
+ * **Must be kept in sync with upstream Pi.**  If Pi rewords this final
+ * bullet, shaping will fall back to slicing from `# Project Context` and
+ * emit a one-time `console.warn` to surface the drift.
+ */
+export const PI_DEFAULT_PROMPT_TERMINATOR =
+  "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)";
+
+/**
  * Prefix of the minimal neutral Anthropic OAuth system prompt.
  *
  * Used as a detection marker in request shaping to identify system blocks

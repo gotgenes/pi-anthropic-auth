@@ -206,7 +206,7 @@ test("shapes OAuth payloads detected by the injected billing header marker", () 
 
 test("shapes Pi default system prompt in OAuth payloads", () => {
   const piDefaultPrompt =
-    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read\n- bash\n\n# Project Context\n\nThis is a test project.";
+    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read\n- bash\n\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n\n# Project Context\n\nThis is a test project.";
   const payload = createOAuthPayload({
     system: [
       {
