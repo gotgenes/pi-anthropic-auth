@@ -4,6 +4,8 @@
 
 Build a Pi package that minimally overrides Pi's built-in `anthropic` provider to improve Claude Pro/Max OAuth compatibility while preserving Pi's normal Anthropic API-key flow and model UX.
 
+For broader notes on how this repo compares to similar projects, see [../comparison-to-similar-projects.md](../comparison-to-similar-projects.md).
+
 ## Why This Approach
 
 Pi already implements several Claude-compatible behaviors for Anthropic OAuth:

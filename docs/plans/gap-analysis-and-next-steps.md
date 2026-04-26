@@ -11,6 +11,8 @@ Capture the current comparison between:
 
 The purpose of this document is to preserve the hard-fought compatibility lessons without over-porting OpenCode-specific baggage into Pi.
 
+For broader notes on how this repo compares to neighboring projects, see [../comparison-to-similar-projects.md](../comparison-to-similar-projects.md).
+
 ## Current Conclusion
 
 The project should remain hook-based for now.
