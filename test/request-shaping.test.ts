@@ -9,6 +9,8 @@ import {
 } from "../src/constants.js";
 import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
 
+const TEST_MODEL = "claude-haiku-4-5";
+
 function buildExpectedBillingHeader(messageText: string): string {
   const cch = createHash("sha256")
     .update(messageText)
@@ -32,7 +34,7 @@ function buildExpectedBillingHeader(messageText: string): string {
 
 function createOAuthPayload(overrides: Record<string, unknown> = {}) {
   return {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [
       {
@@ -59,7 +61,7 @@ function createOAuthPayload(overrides: Record<string, unknown> = {}) {
 
 test("shapes only OAuth Anthropic payloads", () => {
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [{ role: "user", content: "Hello" }],
     system: [{ type: "text", text: "Generic system prompt." }],
@@ -174,7 +176,7 @@ test("leaves payloads without a user text message unchanged", () => {
 
 test("shapes OAuth payloads detected by the injected billing header marker", () => {
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [
       { role: "user", content: "Please summarize this repository status." },
@@ -242,7 +244,7 @@ test("does not shape system prompt in non-OAuth payloads", () => {
   const piDefaultPrompt =
     "You are an expert coding assistant operating inside pi, a coding agent harness. You help users.";
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [{ role: "user", content: "Hello" }],
     system: [
@@ -261,7 +263,7 @@ test("does not shape system prompt in non-OAuth payloads", () => {
 
 test("shapes OAuth payloads detected by the minimal neutral system prompt marker", () => {
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [
       { role: "user", content: "Please summarize this repository status." },

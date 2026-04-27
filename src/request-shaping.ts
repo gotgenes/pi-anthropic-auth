@@ -7,6 +7,7 @@ import {
   CLAUDE_CODE_VERSION,
   MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
 } from "./constants.js";
+import { debugLog, isToolUseOnlyDebugEnabled } from "./debug.js";
 import { shapeSystemBlocks } from "./system-prompt-shaping.js";
 
 type TextBlock = {
@@ -207,6 +208,47 @@ function splitAssistantToolUseTrailingContent(
   });
 }
 
+function getToolDefinitionNames(payload: AnthropicPayload): string[] {
+  const tools = payload.tools;
+  if (!Array.isArray(tools)) {
+    return [];
+  }
+
+  return tools
+    .map((tool) =>
+      isRecord(tool) && typeof tool.name === "string" ? tool.name : undefined,
+    )
+    .filter((name): name is string => typeof name === "string");
+}
+
+function getToolUseNames(messages: MessageParam[]): string[] {
+  return messages.flatMap((message) => {
+    if (!Array.isArray(message.content)) {
+      return [];
+    }
+
+    return message.content
+      .map((block) =>
+        block?.type === "tool_use" && typeof block.name === "string"
+          ? block.name
+          : undefined,
+      )
+      .filter((name): name is string => typeof name === "string");
+  });
+}
+
+function countAssistantMessages(messages: MessageParam[]): number {
+  return messages.filter((message) => message.role === "assistant").length;
+}
+
+function shouldLogRequestDebug(messages: MessageParam[]): boolean {
+  if (!isToolUseOnlyDebugEnabled()) {
+    return true;
+  }
+
+  return getToolUseNames(messages).length > 0;
+}
+
 export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   if (!isAnthropicMessagesPayload(payload)) {
     return payload;
@@ -222,10 +264,31 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   const shapedSystem = Array.isArray(payload.system)
     ? shapeSystemBlocks(payload.system as TextBlock[])
     : payload.system;
+  const finalSystem = prependBillingHeader(shapedSystem, normalizedMessages);
+
+  const toolUseNamesBefore = getToolUseNames(messages);
+  const toolUseNamesAfter = getToolUseNames(normalizedMessages);
+
+  if (shouldLogRequestDebug(messages)) {
+    debugLog("before-provider-request", {
+      model: payload.model,
+      systemBlockCountBefore: Array.isArray(payload.system)
+        ? payload.system.length
+        : 0,
+      systemBlockCountAfter: Array.isArray(finalSystem)
+        ? finalSystem.length
+        : 0,
+      assistantMessagesBefore: countAssistantMessages(messages),
+      assistantMessagesAfter: countAssistantMessages(normalizedMessages),
+      toolDefinitions: getToolDefinitionNames(payload),
+      toolUseNamesBefore,
+      toolUseNamesAfter,
+    });
+  }
 
   return {
     ...payload,
     messages: normalizedMessages,
-    system: prependBillingHeader(shapedSystem, normalizedMessages),
+    system: finalSystem,
   };
 }

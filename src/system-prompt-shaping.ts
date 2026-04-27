@@ -2,8 +2,54 @@ import {
   MINIMAL_ANTHROPIC_OAUTH_PROMPT,
   PARAGRAPH_REMOVAL_ANCHORS,
   PI_DEFAULT_PROMPT_PREFIX,
+  PI_DEFAULT_PROMPT_TERMINATOR,
   TEXT_REPLACEMENTS,
 } from "./constants.js";
+import { debugLog, isToolUseOnlyDebugEnabled } from "./debug.js";
+
+let warnedTerminatorMissing = false;
+
+function warnTerminatorMissingOnce(): void {
+  if (warnedTerminatorMissing) {
+    return;
+  }
+  warnedTerminatorMissing = true;
+  console.warn(
+    "[pi-anthropic-auth] Pi default preamble terminator not found; falling back to '# Project Context' anchor. " +
+      "Upstream Pi may have reworded its preamble — update PI_DEFAULT_PROMPT_TERMINATOR.",
+  );
+}
+
+/**
+ * Reset the one-time terminator-missing warning latch. Exposed for tests.
+ */
+export function _resetShapingWarnings(): void {
+  warnedTerminatorMissing = false;
+}
+
+export type SanitizedSystemTextReport = {
+  text: string;
+  removedParagraphs: Array<{
+    anchor: string;
+    preview: string;
+  }>;
+  replacementMatches: string[];
+};
+
+function previewParagraph(paragraph: string): string {
+  return paragraph.replace(/\s+/g, " ").trim().slice(0, 140);
+}
+
+function shouldLogPromptDebug(report: SanitizedSystemTextReport): boolean {
+  if (!isToolUseOnlyDebugEnabled()) {
+    return true;
+  }
+
+  return (
+    report.removedParagraphs.length === 0 &&
+    report.replacementMatches.length > 0
+  );
+}
 
 /**
  * Sanitize system prompt text by removing paragraphs containing known
@@ -16,50 +62,120 @@ import {
  * string still appears somewhere in the paragraph, removal works regardless
  * of how the surrounding text changes.
  */
-export function sanitizeSystemText(text: string): string {
+export function sanitizeSystemTextWithReport(
+  text: string,
+): SanitizedSystemTextReport {
   const paragraphs = text.split(/\n\n+/);
+  const removedParagraphs: SanitizedSystemTextReport["removedParagraphs"] = [];
 
   const filtered = paragraphs.filter((paragraph) => {
     for (const anchor of PARAGRAPH_REMOVAL_ANCHORS) {
-      if (paragraph.includes(anchor)) return false;
+      if (!paragraph.includes(anchor)) {
+        continue;
+      }
+
+      removedParagraphs.push({
+        anchor,
+        preview: previewParagraph(paragraph),
+      });
+      return false;
     }
     return true;
   });
 
   let result = filtered.join("\n\n");
+  const replacementMatches: string[] = [];
 
   for (const rule of TEXT_REPLACEMENTS) {
+    if (result.includes(rule.match)) {
+      replacementMatches.push(rule.match);
+    }
     result = result.replaceAll(rule.match, rule.replacement);
   }
 
-  return result.trim();
+  return {
+    text: result.trim(),
+    removedParagraphs,
+    replacementMatches,
+  };
+}
+
+export function sanitizeSystemText(text: string): string {
+  return sanitizeSystemTextWithReport(text).text;
+}
+
+function findProjectContextStart(systemPrompt: string): number {
+  const marker = "\n\n# Project Context\n\n";
+  return systemPrompt.indexOf(marker);
 }
 
 /**
  * Shape a system prompt string for Anthropic OAuth compatibility.
  *
- * Uses an anchor-driven sanitizer to remove Pi-specific paragraphs
- * (identity, documentation references, filler) while preserving
- * extension-contributed content (tool snippets, guidelines, appended
- * content, project context, skills, and date/cwd footer).
+ * For the normal upstream Pi prompt shape, sanitize only the known preamble
+ * span and replace its identity paragraph with the minimal neutral prompt.
+ * This preserves downstream configuration/extension points embedded in the
+ * preamble (tool snippets and guideline bullets) while still stripping the
+ * Pi-specific identity, filler, and documentation paragraphs.
  *
- * Prepends a minimal neutral prompt to replace the removed Pi identity.
- *
- * If the Pi default prompt prefix is not present, the prompt is returned
- * unchanged — this gates shaping so non-Pi prompts pass through.
+ * If Pi's known preamble terminator drifts upstream, we fall back to slicing
+ * from `# Project Context`. If that section is also absent, we return the
+ * minimal prompt only.
  */
 export function shapeAnthropicOAuthSystemPrompt(systemPrompt: string): string {
-  if (!systemPrompt.includes(PI_DEFAULT_PROMPT_PREFIX)) {
+  const prefixIdx = systemPrompt.indexOf(PI_DEFAULT_PROMPT_PREFIX);
+  if (prefixIdx === -1) {
     return systemPrompt;
   }
 
-  const sanitized = sanitizeSystemText(systemPrompt);
+  const terminatorIdx = systemPrompt.indexOf(
+    PI_DEFAULT_PROMPT_TERMINATOR,
+    prefixIdx,
+  );
+  if (terminatorIdx !== -1) {
+    const terminatorEnd = terminatorIdx + PI_DEFAULT_PROMPT_TERMINATOR.length;
+    const preamble = systemPrompt.slice(prefixIdx, terminatorEnd);
+    const report = sanitizeSystemTextWithReport(preamble);
+    const shapedPreamble = report.text
+      ? `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}\n\n${report.text}`
+      : MINIMAL_ANTHROPIC_OAUTH_PROMPT;
 
-  if (!sanitized) {
+    if (shouldLogPromptDebug(report)) {
+      debugLog("system-prompt-shaping", {
+        mode: "terminator",
+        originalLength: systemPrompt.length,
+        preambleLength: preamble.length,
+        sanitizedPreambleLength: report.text.length,
+        removedParagraphCount: report.removedParagraphs.length,
+        removedAnchors: report.removedParagraphs.map((entry) => entry.anchor),
+        removedParagraphPreviews: report.removedParagraphs.map(
+          (entry) => entry.preview,
+        ),
+        replacementMatches: report.replacementMatches,
+      });
+    }
+
+    return (
+      systemPrompt.slice(0, prefixIdx) +
+      shapedPreamble +
+      systemPrompt.slice(terminatorEnd)
+    );
+  }
+
+  warnTerminatorMissingOnce();
+  if (!isToolUseOnlyDebugEnabled()) {
+    debugLog("system-prompt-shaping", {
+      mode: "project-context-fallback",
+      originalLength: systemPrompt.length,
+    });
+  }
+
+  const projectContextStart = findProjectContextStart(systemPrompt);
+  if (projectContextStart === -1) {
     return MINIMAL_ANTHROPIC_OAUTH_PROMPT;
   }
 
-  return `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}\n\n${sanitized}`;
+  return `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}${systemPrompt.slice(projectContextStart)}`;
 }
 
 type TextBlock = {

@@ -9,6 +9,8 @@ import { test } from "vitest";
 
 import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
 
+const TEST_MODEL = "claude-haiku-4-5";
+
 function createMockSseResponse(): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream({
@@ -17,7 +19,7 @@ function createMockSseResponse(): Response {
         encoder.encode(
           [
             "event: message_start",
-            'data: {"type":"message_start","message":{"id":"msg_test","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-20250514","stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}',
+            'data: {"type":"message_start","message":{"id":"msg_test","type":"message","role":"assistant","content":[],"model":"claude-haiku-4-5","stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}',
             "",
             "event: message_delta",
             'data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":1}}',
@@ -39,7 +41,7 @@ function createMockSseResponse(): Response {
 }
 
 test("experiment: Pi serializer preserves trailing assistant text after tool_use blocks", async () => {
-  const model = getModel("anthropic", "claude-sonnet-4-20250514");
+  const model = getModel("anthropic", TEST_MODEL);
 
   const context: Context = {
     systemPrompt: "Follow the user's instructions.",
@@ -71,7 +73,7 @@ test("experiment: Pi serializer preserves trailing assistant text after tool_use
         ],
         api: "anthropic-messages",
         provider: "anthropic",
-        model: "claude-sonnet-4-20250514",
+        model: TEST_MODEL,
         usage: {
           input: 0,
           output: 0,
@@ -158,7 +160,7 @@ test("experiment: Pi serializer preserves trailing assistant text after tool_use
 
 test("experiment: current hook reshaping splits assistant tool_use blocks from trailing text", () => {
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [
       {
@@ -238,7 +240,7 @@ test("experiment: current hook reshaping splits assistant tool_use blocks from t
 
 test("experiment: current hook reshaping leaves already-valid assistant ordering unchanged", () => {
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: TEST_MODEL,
     stream: true,
     messages: [
       {

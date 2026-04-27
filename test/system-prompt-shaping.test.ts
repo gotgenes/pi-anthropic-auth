@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import {
+  _resetShapingWarnings,
   sanitizeSystemText,
   shapeAnthropicOAuthSystemPrompt,
   shapeSystemBlocks,
@@ -255,35 +256,86 @@ test("preserves content appended at the very end of the system prompt", () => {
   assert.match(shaped, /Project guidance\./);
 });
 
-test("handles reworded preamble gracefully via anchor removal", () => {
-  // Even if Pi rewords the preamble, as long as the identity anchor
-  // string is still present, the sanitizer removes the paragraph.
-  const reworded = [
-    "You are an expert coding assistant operating inside pi, a coding agent harness. Completely reworded preamble with new text.",
+test("does not sanitize extension content outside the Pi preamble span", () => {
+  const systemPrompt = [
+    PI_PREAMBLE,
+    "",
+    "## Custom Note",
+    "In addition to the tools above, this extension adds a downstream policy paragraph.",
     "",
     "# Project Context",
     "",
     "Project guidance.",
   ].join("\n");
 
-  const shaped = shapeAnthropicOAuthSystemPrompt(reworded);
-
-  assert.match(shaped, /^You are an expert coding assistant\./);
-  assert.match(shaped, /# Project Context/);
-  assert.match(shaped, /Project guidance\./);
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
-  assert.doesNotMatch(shaped, /Completely reworded preamble/);
-});
-
-test("returns minimal prompt when sanitizer removes everything", () => {
-  // Pathological case: all paragraphs match anchors.
-  const systemPrompt =
-    "You are an expert coding assistant operating inside pi, a coding agent harness.";
-
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
-  assert.match(shaped, /^You are an expert coding assistant\./);
-  assert.match(shaped, /Be concise and helpful\./);
+  assert.match(
+    shaped,
+    /In addition to the tools above, this extension adds a downstream policy paragraph\./,
+  );
+  assert.match(shaped, /my_ext_tool: Extension-registered tool snippet/);
+  assert.doesNotMatch(
+    shaped,
+    /^.*In addition to the tools above, you may have access to other custom tools depending on the project\./m,
+  );
+});
+
+test("falls back to '# Project Context' anchor when terminator is missing and warns once", () => {
+  _resetShapingWarnings();
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(" "));
+  };
+
+  try {
+    const reworded = [
+      "You are an expert coding assistant operating inside pi, a coding agent harness. Reworded preamble that no longer ends with the terminator bullet.",
+      "",
+      "# Project Context",
+      "",
+      "Project guidance.",
+    ].join("\n");
+
+    const shaped1 = shapeAnthropicOAuthSystemPrompt(reworded);
+    const shaped2 = shapeAnthropicOAuthSystemPrompt(reworded);
+
+    assert.match(shaped1, /^You are an expert coding assistant\./);
+    assert.match(shaped1, /# Project Context/);
+    assert.match(shaped1, /Project guidance\./);
+    assert.doesNotMatch(shaped1, /operating inside pi, a coding agent harness/);
+    assert.doesNotMatch(shaped1, /Reworded preamble/);
+    assert.equal(shaped1, shaped2);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0]!, /preamble terminator not found/);
+  } finally {
+    console.warn = originalWarn;
+    _resetShapingWarnings();
+  }
+});
+
+test("falls back to minimal-only when terminator and Project Context are both missing", () => {
+  _resetShapingWarnings();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  try {
+    const reworded = [
+      "You are an expert coding assistant operating inside pi, a coding agent harness. Reworded preamble.",
+      "",
+      "Trailing content with no known anchors.",
+    ].join("\n");
+
+    const shaped = shapeAnthropicOAuthSystemPrompt(reworded);
+
+    assert.match(shaped, /^You are an expert coding assistant\./);
+    assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+    assert.doesNotMatch(shaped, /Reworded preamble/);
+  } finally {
+    console.warn = originalWarn;
+    _resetShapingWarnings();
+  }
 });
 
 // ===== shapeSystemBlocks =====

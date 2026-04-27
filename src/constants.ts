@@ -8,6 +8,16 @@ export const PI_DEFAULT_PROMPT_PREFIX =
   "You are an expert coding assistant operating inside pi, a coding agent harness.";
 
 /**
+ * Final line of Pi's built-in default system prompt preamble.
+ *
+ * Used to replace the entire Pi-generated preamble body with the minimal
+ * neutral Anthropic OAuth prompt while preserving anything appended after the
+ * preamble (project context, skills, and date/cwd footer).
+ */
+export const PI_DEFAULT_PROMPT_TERMINATOR =
+  "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)";
+
+/**
  * Prefix of the minimal neutral Anthropic OAuth system prompt.
  *
  * Used as a detection marker in request shaping to identify system blocks
