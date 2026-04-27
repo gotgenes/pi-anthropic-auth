@@ -57,6 +57,27 @@ pnpm run build    # compile
 pi -e /absolute/path/to/pi-anthropic-auth/dist/index.js
 ```
 
+### Debug Logging
+
+Set `PI_ANTHROPIC_AUTH_DEBUG` to enable structured debug logs from the OAuth shaping layer.
+
+Modes:
+
+- `PI_ANTHROPIC_AUTH_DEBUG=all` — log all Anthropic OAuth shaping events
+- `PI_ANTHROPIC_AUTH_DEBUG=tool-use` — log only requests that include `tool_use`
+
+Example:
+
+```bash
+PI_ANTHROPIC_AUTH_DEBUG=tool-use \
+pi \
+  --model anthropic/claude-haiku-4-5 \
+  --no-session \
+  --tools read,grep,find,ls \
+  -e /absolute/path/to/pi-anthropic-auth/src/index.ts \
+  -p "How many lines are in @AGENTS.md ?"
+```
+
 ## Similar Projects
 
 - [opencode-anthropic-auth](https://github.com/ex-machina-co/opencode-anthropic-auth/) — Anthropic OAuth compatibility work for [OpenCode](https://opencode.ai/).

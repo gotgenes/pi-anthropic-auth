@@ -21,10 +21,10 @@ Use the live CLI with this extension file loaded directly:
 
 ```bash
 pi \
-  --model anthropic/claude-sonnet-4-20250514 \
+  --model anthropic/claude-haiku-4-5 \
   --no-session \
   --tools read,grep,find,ls \
-  -e /Users/chris/development/pi-anthropic-auth/src/index.ts \
+  -e /Users/chris/development/pi/pi-anthropic-auth/src/index.ts \
   -p "How many lines are in @AGENTS.md ?"
 ```
 
@@ -34,6 +34,7 @@ Why this shape:
 - `--tools read,grep,find,ls` keeps repros narrow and read-only
 - `-e .../src/index.ts` guarantees the local extension is actually loaded
 - `-p` gives a fast non-interactive cycle
+- `anthropic/claude-haiku-4-5` is the preferred fast repro model unless you are chasing a model-specific issue
 
 ### 2. Check version alignment first
 
@@ -52,7 +53,7 @@ If the live CLI version does not match the Pi libraries this repo targets, treat
 If Anthropic OAuth fails, test whether the default Pi prompt is the trigger:
 
 ```bash
-pi ... -p "hi"
+PI_ANTHROPIC_AUTH_DEBUG=tool-use pi ... -p "hi"
 ```
 
 then compare with:

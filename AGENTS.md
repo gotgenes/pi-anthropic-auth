@@ -124,6 +124,8 @@ Pi's built-in Anthropic provider already includes:
 3. Claude Code tool-name mapping
 4. Native Anthropic OAuth login support
 
+Note: Pi upstream already normalizes Anthropic OAuth tool names to Claude Code canonical casing. Do not add OpenCode-style `mcp_` tool prefix rewriting here unless a concrete Pi-specific transport failure proves the built-in normalization is insufficient.
+
 ### Gap Identified So Far
 
 The clearest upstream gap found during initial inspection is refresh-token rotation robustness.
@@ -135,6 +137,17 @@ Other Pi OAuth providers already fall back to the previous refresh token when a 
 ### Package Manager
 
 Use `pnpm`.
+
+### Git Workflow
+
+Before starting work, sync the branch with the remote using:
+
+```bash
+git pull --ff-only
+```
+
+Make small Conventional Commit checkpoints during the work, not only at the end.
+Prefer committing after each meaningful, validated milestone (for example: a bug fix, a test update, a docs pass, or a repro/debugging aid) so progress is recoverable and easy to review.
 
 ### Commands
 
@@ -244,6 +257,24 @@ Watch mode:
 
 ```bash
 pnpm run test:watch
+```
+
+Live Pi repro (prefer the latest Haiku alias for fast feedback unless the bug appears model-specific):
+
+```bash
+pi \
+  --model anthropic/claude-haiku-4-5 \
+  --no-session \
+  --tools read,grep,find,ls \
+  -e /Users/chris/development/pi/pi-anthropic-auth/src/index.ts \
+  -p "How many lines are in @AGENTS.md ?"
+```
+
+Debug modes for live repros:
+
+```bash
+PI_ANTHROPIC_AUTH_DEBUG=all
+PI_ANTHROPIC_AUTH_DEBUG=tool-use
 ```
 
 ### Conventions

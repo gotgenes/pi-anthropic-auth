@@ -44,14 +44,14 @@ Use the actual CLI rather than only unit tests:
 
 ```bash
 pi \
-  --model anthropic/claude-sonnet-4-20250514 \
+  --model anthropic/claude-haiku-4-5 \
   --no-session \
   --tools read,grep,find,ls \
-  -e /Users/chris/development/pi-anthropic-auth/src/index.ts \
+  -e /Users/chris/development/pi/pi-anthropic-auth/src/index.ts \
   -p "How many lines are in @AGENTS.md ?"
 ```
 
-This gives the shortest reliable feedback loop for live Anthropic OAuth behavior.
+This gives the shortest reliable feedback loop for live Anthropic OAuth behavior. Prefer the latest Haiku alias for fast repros unless the bug appears model-specific.
 
 This workflow has already been used successfully in this repo to validate:
 
@@ -65,6 +65,7 @@ This workflow has already been used successfully in this repo to validate:
 
 - If a minimal custom `--system-prompt` succeeds but the default Pi prompt fails, suspect prompt fingerprinting.
 - If failures happen only after tool use or multi-turn flows, inspect serialized Anthropic message ordering.
+- Use `PI_ANTHROPIC_AUTH_DEBUG=tool-use` to log only tool-using Anthropic OAuth requests, or `PI_ANTHROPIC_AUTH_DEBUG=all` to log every shaped OAuth request.
 - If validation errors mention block counts or payload shape, inspect `system[]`, `cache_control`, and `messages` ordering.
 
 ## Implementation Guidance
