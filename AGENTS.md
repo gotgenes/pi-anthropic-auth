@@ -152,6 +152,15 @@ Do this only with a clean working tree. If local changes already exist, commit o
 Make small Conventional Commit checkpoints during the work, not only at the end.
 Prefer committing after each meaningful, validated milestone (for example: a bug fix, a test update, a docs pass, or a repro/debugging aid) so progress is recoverable and easy to review.
 
+At the end of the work, push the branch, watch CI on `main`, and only then merge the open release-please PR after its CI is green.
+Preferred release step:
+
+```bash
+gh pr merge --rebase
+```
+
+Do not merge a release-please PR while local commits are still unpushed or while the PR was generated from an older `main` than the commits you just finished.
+
 ### Commands
 
 Install dependencies:
