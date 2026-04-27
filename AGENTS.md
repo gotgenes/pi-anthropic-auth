@@ -159,6 +159,7 @@ At the end of the work:
 3. watch CI on `main`
 4. wait for release-please to catch up if needed
 5. only then merge the open release-please PR after its CI is green
+6. run `git pull --ff-only` locally to pick up the release commit
 
 Preferred release step (pass the release-please PR number explicitly):
 
