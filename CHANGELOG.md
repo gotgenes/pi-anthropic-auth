@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.0...v0.4.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* refine OAuth prompt shaping and add debug logging ([7c2b2af](https://github.com/gotgenes/pi-anthropic-auth/commit/7c2b2afb351a18fbb3569b8552d59a9d321ef7f8))
+
+
+### Documentation
+
+* add comparison notes for similar Anthropic OAuth projects ([b6ab2de](https://github.com/gotgenes/pi-anthropic-auth/commit/b6ab2defa7f7b220d159692ed39598a84d8a8197))
+* add final pull step after release merge ([9f33ca4](https://github.com/gotgenes/pi-anthropic-auth/commit/9f33ca4d06813a1a35a0821e77b7f951e775edb3))
+* add git workflow and Haiku repro guidance ([a2a193a](https://github.com/gotgenes/pi-anthropic-auth/commit/a2a193a03ded63029009a57de197759ccf00d816))
+* capture repo workflow and model alias gotchas ([99aa8f6](https://github.com/gotgenes/pi-anthropic-auth/commit/99aa8f6e80b40e28c5c8ee67d87aef2205459b75))
+* clarify release-please end-of-workflow ([c1f83a6](https://github.com/gotgenes/pi-anthropic-auth/commit/c1f83a63691f4403e9c8333c85b87e6d9f07a68b))
+* refine release workflow steps ([17480a1](https://github.com/gotgenes/pi-anthropic-auth/commit/17480a1d8605d2273e21ddc5754b546d87c0ab73))
+* require explicit PR number for release merge ([59a8665](https://github.com/gotgenes/pi-anthropic-auth/commit/59a86655d9e02fe3ab45b0484975fcbf4211ab1e))
+
+
+### Miscellaneous Chores
+
+* remove pi-ask-user package ([0e51ce0](https://github.com/gotgenes/pi-anthropic-auth/commit/0e51ce05f87019bd063d99dd05e011876fe8bd68))
+
 ## [0.4.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.3.0...v0.4.0) (2026-04-25)
 
 
