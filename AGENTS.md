@@ -90,6 +90,7 @@ Current source layout:
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
 3. `src/request-shaping.ts`: OAuth-only request shaping helpers
 4. `src/system-prompt-shaping.ts`: minimal Anthropic OAuth prompt replacement for Pi's default prompt
+5. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
 
 ### Project Skills
 
@@ -145,6 +146,8 @@ Before starting work, sync the branch with the remote using:
 ```bash
 git pull --ff-only
 ```
+
+Do this only with a clean working tree. If local changes already exist, commit or stash them first.
 
 Make small Conventional Commit checkpoints during the work, not only at the end.
 Prefer committing after each meaningful, validated milestone (for example: a bug fix, a test update, a docs pass, or a repro/debugging aid) so progress is recoverable and easy to review.
@@ -277,6 +280,8 @@ PI_ANTHROPIC_AUTH_DEBUG=all
 PI_ANTHROPIC_AUTH_DEBUG=tool-use
 ```
 
+Use `tool-use` by default when debugging real CLI flows so logs stay quiet until Anthropic tool calls are actually involved.
+
 ### Conventions
 
 1. Test files are named `*.test.ts` and are collocated under `test/` (not next to source).
@@ -330,6 +335,11 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 
 If you register a custom `streamSimple`, you are much closer to replacing Pi's built-in Anthropic transport.
 Do that only if hooks are insufficient for the concrete compatibility issue being fixed.
+
+### Model ID Alias Drift
+
+Pi CLI model aliases and the locally installed `@mariozechner/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.
+In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and repro commands, and `claude-haiku-4-5` in tests that call `getModel("anthropic", ...)` directly.
 
 ## Related Files
 
