@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.1...v0.4.2) (2026-04-29)
+
+
+### Documentation
+
+* update badge to pnpm 10 ([77b0ae8](https://github.com/gotgenes/pi-anthropic-auth/commit/77b0ae8964ef857d4094df09bf099dc27dc862a4))
+
 ## [0.4.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.0...v0.4.1) (2026-04-27)
 
 
