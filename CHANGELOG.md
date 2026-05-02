@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.1...v0.4.2) (2026-05-02)
+
+
+### Documentation
+
+* update badge to pnpm 10 ([77b0ae8](https://github.com/gotgenes/pi-anthropic-auth/commit/77b0ae8964ef857d4094df09bf099dc27dc862a4))
+
+
+### Miscellaneous Chores
+
+* bump CLAUDE_CODE_VERSION to 2.1.112 ([be65bc8](https://github.com/gotgenes/pi-anthropic-auth/commit/be65bc85822bc1752bc0d75bd2fd44cca7da8342))
+
 ## [0.4.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.0...v0.4.1) (2026-04-27)
 
 
