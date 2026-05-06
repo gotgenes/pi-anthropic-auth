@@ -70,5 +70,5 @@ jobs:
 
       # Trusted publishing via OIDC — no NPM_TOKEN needed.
       # Provenance is generated automatically with trusted publishing.
-      - run: npm publish --access public
+      - run: pnpm publish --no-git-checks
         if: ${{ steps.release.outputs.release_created }}
