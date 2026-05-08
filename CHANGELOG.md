@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.2...v0.4.3) (2026-05-08)
+
+
+### Miscellaneous Chores
+
+* migrate from [@mariozechner](https://github.com/mariozechner) to [@earendil-works](https://github.com/earendil-works) pi packages ([e36ab59](https://github.com/gotgenes/pi-anthropic-auth/commit/e36ab598733a2ff6501d007363a4398fff15140c))
+
 ## [0.4.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.1...v0.4.2) (2026-05-02)
 
 
