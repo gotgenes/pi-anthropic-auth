@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.5...v0.4.6) (2026-05-08)
+
+
+### Bug Fixes
+
+* bump CLAUDE_CODE_VERSION to 2.1.119 ([119e8e5](https://github.com/gotgenes/pi-anthropic-auth/commit/119e8e5b6c725dd20907747d52852b15bbeafc83))
+
 ## [0.4.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.4...v0.4.5) (2026-05-08)
 
 
