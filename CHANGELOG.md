@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.3...v0.4.4) (2026-05-08)
+
+
+### Miscellaneous Chores
+
+* approve build of "@google/genai" ([30d595e](https://github.com/gotgenes/pi-anthropic-auth/commit/30d595e0168a038aae45d8c4e338a96b5c168bf6))
+* update dev dependencies to latest ([c5c6d69](https://github.com/gotgenes/pi-anthropic-auth/commit/c5c6d6921b108b63f70aa2280852b9ede3926cc2))
+
 ## [0.4.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.2...v0.4.3) (2026-05-08)
 
 
