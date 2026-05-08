@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.4...v0.4.5) (2026-05-08)
+
+
+### Bug Fixes
+
+* pin pnpm to 11.0.6 via packageManager field ([0fa7cea](https://github.com/gotgenes/pi-anthropic-auth/commit/0fa7cea1e1622db75448c4d8ccebc730daf7b021))
+
 ## [0.4.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.3...v0.4.4) (2026-05-08)
 
 
