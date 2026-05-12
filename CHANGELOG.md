@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.7](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.6...v0.4.7) (2026-05-12)
+
+
+### Documentation
+
+* clarify that non-OAuth requests pass through untouched ([1706c1f](https://github.com/gotgenes/pi-anthropic-auth/commit/1706c1f188af2dee2ec1229596d169e61ff2f0a4))
+
+
+### Miscellaneous Chores
+
+* update pnpm ([629f2b7](https://github.com/gotgenes/pi-anthropic-auth/commit/629f2b78c8730a2a64f1941d0d1607c6bd6ef7c3))
+
 ## [0.4.6](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.5...v0.4.6) (2026-05-08)
 
 
