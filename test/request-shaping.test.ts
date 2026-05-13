@@ -59,7 +59,7 @@ function createOAuthPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("shapes only OAuth Anthropic payloads", () => {
+test("shapes all Anthropic payloads regardless of system prompt markers", () => {
   const payload = {
     model: TEST_MODEL,
     stream: true,
@@ -67,9 +67,13 @@ test("shapes only OAuth Anthropic payloads", () => {
     system: [{ type: "text", text: "Generic system prompt." }],
   };
 
-  const shaped = shapeAnthropicOAuthPayload(payload);
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
 
-  assert.equal(shaped, payload);
+  // Billing header is prepended even without OAuth markers
+  assert.ok(systemBlocks[0]?.text.includes("x-anthropic-billing-header:"));
+  // Original system block is preserved
+  assert.equal(systemBlocks[1]?.text, "Generic system prompt.");
 });
 
 test("prepends the billing header block without adding cache control on OAuth payloads", () => {
@@ -240,7 +244,7 @@ test("shapes Pi default system prompt in OAuth payloads", () => {
   );
 });
 
-test("does not shape system prompt in non-OAuth payloads", () => {
+test("shapes system prompt in all Anthropic payloads (fork child compatibility)", () => {
   const piDefaultPrompt =
     "You are an expert coding assistant operating inside pi, a coding agent harness. You help users.";
   const payload = {
@@ -255,10 +259,17 @@ test("does not shape system prompt in non-OAuth payloads", () => {
     ],
   };
 
-  const shaped = shapeAnthropicOAuthPayload(payload);
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
 
-  // Non-OAuth payload is returned unchanged
-  assert.equal(shaped, payload);
+  // Billing header is prepended
+  assert.ok(systemBlocks[0]?.text.includes("x-anthropic-billing-header:"));
+  // Pi preamble identity is removed from the system block
+  assert.ok(
+    !systemBlocks[1]?.text.includes(
+      "operating inside pi, a coding agent harness",
+    ),
+  );
 });
 
 test("shapes OAuth payloads detected by the minimal neutral system prompt marker", () => {

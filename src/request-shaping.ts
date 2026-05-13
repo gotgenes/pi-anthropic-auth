@@ -3,9 +3,7 @@ import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_ENTRYPOINT,
-  CLAUDE_CODE_IDENTITY_PREFIX,
   CLAUDE_CODE_VERSION,
-  MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
 } from "./constants.js";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug.js";
 import { shapeSystemBlocks } from "./system-prompt-shaping.js";
@@ -49,30 +47,6 @@ function isAnthropicMessagesPayload(
     typeof payload.model === "string" &&
     Array.isArray(payload.messages) &&
     typeof payload.stream === "boolean"
-  );
-}
-
-function isOAuthAnthropicPayload(payload: AnthropicPayload): boolean {
-  if (!Array.isArray(payload.system)) {
-    return false;
-  }
-
-  return payload.system.some(hasOAuthAnthropicSystemMarker);
-}
-
-function hasOAuthAnthropicSystemMarker(block: unknown): boolean {
-  if (
-    !isRecord(block) ||
-    block.type !== "text" ||
-    typeof block.text !== "string"
-  ) {
-    return false;
-  }
-
-  return (
-    block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX) ||
-    block.text.includes("x-anthropic-billing-header:") ||
-    block.text.startsWith(MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX)
   );
 }
 
@@ -255,9 +229,21 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   }
 
   const messages = payload.messages as MessageParam[];
-  if (!isOAuthAnthropicPayload(payload)) {
-    return payload;
-  }
+
+  // NOTE: We intentionally skip the isOAuthAnthropicPayload() guard.
+  //
+  // The old guard relied on detecting system prompt markers like
+  // "You are Claude Code, Anthropic's official CLI" that Pi's built-in
+  // provider injects for OAuth sessions.  In fork children (print/json mode),
+  // these markers may be absent, causing the shaping to be skipped and
+  // Anthropic to classify the request as a third-party app (400 error).
+  //
+  // Since this extension is only installed for OAuth usage, the extension
+  // being loaded is itself the signal that requests should be shaped.
+  // The individual shaping operations are safely guarded:
+  //   - shapeSystemBlocks: only modifies blocks with PI_DEFAULT_PROMPT_PREFIX
+  //   - prependBillingHeader: skips if already present
+  //   - splitAssistantToolUseTrailingContent: safe for all messages
 
   const normalizedMessages = splitAssistantToolUseTrailingContent(messages);
 
