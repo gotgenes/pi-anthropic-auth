@@ -180,19 +180,14 @@ pnpm install
 Run the typecheck:
 
 ```bash
-pnpm run build
-```
-
-Alias:
-
-```bash
 pnpm run check
 ```
 
 ### TypeScript
 
-This repo uses `module` and `moduleResolution` set to `NodeNext`.
-Use `.js` import specifiers for local TypeScript module imports.
+This repo uses `module: "ESNext"` and `moduleResolution: "Bundler"`.
+Use extensionless import specifiers for local modules.
+Use `#src/` and `#test/` aliases for cross-directory imports (e.g., `#src/constants` from test files).
 
 ### Commit Messages
 
