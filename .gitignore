@@ -3,6 +3,7 @@
 ########
 dist/
 *.tsbuildinfo
+.rumdl_cache/
 
 ########
 # Node #

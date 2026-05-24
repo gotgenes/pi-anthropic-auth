@@ -1,0 +1,9 @@
+[global]
+exclude = ["**/CHANGELOG.md"]
+disable = ["MD041"]
+
+[MD013]
+line-length = 0
+
+[MD024]
+siblings_only = true

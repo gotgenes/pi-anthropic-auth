@@ -302,8 +302,8 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 ### Conventions
 
 1. Test files are named `*.test.ts` and are collocated under `test/` (not next to source).
-2. Tests use `node:assert/strict` for assertions and `vitest`'s `test` (and `onTestFinished` for per-test cleanup) for the runner.  Existing files are the reference style — keep new tests consistent.
-3. Keep tests focused on compatibility helpers rather than broad end-to-end behavior.  Mock `globalThis.fetch` for OAuth flows; build payload fixtures inline rather than depending on Pi internals.
+2. Tests use `node:assert/strict` for assertions and `vitest`'s `test` (and `onTestFinished` for per-test cleanup) for the runner. Existing files are the reference style — keep new tests consistent.
+3. Keep tests focused on compatibility helpers rather than broad end-to-end behavior. Mock `globalThis.fetch` for OAuth flows; build payload fixtures inline rather than depending on Pi internals.
 4. When asserting on shaped system prompts, prefer regex matches that pin specific markers (`/^You are an expert coding assistant\./`, `/# Project Context/`) over deep-equal on full prompt strings, so tests survive harmless reformatting upstream.
 
 ### Coverage areas
