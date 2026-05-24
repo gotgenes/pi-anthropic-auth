@@ -92,7 +92,7 @@ test("loginAnthropic accepts a pasted localhost callback URL and preserves that 
   let authUrl = "";
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async (
+  globalThis.fetch = async (
     input: string | URL | Request,
     init?: RequestInit,
   ) => {
@@ -109,7 +109,7 @@ test("loginAnthropic accepts a pasted localhost callback URL and preserves that 
       refresh_token: "refresh-token",
       expires_in: 3600,
     });
-  }) as typeof fetch;
+  };
 
   onTestFinished(() => {
     globalThis.fetch = originalFetch;
@@ -182,12 +182,12 @@ function loginWithManualInput(
   const originalFetch = globalThis.fetch;
 
   if (stubFetch) {
-    globalThis.fetch = (async () =>
+    globalThis.fetch = async () =>
       jsonResponse({
         access_token: "access-token",
         refresh_token: "refresh-token",
         expires_in: 3600,
-      })) as typeof fetch;
+      });
   }
 
   onTestFinished(() => {
@@ -208,7 +208,7 @@ function loginWithManualInput(
         ? manualInput(state, redirectUri)
         : manualInput;
     },
-  }) as Promise<{ access: string; refresh: string; expires: number }>;
+  });
 }
 
 test("loginAnthropic throws when callback URL has no code parameter", async () => {

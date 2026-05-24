@@ -123,7 +123,7 @@ test("experiment: Pi serializer preserves trailing assistant text after tool_use
   let capturedPayload: unknown;
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async () => createMockSseResponse()) as typeof fetch;
+  globalThis.fetch = async () => createMockSseResponse();
 
   try {
     const s = streamSimple(model, context, {

@@ -41,7 +41,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "lint:md": "rumdl check *.md docs/**/*.md",
-    "lint": "biome check . && pnpm run lint:md",
+    "lint": "biome check . && eslint . && pnpm run lint:md",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -59,9 +59,13 @@
     "@biomejs/biome": "^2.4.14",
     "@earendil-works/pi-ai": "0.75.5",
     "@earendil-works/pi-coding-agent": "0.75.5",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.3",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
     "rumdl": "^0.1.93",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.5"
   }
 }

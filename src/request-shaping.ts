@@ -89,7 +89,7 @@ function getFirstUserText(messages: MessageParam[]): string {
   }
 
   const firstTextBlock = firstUserMessage.content.find(
-    (block) => block?.type === "text" && typeof block.text === "string",
+    (block) => block.type === "text" && typeof block.text === "string",
   );
 
   return typeof firstTextBlock?.text === "string" ? firstTextBlock.text : "";
@@ -134,13 +134,13 @@ function normalizeSystemBlock(block: unknown): TextBlock {
     };
   }
 
-  return { type: "text", text: String(block ?? "") };
+  return { type: "text", text: "" };
 }
 
 function prependBillingHeader(
   system: unknown,
   messages: MessageParam[],
-): TextBlock[] | unknown {
+): unknown {
   const billingHeader = buildBillingHeaderValue(messages);
   if (!billingHeader) {
     return system;
@@ -183,22 +183,22 @@ function splitAssistantToolUseTrailingContent(
     }
 
     const firstToolUseIndex = message.content.findIndex(
-      (block) => block?.type === "tool_use",
+      (block) => block.type === "tool_use",
     );
     if (firstToolUseIndex === -1) {
       return [message];
     }
 
     const trailingBlocks = message.content.slice(firstToolUseIndex);
-    if (!trailingBlocks.some((block) => block?.type !== "tool_use")) {
+    if (!trailingBlocks.some((block) => block.type !== "tool_use")) {
       return [message];
     }
 
     const nonToolUseBlocks = message.content.filter(
-      (block) => block?.type !== "tool_use",
+      (block) => block.type !== "tool_use",
     );
     const toolUseBlocks = message.content.filter(
-      (block) => block?.type === "tool_use",
+      (block) => block.type === "tool_use",
     );
 
     return [
@@ -229,7 +229,7 @@ function getToolUseNames(messages: MessageParam[]): string[] {
 
     return message.content
       .map((block) =>
-        block?.type === "tool_use" && typeof block.name === "string"
+        block.type === "tool_use" && typeof block.name === "string"
           ? block.name
           : undefined,
       )

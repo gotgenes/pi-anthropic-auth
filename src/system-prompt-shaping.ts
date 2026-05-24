@@ -194,6 +194,7 @@ type TextBlock = {
 export function shapeSystemBlocks(blocks: TextBlock[]): TextBlock[] {
   return blocks.map((block) => {
     if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive runtime guard
       block.type !== "text" ||
       !block.text.includes(PI_DEFAULT_PROMPT_PREFIX)
     ) {

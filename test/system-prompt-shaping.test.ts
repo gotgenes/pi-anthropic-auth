@@ -308,7 +308,7 @@ test("falls back to '# Project Context' anchor when terminator is missing and wa
     assert.doesNotMatch(shaped1, /Reworded preamble/);
     assert.equal(shaped1, shaped2);
     assert.equal(warnings.length, 1);
-    assert.match(warnings[0]!, /preamble terminator not found/);
+    assert.match(warnings[0], /preamble terminator not found/);
   } finally {
     console.warn = originalWarn;
     _resetShapingWarnings();
