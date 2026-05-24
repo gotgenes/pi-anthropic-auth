@@ -6,7 +6,7 @@ import {
   sanitizeSystemText,
   shapeAnthropicOAuthSystemPrompt,
   shapeSystemBlocks,
-} from "../src/system-prompt-shaping.js";
+} from "#src/system-prompt-shaping";
 
 // ---------------------------------------------------------------------------
 // Realistic Pi preamble fixture

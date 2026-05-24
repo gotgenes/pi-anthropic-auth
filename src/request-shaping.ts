@@ -6,9 +6,9 @@ import {
   CLAUDE_CODE_IDENTITY_PREFIX,
   CLAUDE_CODE_VERSION,
   MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
-} from "./constants.js";
-import { debugLog, isToolUseOnlyDebugEnabled } from "./debug.js";
-import { shapeSystemBlocks } from "./system-prompt-shaping.js";
+} from "./constants";
+import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
+import { shapeSystemBlocks } from "./system-prompt-shaping";
 
 type TextBlock = {
   type: "text";

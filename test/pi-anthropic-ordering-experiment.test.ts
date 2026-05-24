@@ -7,7 +7,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { test } from "vitest";
 
-import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
+import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
 
 const TEST_MODEL = "claude-haiku-4-5";
 

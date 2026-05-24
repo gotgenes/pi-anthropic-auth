@@ -6,8 +6,8 @@ import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_VERSION,
-} from "../src/constants.js";
-import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";
+} from "#src/constants";
+import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
 
 const TEST_MODEL = "claude-haiku-4-5";
 

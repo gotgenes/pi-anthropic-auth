@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { loginAnthropic } from "@earendil-works/pi-ai/oauth";
 import { onTestFinished, test } from "vitest";
 
-import { mergeRefreshedCredentials } from "../src/anthropic-oauth.js";
+import { mergeRefreshedCredentials } from "#src/anthropic-oauth";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

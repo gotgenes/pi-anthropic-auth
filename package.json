@@ -7,6 +7,10 @@
   },
   "packageManager": "pnpm@11.1.1",
   "type": "module",
+  "imports": {
+    "#src/*": "./src/*",
+    "#test/*": "./test/*"
+  },
   "main": "./dist/index.js",
   "exports": {
     ".": {
@@ -32,8 +36,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "check": "tsc -p tsconfig.check.json --noEmit",
+    "check": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:md": "markdownlint-cli2 '*.md'",

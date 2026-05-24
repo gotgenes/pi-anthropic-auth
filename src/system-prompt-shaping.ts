@@ -4,8 +4,8 @@ import {
   PI_DEFAULT_PROMPT_PREFIX,
   PI_DEFAULT_PROMPT_TERMINATOR,
   TEXT_REPLACEMENTS,
-} from "./constants.js";
-import { debugLog, isToolUseOnlyDebugEnabled } from "./debug.js";
+} from "./constants";
+import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
 
 let warnedTerminatorMissing = false;
 

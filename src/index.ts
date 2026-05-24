@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { anthropicOAuthOverride } from "./anthropic-oauth.js";
-import { shapeAnthropicOAuthPayload } from "./request-shaping.js";
+import { anthropicOAuthOverride } from "./anthropic-oauth";
+import { shapeAnthropicOAuthPayload } from "./request-shaping";
 
 export default function (pi: ExtensionAPI) {
   pi.registerProvider("anthropic", {
