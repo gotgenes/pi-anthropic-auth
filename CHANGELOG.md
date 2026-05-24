@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.6...v0.5.0) (2026-05-24)
+
+
+### Features
+
+* add ESLint with type-aware rules matching pi-packages ([645e145](https://github.com/gotgenes/pi-anthropic-auth/commit/645e14517681c3ff37e798a5d8c8db94374b3fa1))
+
+
+### Documentation
+
+* clarify that non-OAuth requests pass through untouched ([1706c1f](https://github.com/gotgenes/pi-anthropic-auth/commit/1706c1f188af2dee2ec1229596d169e61ff2f0a4))
+* update AGENTS.md for new build and import conventions ([01c923a](https://github.com/gotgenes/pi-anthropic-auth/commit/01c923a41405641485ec95f454d4962058a8d72f))
+
+
+### Miscellaneous Chores
+
+* bump CLAUDE_CODE_VERSION to 2.1.150 ([76081d2](https://github.com/gotgenes/pi-anthropic-auth/commit/76081d2f57b2809ef7eba49bc7703b55689129f2))
+* bump pi packages to 0.75.5 and update tooling deps ([23e360d](https://github.com/gotgenes/pi-anthropic-auth/commit/23e360d408640e12b65ff92bd9ac8a893444bcec))
+* update linting toolchain to match pi-packages ([40ddc5a](https://github.com/gotgenes/pi-anthropic-auth/commit/40ddc5aa6f9f18b69a6340c0bcf1a92c8614cbd8))
+* update pnpm ([629f2b7](https://github.com/gotgenes/pi-anthropic-auth/commit/629f2b78c8730a2a64f1941d0d1607c6bd6ef7c3))
+
 ## [0.4.6](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.5...v0.4.6) (2026-05-08)
 
 
