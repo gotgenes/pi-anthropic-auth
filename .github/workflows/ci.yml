@@ -5,11 +5,6 @@ on:
     branches: [main]
   pull_request:
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -20,15 +15,16 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          cache: "pnpm"
+          node-version: 22
+          cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Type check
+      - name: Typecheck
         run: pnpm run check
 
       - name: Lint
-        run: pnpm run lint:all
+        run: pnpm run lint
 
       - name: Test
         run: pnpm run test
@@ -37,6 +33,11 @@ jobs:
     needs: check
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
@@ -44,25 +45,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
 
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
       - uses: actions/checkout@v6
-        if: ${{ steps.release.outputs.release_created }}
 
       - uses: pnpm/action-setup@v6
-        if: ${{ steps.release.outputs.release_created }}
 
       - uses: actions/setup-node@v6
         with:
-          cache: "pnpm"
+          node-version: 22
           registry-url: "https://registry.npmjs.org"
-        if: ${{ steps.release.outputs.release_created }}
+          cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-        if: ${{ steps.release.outputs.release_created }}
-
-      - run: pnpm run build
-        if: ${{ steps.release.outputs.release_created }}
 
       # Trusted publishing via OIDC — no NPM_TOKEN needed.
       # Provenance is generated automatically with trusted publishing.
-      - run: pnpm publish --public --no-git-checks
-        if: ${{ steps.release.outputs.release_created }}
+      - run: pnpm publish --no-git-checks
