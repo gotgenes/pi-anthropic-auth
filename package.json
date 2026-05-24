@@ -11,15 +11,11 @@
     "#src/*": "./src/*",
     "#test/*": "./test/*"
   },
-  "main": "./dist/index.js",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
   "files": [
-    "dist"
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "keywords": [
     "pi",
@@ -32,23 +28,26 @@
     "type": "git",
     "url": "git+https://github.com/gotgenes/pi-anthropic-auth.git"
   },
+  "homepage": "https://github.com/gotgenes/pi-anthropic-auth#readme",
+  "bugs": {
+    "url": "https://github.com/gotgenes/pi-anthropic-auth/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "lint:md": "markdownlint-cli2 '*.md'",
-    "lint:all": "pnpm run lint && pnpm run lint:md",
-    "format": "biome format --write .",
+    "lint:md": "rumdl check *.md docs/**/*.md",
+    "lint": "biome check . && pnpm run lint:md",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "pnpm run check && pnpm run test && pnpm run build"
+    "test:watch": "vitest"
   },
   "pi": {
     "extensions": [
-      "./dist/index.js"
+      "./src/index.ts"
     ]
   },
   "peerDependencies": {
