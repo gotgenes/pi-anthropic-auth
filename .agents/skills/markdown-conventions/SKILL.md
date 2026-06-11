@@ -11,7 +11,7 @@ Load this skill when writing or editing markdown files.
 
 ## Formatting rules
 
-The enforcer is `rumdl`, run via `pnpm run lint:md` (`rumdl check *.md docs/**/*.md`) and as part of `pnpm run lint`.
+The enforcer is `rumdl`, run via `pnpm run lint:md` (`rumdl check *.md docs/**/*.md`), as part of `pnpm run lint`, and as a `rumdl-fmt` pre-commit hook (managed by `prek`, configured in `prek.toml`).
 There is no markdownlint binary in this repo.
 Rules below are named by their markdownlint `MDxxx` IDs because `rumdl` implements the same rule family; use the IDs for reference, not the tool.
 
