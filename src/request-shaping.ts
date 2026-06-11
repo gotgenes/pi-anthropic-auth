@@ -3,9 +3,7 @@ import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_ENTRYPOINT,
-  CLAUDE_CODE_IDENTITY_PREFIX,
   CLAUDE_CODE_VERSION,
-  MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX,
 } from "./constants";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
 import { shapeSystemBlocks } from "./system-prompt-shaping";
@@ -49,30 +47,6 @@ function isAnthropicMessagesPayload(
     typeof payload.model === "string" &&
     Array.isArray(payload.messages) &&
     typeof payload.stream === "boolean"
-  );
-}
-
-function isOAuthAnthropicPayload(payload: AnthropicPayload): boolean {
-  if (!Array.isArray(payload.system)) {
-    return false;
-  }
-
-  return payload.system.some(hasOAuthAnthropicSystemMarker);
-}
-
-function hasOAuthAnthropicSystemMarker(block: unknown): boolean {
-  if (
-    !isRecord(block) ||
-    block.type !== "text" ||
-    typeof block.text !== "string"
-  ) {
-    return false;
-  }
-
-  return (
-    block.text.includes(CLAUDE_CODE_IDENTITY_PREFIX) ||
-    block.text.includes("x-anthropic-billing-header:") ||
-    block.text.startsWith(MINIMAL_ANTHROPIC_OAUTH_PROMPT_PREFIX)
   );
 }
 
@@ -249,16 +223,22 @@ function shouldLogRequestDebug(messages: MessageParam[]): boolean {
   return getToolUseNames(messages).length > 0;
 }
 
+/**
+ * Applies Anthropic Claude Code OAuth shaping to a built provider payload.
+ *
+ * This function assumes the caller has already confirmed the request is an
+ * Anthropic OAuth request.  OAuth gating lives at the transport seam
+ * (`createAnthropicOAuthStreamSimple`), which only invokes this shaping when
+ * the request carries an `sk-ant-oat` access token.  We therefore do not
+ * sniff system-prompt markers here; non-Anthropic-messages payloads are still
+ * returned untouched as a structural guard.
+ */
 export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   if (!isAnthropicMessagesPayload(payload)) {
     return payload;
   }
 
   const messages = payload.messages as MessageParam[];
-  if (!isOAuthAnthropicPayload(payload)) {
-    return payload;
-  }
-
   const normalizedMessages = splitAssistantToolUseTrailingContent(messages);
 
   const shapedSystem = Array.isArray(payload.system)

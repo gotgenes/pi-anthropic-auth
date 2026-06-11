@@ -59,7 +59,10 @@ function createOAuthPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("shapes only OAuth Anthropic payloads", () => {
+test("shapes any anthropic-messages payload (OAuth gating handled by the transport)", () => {
+  // shapeAnthropicOAuthPayload no longer sniffs system-prompt markers: the
+  // transport wrapper gates on the sk-ant-oat token, so this function shapes
+  // whatever valid anthropic-messages payload it is handed.
   const payload = {
     model: TEST_MODEL,
     stream: true,
@@ -67,9 +70,19 @@ test("shapes only OAuth Anthropic payloads", () => {
     system: [{ type: "text", text: "Generic system prompt." }],
   };
 
-  const shaped = shapeAnthropicOAuthPayload(payload);
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
 
-  assert.equal(shaped, payload);
+  assert.ok(systemBlocks[0]?.text.includes("x-anthropic-billing-header:"));
+  assert.equal(systemBlocks[1]?.text, "Generic system prompt.");
+});
+
+test("returns non-anthropic-messages payloads unchanged", () => {
+  // Structural guard: anything that is not a streaming messages payload is a
+  // pass-through, regardless of OAuth state.
+  const payload = { not: "an anthropic payload" };
+
+  assert.equal(shapeAnthropicOAuthPayload(payload), payload);
 });
 
 test("prepends the billing header block without adding cache control on OAuth payloads", () => {
@@ -240,7 +253,7 @@ test("shapes Pi default system prompt in OAuth payloads", () => {
   );
 });
 
-test("does not shape system prompt in non-OAuth payloads", () => {
+test("shapes the Pi default system prompt preamble when present", () => {
   const piDefaultPrompt =
     "You are an expert coding assistant operating inside pi, a coding agent harness. You help users.";
   const payload = {
@@ -255,10 +268,16 @@ test("does not shape system prompt in non-OAuth payloads", () => {
     ],
   };
 
-  const shaped = shapeAnthropicOAuthPayload(payload);
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
 
-  // Non-OAuth payload is returned unchanged
-  assert.equal(shaped, payload);
+  // Billing header is prepended and the Pi identity preamble is stripped.
+  assert.ok(systemBlocks[0]?.text.includes("x-anthropic-billing-header:"));
+  assert.ok(
+    !systemBlocks[1]?.text.includes(
+      "operating inside pi, a coding agent harness",
+    ),
+  );
 });
 
 test("shapes OAuth payloads detected by the minimal neutral system prompt marker", () => {
