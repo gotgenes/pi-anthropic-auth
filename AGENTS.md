@@ -32,14 +32,16 @@ That means preserving:
 
 The current implementation does the following:
 
-1. Re-registers the built-in `anthropic` provider with an `oauth` override only
+1. Re-registers the built-in `anthropic` provider with an `oauth` override and a thin `streamSimple` transport wrapper
 2. Reuses Pi's native Anthropic login flow from `@earendil-works/pi-ai/oauth`
 3. Hardens refresh behavior so missing rotated refresh tokens fall back to the previous refresh token
-4. Uses `before_provider_request` to shape only built-in Anthropic OAuth payloads
+4. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path (main loop, compaction, and background agents)
 5. Prepends an Anthropic billing/content-consistency header block to `system[]`
-6. Replaces Pi's default system prompt preamble with a minimal neutral prompt (inside `before_provider_request`, gated by the same OAuth detection)
+6. Replaces Pi's default system prompt preamble with a minimal neutral prompt during the same shaping pass
+7. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 
-It does not currently replace Pi's built-in Anthropic streaming transport.
+It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
+The wrapper delegates to Pi's own `streamSimpleAnthropic` and only injects an `onPayload` shaping step.
 
 ## Principles
 
@@ -69,28 +71,31 @@ Keep compatibility logic in small helpers so it is easy to adjust without touchi
 
 The main extension entrypoint is `src/index.ts`.
 
-It currently uses two Pi extension seams:
+It uses one Pi extension seam:
 
-1. `pi.registerProvider("anthropic", { oauth })`
-2. `pi.on("before_provider_request", ...)`
+1. `pi.registerProvider("anthropic", { oauth, api: "anthropic-messages", streamSimple })`
 
-All provider-specific logic (billing header injection, message ordering, system prompt shaping) is consolidated in `before_provider_request`, gated by `isOAuthAnthropicPayload`.
+The `streamSimple` wrapper is the single shaping point.
+It captures Pi's built-in `anthropic-messages` transport via `getApiProvider` before registering, then delegates to it while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
+Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
 Important upstream behavior confirmed from `pi-mono`:
 
-1. Re-registering `anthropic` with only `oauth` overrides `/login anthropic` auth handling without replacing built-in models
+1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models
 2. Omitting `models` preserves Pi's built-in Anthropic model list
-3. `before_provider_request` runs for built-in provider requests, after Pi builds the provider-specific payload
+3. `registerProvider({ api, streamSimple })` routes through pi-ai's singleton API registry (`registerApiProvider`), so the wrapper intercepts every `anthropic-messages` call path, including `completeSimple` compaction and `agentLoop` background work
+4. `before_provider_request` only fires for the interactive agent loop, so it cannot reach auxiliary OAuth calls — this is why the wrapper replaced the former hook-based shaping
 
 ### Local Files
 
 Current source layout:
 
-1. `src/index.ts`: extension registration
+1. `src/index.ts`: extension registration (OAuth override + transport wrapper)
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
-3. `src/request-shaping.ts`: OAuth-only request shaping helpers
-4. `src/system-prompt-shaping.ts`: minimal Anthropic OAuth prompt replacement for Pi's default prompt
-5. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
+3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
+4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
+5. `src/system-prompt-shaping.ts`: minimal Anthropic OAuth prompt replacement for Pi's default prompt
+6. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
 
 ### Project Skills
 
@@ -132,6 +137,11 @@ Note: Pi upstream already normalizes Anthropic OAuth tool names to Claude Code c
 The clearest upstream gap found during initial inspection is refresh-token rotation robustness.
 Pi's built-in Anthropic refresh helper currently expects a fresh `refresh_token` on refresh responses.
 Other Pi OAuth providers already fall back to the previous refresh token when a new one is omitted.
+
+A second gap surfaced from Issue #18: `before_provider_request` is threaded only into the interactive agent loop's `streamFn`.
+Auxiliary Anthropic OAuth calls bypass it — built-in compaction/summarization issues `completeSimple` without `onPayload`, and third-party background agents (for example pi-observational-memory's observer, reflector, and dropper running via `agentLoop`) use pi-ai's bare `streamSimple`.
+Those requests reached Anthropic with no billing header and were rejected as third-party app usage.
+The transport wrapper closes this gap on our side by shaping at the registry transport rather than the hook.
 
 ## Development
 
@@ -306,9 +316,10 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 Current suites map roughly to:
 
 1. `test/anthropic-oauth.test.ts` — OAuth callback parsing, manual-code edge cases, and refresh-token rotation fallback.
-2. `test/request-shaping.test.ts` — OAuth-only payload guarding, billing header injection, system block layering, and beta-header merging.
-3. `test/system-prompt-shaping.test.ts` — preamble replacement, appended-content preservation, and degraded-mode fallbacks.
-4. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
+2. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, and delegation to the built-in transport.
+3. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, and the structural messages-payload guard.
+4. `test/system-prompt-shaping.test.ts` — preamble replacement, appended-content preservation, and degraded-mode fallbacks.
+5. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
 
 Priority areas for new tests:
 
@@ -322,8 +333,9 @@ Priority areas for new tests:
 
 ### Provider Hook Scope
 
-`before_provider_request` only exposes the built payload, not the provider name.
-Request-shaping logic therefore needs a reliable Anthropic OAuth guard based on payload structure, not provider metadata from the hook event.
+`before_provider_request` only exposes the built payload, not the provider name or auth.
+The current design avoids this entirely: shaping runs in the `streamSimple` transport wrapper, where the resolved `apiKey` is available and OAuth is detected by the `sk-ant-oat` prefix.
+The former payload-structure guard (`isOAuthAnthropicPayload`) was removed in favor of this token gate.
 
 ### `model_select` Does Not Fire At Startup
 
@@ -335,7 +347,12 @@ Do not rely on `model_select` to track the provider for logic that must run on t
 
 The `BeforeAgentStartEvent` does not expose which provider or model is active.
 Provider-specific logic cannot be reliably gated in `before_agent_start`.
-Use `before_provider_request` instead, where the payload structure identifies the provider.
+
+### `before_provider_request` Only Covers the Interactive Loop
+
+Pi threads its `before_provider_request` hook (`onPayload`) into the main agent loop's `streamFn` only.
+Built-in compaction (`completeSimple`) and third-party background agents (`agentLoop` with the default `streamSimple`) issue Anthropic requests through the same singleton API-registry transport but without that hook.
+Any shaping that must apply to every OAuth request belongs in the transport wrapper, not in `before_provider_request`.
 
 ### Avoid Over-Porting From OpenCode
 
@@ -345,8 +362,9 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 
 ### Registering `streamSimple`
 
-If you register a custom `streamSimple`, you are much closer to replacing Pi's built-in Anthropic transport.
-Do that only if hooks are insufficient for the concrete compatibility issue being fixed.
+The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
+The wrapper stays thin — it delegates to Pi's own `streamSimpleAnthropic` and only injects an `onPayload` shaping step gated on the OAuth token.
+It must capture the built-in transport via `getApiProvider("anthropic-messages")` *before* registering, or delegation would recurse into the wrapper itself.
 
 ### Model ID Alias Drift
 
@@ -356,8 +374,9 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 ## Related Files
 
 1. `README.md`
-2. `docs/plans/minimal-anthropic-override.md`
-3. `docs/plans/gap-analysis-and-next-steps.md`
-4. `.agents/skills/`
-5. Upstream reference clone: `~/development/pi-mono`
-6. Example reference project: `~/development/opencode-anthropic-auth`
+2. `docs/architecture.md`
+3. `docs/plans/minimal-anthropic-override.md`
+4. `docs/plans/gap-analysis-and-next-steps.md`
+5. `.agents/skills/`
+6. Upstream reference clone: `~/development/pi-mono`
+7. Example reference project: `~/development/opencode-anthropic-auth`

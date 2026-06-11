@@ -16,7 +16,10 @@ This extension fills in the gaps for users who want to use their **Claude Pro or
 
 It keeps everything you'd expect — the built-in `anthropic` provider, the full model list, API-key behavior, and the native `/login anthropic` flow — and layers on the compatibility fixes needed to make OAuth subscriptions work reliably.
 
-Requests to non-Anthropic providers and plain API-key Anthropic requests pass through completely untouched — the extension only activates when it detects an Anthropic OAuth payload.
+Requests to non-Anthropic providers and plain API-key Anthropic requests pass through completely untouched — the extension only activates when it detects an Anthropic OAuth access token (`sk-ant-oat`).
+
+Shaping runs in a thin transport wrapper around Pi's own Anthropic transport, so it applies to every OAuth call path — the interactive loop, compaction, and any background-agent work — not just the main turn.
+See [docs/architecture.md](docs/architecture.md) for how this works.
 
 ## Install
 
