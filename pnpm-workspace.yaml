@@ -2,3 +2,12 @@ allowBuilds:
   "@google/genai": true
   koffi: true
   protobufjs: true
+minimumReleaseAgeExclude:
+  - '@rumdl/cli-darwin-arm64@0.2.14'
+  - '@rumdl/cli-darwin-x64@0.2.14'
+  - '@rumdl/cli-linux-arm64-musl@0.2.14'
+  - '@rumdl/cli-linux-arm64@0.2.14'
+  - '@rumdl/cli-linux-x64-musl@0.2.14'
+  - '@rumdl/cli-linux-x64@0.2.14'
+  - '@rumdl/cli-win32-x64@0.2.14'
+  - rumdl@0.2.14
