@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.5.0...v0.5.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* shape Anthropic OAuth requests at the transport layer ([a8c2015](https://github.com/gotgenes/pi-anthropic-auth/commit/a8c2015c293c6b60d1110f73620dd3825057c6e6))
+
+
+### Documentation
+
+* document the OAuth transport-wrapper architecture ([6ce28a4](https://github.com/gotgenes/pi-anthropic-auth/commit/6ce28a484189a3f1500bc0eb3e18c87fcb1e5c6f))
+* note prek rumdl-fmt pre-commit hook in markdown-conventions skill ([5838075](https://github.com/gotgenes/pi-anthropic-auth/commit/58380753961e3fa1bb0b10c1cd72ca936b926e48))
+* port reusable skills from pi-packages ([1e606a9](https://github.com/gotgenes/pi-anthropic-auth/commit/1e606a97d2dfd509ad4b8c5b29f9b2eea2771afc))
+
+
+### Miscellaneous Chores
+
+* bump dependencies and establish Pi 0.79.1 base ([62696c9](https://github.com/gotgenes/pi-anthropic-auth/commit/62696c97934a3bdbd67091fb30ee2af7d8959f8b))
+
 ## [0.5.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.4.6...v0.5.0) (2026-05-24)
 
 
