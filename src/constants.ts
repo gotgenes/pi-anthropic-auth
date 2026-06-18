@@ -50,7 +50,7 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
 // CLAUDE_CODE_VERSION must be updated when Anthropic ships a new Claude Code
 // version.  There is no upstream source to import it from; check the current
 // version at https://github.com/anthropics/claude-code or in a working Claude
-// Code installation (`claude --version`).
+// Code installation (`claude --version`) -- confirm even when a value is handed to you.
 // ---------------------------------------------------------------------------
 
 /**

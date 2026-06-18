@@ -87,3 +87,5 @@ pnpm fallow dead-code        # verify
 6. Class-member liveness is keyed off `implements` clauses: a member reached only through a structural type the class does not explicitly `implements` reads as dead once the last `implements` is removed.
    Prefer re-declaring the genuine contract (`implements ThatInterface`) over a suppression.
    If the consumer is wired via an object-literal property (which fallow cannot trace), prefer moving the read into a traced closure body at the composition root (e.g. `getX: () => owner.member`) over a suppression; suppress only when neither is practical.
+7. Duplication reports coordinates, not contents: when planning a dedup, read each clone group's exact line ranges before describing it.
+   The same byte-run is often an act + assertion sequence (the test subject — do not collapse it) rather than a fixture literal that can be extracted.
