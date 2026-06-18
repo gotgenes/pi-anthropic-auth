@@ -37,6 +37,18 @@ const PI_PREAMBLE = [
   "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
 ].join("\n");
 
+// Build a Pi-preamble-prefixed system prompt from case-specific sections.
+function piPrompt(...sections: string[]): string {
+  return [PI_PREAMBLE, "", ...sections].join("\n");
+}
+
+// Assert the preamble-replacement invariant shared across shaping tests:
+// the minimal prompt is prepended and the Pi identity is stripped.
+function assertPreambleReplaced(shaped: string): void {
+  assert.match(shaped, /^You are an expert coding assistant\./);
+  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+}
+
 // ===== sanitizeSystemText =====
 
 test("sanitizeSystemText removes paragraphs with Pi identity anchor", () => {
@@ -120,9 +132,7 @@ test("sanitizeSystemText preserves paragraphs without anchors", () => {
 // ===== shapeAnthropicOAuthSystemPrompt =====
 
 test("replaces Pi preamble with minimal prompt and preserves tools, guidelines, and context", () => {
-  const systemPrompt = [
-    PI_PREAMBLE,
-    "",
+  const systemPrompt = piPrompt(
     "# Project Context",
     "",
     "Project-specific instructions and guidelines:",
@@ -132,20 +142,17 @@ test("replaces Pi preamble with minimal prompt and preserves tools, guidelines, 
     "Preserve built-in Anthropic behavior by default.",
     "Current date: 2026-04-21",
     "Current working directory: /tmp/project",
-  ].join("\n");
+  );
 
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
-  // Minimal prompt prepended
-  assert.match(shaped, /^You are an expert coding assistant\./);
+  // Minimal prompt prepended, Pi identity removed
+  assertPreambleReplaced(shaped);
   assert.match(shaped, /Be concise and helpful\./);
   assert.match(
     shaped,
     /Use the available tools to answer the user's request\./,
   );
-
-  // Pi identity removed
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
 
   // Pi documentation removed
   assert.doesNotMatch(
@@ -186,9 +193,7 @@ test("leaves unrelated system prompt content unchanged", () => {
 });
 
 test("preserves content appended between preamble and Project Context (issue #9)", () => {
-  const systemPrompt = [
-    PI_PREAMBLE,
-    "",
+  const systemPrompt = piPrompt(
     "## Custom Note",
     "- Some critical instruction added by another extension.",
     "",
@@ -197,11 +202,11 @@ test("preserves content appended between preamble and Project Context (issue #9)
     "## /tmp/AGENTS.md",
     "",
     "Project guidance.",
-  ].join("\n");
+  );
 
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
-  assert.match(shaped, /^You are an expert coding assistant\./);
+  assertPreambleReplaced(shaped);
   assert.match(shaped, /## Custom Note/);
   assert.match(
     shaped,
@@ -209,33 +214,27 @@ test("preserves content appended between preamble and Project Context (issue #9)
   );
   assert.match(shaped, /# Project Context/);
   assert.match(shaped, /Project guidance\./);
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
 });
 
 test("preserves trailing footer when there is no Project Context section", () => {
-  const systemPrompt = [
-    PI_PREAMBLE,
-    "",
+  const systemPrompt = piPrompt(
     "## Trailing Note",
     "- Appended by another extension.",
     "Current date: 2026-04-21",
     "Current working directory: /tmp/project",
-  ].join("\n");
+  );
 
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
-  assert.match(shaped, /^You are an expert coding assistant\./);
+  assertPreambleReplaced(shaped);
   assert.match(shaped, /## Trailing Note/);
   assert.match(shaped, /- Appended by another extension\./);
   assert.match(shaped, /Current date: 2026-04-21/);
   assert.match(shaped, /Current working directory: \/tmp\/project/);
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
 });
 
 test("preserves content appended at the very end of the system prompt", () => {
-  const systemPrompt = [
-    PI_PREAMBLE,
-    "",
+  const systemPrompt = piPrompt(
     "# Project Context",
     "",
     "## /tmp/AGENTS.md",
@@ -246,27 +245,25 @@ test("preserves content appended at the very end of the system prompt", () => {
     "",
     "## Custom Note",
     "- Some critical instruction.",
-  ].join("\n");
+  );
 
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
-  assert.match(shaped, /^You are an expert coding assistant\./);
+  assertPreambleReplaced(shaped);
   assert.match(shaped, /## Custom Note/);
   assert.match(shaped, /- Some critical instruction\./);
   assert.match(shaped, /Project guidance\./);
 });
 
 test("does not sanitize extension content outside the Pi preamble span", () => {
-  const systemPrompt = [
-    PI_PREAMBLE,
-    "",
+  const systemPrompt = piPrompt(
     "## Custom Note",
     "In addition to the tools above, this extension adds a downstream policy paragraph.",
     "",
     "# Project Context",
     "",
     "Project guidance.",
-  ].join("\n");
+  );
 
   const shaped = shapeAnthropicOAuthSystemPrompt(systemPrompt);
 
