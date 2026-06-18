@@ -109,6 +109,17 @@ Pi's built-in coding tools (bash, edit, write, read, grep, find, ls) use sequent
 Each tool call follows the full lifecycle: `tool_call` → execute → `tool_result` before the next tool's `tool_call` fires.
 This means an extension's `tool_result` handler for tool N runs before `tool_call` for tool N+1.
 
+## Abort / interrupt signal lifecycle
+
+Source: `@earendil-works/pi-agent-core` `agent.js`; `@earendil-works/pi-coding-agent` `interactive-mode.js`.
+
+- The agent loop creates a **fresh `AbortController` per run**; `agent.signal` is `activeRun.abortController.signal`.
+- Pressing ESC while streaming calls `agent.abort()`, firing that signal's `abort` event.
+- On **normal** completion `finishRun()` discards the controller **without** aborting it — so the `abort` event fires only on a real interrupt, never at turn/run end.
+- The same per-run signal is passed to every `tool.execute(toolCallId, params, signal, …)` and exposed to handlers via `ctx.signal` (undefined when idle).
+
+Implication: to react to a user interrupt, latch `ctx.signal` (e.g. at `turn_start`) and listen for its `abort` event — it will not false-fire on normal completion. (Refs #403.)
+
 ## Message delivery via `pi.sendMessage()`
 
 During the agent loop, `isStreaming` is `true` (set at start, cleared in `finishRun` after `agent_end`).
@@ -138,7 +149,7 @@ If an extension calls `pi.sendMessage()` at `turn_end` (while streaming), the me
 After `turn_end`, the loop checks `getSteeringMessages()` and picks up the message.
 The agent sees it before its next LLM call.
 
-If the agent's last turn had no tool calls (text-only "Done!"
+If the agent's last turn had no tool calls (a text-only "Done!"
 turn), the inner loop exits because `hasMoreToolCalls` is false.
 But if a steering message was injected at `turn_end`, `pendingMessages.length > 0` keeps the loop going for one more turn.
 

@@ -62,7 +62,7 @@ RIGHT:  A["Overview"]
 
 ## Verify in a real renderer
 
-Structural validators (`markdownlint-cli2`) check Markdown syntax but not Mermaid semantics.
+Structural validators (`rumdl`) check Markdown syntax but not Mermaid semantics.
 `mmdc` catches most parser errors but not angle-bracket cases (the markdown pre-parse happens before Mermaid sees the input).
 Both checks must pass before a diagram is considered done:
 
