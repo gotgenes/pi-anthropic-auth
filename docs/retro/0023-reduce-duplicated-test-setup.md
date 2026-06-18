@@ -21,3 +21,20 @@ Wrote and committed `docs/plans/0023-reduce-duplicated-test-setup.md`.
 - Per-file dedup strategy differs by clone shape: assertion-invariant helper (`assertPreambleReplaced`) + `piPrompt` builder for system-prompt-shaping; `describe`-scoped `beforeEach` + `resolveOnPayload` for oauth-transport; a shared `CLAUDE_CODE_IDENTITY` constant for request-shaping.
 - Deliberately preserved as legitimate clones: `src/request-shaping.ts:78-92` ↔ test fixture (dup:bd6fc547) and the two ordering experiments (dup:8ba4938d).
 - Expected no production-code change — only test files, with at most a shared test fixture constant.
+
+## Stage: Implementation — Build (2026-06-18T16:30:00Z)
+
+### Session summary
+
+Executed the two primary plan steps: consolidated `test/system-prompt-shaping.test.ts` via `piPrompt` and `assertPreambleReplaced` helpers, and shared `test/oauth-transport.test.ts` wiring via a `describe`-scoped `beforeEach` plus a `resolveOnPayload` resolver.
+Duplication dropped from 9 groups / 249 lines (10.7%) to 4 groups / 146 lines (6.3%), eliminating both named clone families.
+No production code changed; full suite (46 tests), `pnpm run check`, and `pnpm run lint` all green.
+
+### Observations
+
+- Deviation from the plan: step 3 (request-shaping `CLAUDE_CODE_IDENTITY` constant) produced no commit.
+  Inspecting the flagged clone `dup:eaae50df` (lines 66-77 vs 219-239) showed it is the act + billing-header assertion sequence (the genuine test subject), not the Claude Code identity literal the plan assumed — line 70 is `"Generic system prompt."`, not the identity block.
+  Collapsing it would require wrapping `shapeAnthropicOAuthPayload`, which the issue forbids, so it is left as-is. This resolves the plan's Open Question #1.
+- Remaining 4 clone groups are all legitimate: `dup:8ba4938d` (pinned ordering experiments, Non-Goal), `dup:eaae50df` (request-shaping act+assert), `dup:a06c0a0a` (system-prompt-shaping act+invariant residual — not collapsible without wrapping the act), and `dup:bd6fc547` (`src↔test` fixture, Non-Goal).
+- `assertPreambleReplaced` is assertion-only, `resolveOnPayload` returns the captured callback (not the shaped result), and `piPrompt` is a fixture builder — every act stays explicit and inline, satisfying the issue's no-act-wrapping constraint.
+- Pre-completion reviewer: PASS (deterministic checks all pass; both acceptance criteria code-verified).
