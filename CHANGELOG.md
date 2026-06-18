@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.6.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.5.1...v0.6.0) (2026-06-18)
+
+
+### Features
+
+* add adapted workflow prompt subset from pi-packages ([792a3f4](https://github.com/gotgenes/pi-anthropic-auth/commit/792a3f4ebd06c08f9420afcfe5bbf58e620288f5))
+* add fallow, pre-completion skills and pre-completion-reviewer agent ([6fde1d7](https://github.com/gotgenes/pi-anthropic-auth/commit/6fde1d7ad3b800eefa240db938e080b7b8feed3d))
+
+
+### Bug Fixes
+
+* bump Claude Code version to 2.1.169 in billing header ([c0b7617](https://github.com/gotgenes/pi-anthropic-auth/commit/c0b76171254bedbcc373ef7c9209f49199a28cff))
+
+
+### Documentation
+
+* document .pi prompts, agents, and fallow/github-tools in AGENTS.md ([739b228](https://github.com/gotgenes/pi-anthropic-auth/commit/739b2281ebe8c0055db24b7c12a462c21b44ced3))
+* plan reducing duplicated test setup flagged by fallow ([#23](https://github.com/gotgenes/pi-anthropic-auth/issues/23)) ([da85f5b](https://github.com/gotgenes/pi-anthropic-auth/commit/da85f5ba0138b7cee4a2eb46080357ac7ca2ed3f))
+* port plan-driven release batching from pi-packages ([#434](https://github.com/gotgenes/pi-anthropic-auth/issues/434)) ([5b1f1b0](https://github.com/gotgenes/pi-anthropic-auth/commit/5b1f1b0681e924b742f6c379adc1a55493e9e849))
+* **retro:** add build stage notes for issue [#23](https://github.com/gotgenes/pi-anthropic-auth/issues/23) ([dd3d7d0](https://github.com/gotgenes/pi-anthropic-auth/commit/dd3d7d09f9936a3e70198c90a867bdefa1e27d2b))
+* **retro:** add planning stage notes for issue [#23](https://github.com/gotgenes/pi-anthropic-auth/issues/23) ([59de205](https://github.com/gotgenes/pi-anthropic-auth/commit/59de20503ea7dbe9a0c9057be571528de6e7fec7))
+* sync mermaid and pi-extension-lifecycle skills from pi-packages ([7673a25](https://github.com/gotgenes/pi-anthropic-auth/commit/7673a2574c61b0d9c2ab42ebb5ca9d057956c109))
+* sync shared workflow skills from pi-packages ([059a182](https://github.com/gotgenes/pi-anthropic-auth/commit/059a18264dd3fec9f77503210d296c79ae6397f2))
+
+
+### Miscellaneous Chores
+
+* migrate skills to .pi/skills and wire up fallow ([7e280b4](https://github.com/gotgenes/pi-anthropic-auth/commit/7e280b49353b56e4c1ae607786336add94048126))
+
 ## [0.5.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.5.0...v0.5.1) (2026-06-11)
 
 
