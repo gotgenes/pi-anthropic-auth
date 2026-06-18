@@ -214,6 +214,8 @@ gh pr merge --rebase <pr-number>
 
 Do not merge a release-please PR while local commits are still unpushed or while the PR was generated from an older `main` than the commits you just finished.
 
+Release batching is plan-driven: the `improvement-discovery` skill defines a grep-able `Release:` tag (and a `Release batches` subsection) for roadmap steps, `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` reads the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
+
 ### Commands
 
 Install dependencies:

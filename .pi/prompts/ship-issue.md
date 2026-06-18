@@ -8,6 +8,22 @@ Argument: `$1` is the issue number that was just implemented.
 
 Fetch the issue title via `gh issue view $1 --json title -q .title`, then call `set_session_name` with name `#$1 Ship — <issue title>` to identify this session in the session selector.
 
+## Release coordination (decide before step 1)
+
+Gather the release decision up front, from a deterministic source, **before** any irreversible work (`git pull`/push/CI).
+A decision presented early from the plan is far less likely to be reversed than one inferred from prose at the cancel point.
+
+1. Locate the plan for this issue: `grep -rl "^issue: $1$" docs/plans`.
+2. If a plan is found, read its `**Release:**` marker (written by `/plan-issue`):
+   - A marker containing `mid-batch — defer` → ask the operator **now**: defer the release (batch until the sequence completes), or release anyway?
+     Record the decision.
+   - Any other `**Release:**` value (`ship independently` or `ship now — batch "<name>" tail`) → record "release now"; note the recommendation in the final report; do **not** ask.
+   - No `**Release:**` marker → record "release now" (default); do **not** ask.
+3. If no plan file is found → record "release now" (default); do **not** ask.
+
+This section only reads the plan and (conditionally) asks — it performs no git, push, or CI action.
+Step 4b applies the recorded decision.
+
 ## 1. Sync with remote
 
 Before pushing, make sure local `HEAD` is current with the remote:
@@ -50,9 +66,10 @@ First check the unreleased range for a releasing commit: `git log --oneline <las
 If every commit is a non-releasing type (`refactor:`/`docs:`/`style:`/`chore:`/`test:` — no `feat`/`fix`/`!`/`BREAKING CHANGE`), release-please will cut nothing now; the work auto-batches until a `feat`/`fix` lands.
 Say so in the final report and skip the batch-vs-release question.
 
-If the plan frames this issue as part of a multi-issue sequence (e.g. "step N of M", a phased roadmap, or a lift-and-shift with sibling `#M` issues), ask the user once whether to release now or batch the release until the sequence completes.
-If batching: stop here — the push and CI are done; leave the issue open and skip steps 5–6.
+Then apply the decision recorded in the early "Release coordination" section.
+If that decision was to defer/batch: stop here — the push and CI are done; leave the issue open and skip steps 5–6.
 Note the deferral in the final report.
+Otherwise continue.
 
 ## 4c. Create planned follow-up issues
 

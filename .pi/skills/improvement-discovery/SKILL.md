@@ -146,6 +146,9 @@ Priority = Impact × (6 − Risk)
 - **Independent tracks** — identify parallel tracks (e.g., "bag decomposition" vs. "complexity reduction") that can proceed without blocking each other.
 - **Max 9 steps per phase** — beyond 9, split into two phases.
 - **Test duplication gets its own step** — shared fixture extraction is a distinct concern from production code refactoring.
+- **Group steps into release batches** — a release batch is a coherent set of steps meant to ship together (e.g. a lift-and-shift spine where intermediate steps leave the package in a transitional state).
+  A step that can land and release on its own is independently releasable.
+  This is the source of truth `/plan-issue` reads to recommend a release decision and `/ship-issue` confirms — so it must be grep-able, not prose (see Output format).
 
 ## Output format
 
@@ -159,6 +162,22 @@ The plan should produce:
    - Expected measurable outcome (LOC reduction, complexity drop, bag field reduction)
 3. **Step dependency diagram** — Mermaid flowchart showing which steps unblock others.
 4. **Tracks** — group steps into named parallel tracks.
+5. **Release batches** — make release coordination grep-able, in two artifacts:
+   - A per-step `Release:` tag on its own line in each step (alongside `Smell:`/`Outcome:`), exactly one of:
+     - `Release: independent` — the step ships on its own; no coordination.
+     - `Release: batch "<batch-name>"` — the step is a member of the named batch and is meant to ship together with the rest of that batch.
+   - A `Release batches` subsection (after the parallel tracks) naming each batch and listing its member steps in dependency order; the **last listed member is the batch tail** — the step whose landing completes the batch.
+     List independently releasable steps separately.
+
+     ```markdown
+     ### Release batches
+
+     - **Batch "activity-disentanglement":** Steps 1, 2, 3 (ship together; tail = Step 3).
+     - Independently releasable: Steps 4, 5.
+     ```
+
+   Agents locate the data by grepping for the `Release:` line (per step) and the `Release batches` heading (per phase) — never by parsing prose.
+   A step with no `Release:` tag defaults to independently releasable.
 
 ## Lessons from prior phases
 

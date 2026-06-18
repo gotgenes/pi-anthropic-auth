@@ -47,6 +47,11 @@ Before investigating the issue, load skills relevant to the change:
    Note whether each is implemented yet — your plan must say what it depends on vs. defers.
 4. Open the source files most relevant to the change and skim them before writing.
 5. When the plan introduces a public API pattern (package `exports`, `Symbol.for()` accessor, service interface) or agent-facing message formatting (attribution tags, error prefixes, log labels), use colgrep or grep to search the codebase for the established convention and follow it unless there is a documented reason to diverge.
+6. Determine the issue's **release recommendation** from the architecture roadmap, if it is part of one.
+   Grep `docs/architecture.md` for the step that references this issue (`(#$1)` / `[#$1]`) and read its `Release:` tag (defined by the `improvement-discovery` skill):
+   - `Release: independent` (or no tag, or the issue is not in any roadmap) → **ship independently**.
+   - `Release: batch "<name>"` → look up `<name>` in the roadmap's `Release batches` subsection; if this step is the batch tail (last listed member) → **ship now — batch tail**; otherwise → **mid-batch — defer**.
+   You will write this into the plan's `Release Recommendation` section (see Write the plan).
 
 ## Check for prior session context
 
@@ -95,6 +100,13 @@ issue_title: "<exact title from `gh issue view`>"
 
 Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownlint MD041 — followed by the body sections:
 
+- **Release Recommendation** — the first `##` section after the H1, so it is prominent.
+  Write the canonical grep-able marker line (`/ship-issue` reads it) as exactly one of:
+  - `**Release:** ship independently`
+  - `**Release:** ship now — batch "<name>" tail (this issue completes the batch)`
+  - `**Release:** mid-batch — defer (batch "<name>"); confirm at ship time`
+
+  Use the value derived in Gather context step 6, then add a sentence of rationale (which batch, why independent).
 - **Problem Statement** — quote the issue's framing in your own words.
 - **Goals** — bullet list, scoped to this change.
 - **Non-Goals** — explicitly defer anything tangential (sibling issues, follow-ups).
