@@ -1,7 +1,7 @@
 ---
 name: frontmatter
 description: Pi skill frontmatter reference and template. Use when creating or reviewing project skills so they conform to Pi's Agent Skills frontmatter rules, naming constraints, and description requirements.
-compatibility: Intended for Pi skills stored in .agents/skills, .pi/skills, or compatible Agent Skills directories.
+compatibility: Intended for Pi skills stored in .pi/skills or compatible Agent Skills directories.
 ---
 
 # Skill Frontmatter

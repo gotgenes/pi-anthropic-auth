@@ -52,6 +52,9 @@ node_modules/
 .pi/npm/
 jspm_packages/
 
+# Fallow analysis cache
+.fallow/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

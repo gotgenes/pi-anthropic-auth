@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["src/index.ts"],
+  "ignoreExportsUsedInFile": true,
+  "ignorePatterns": ["**/test/fixtures/**"],
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "error",
+    "unused-types": "error",
+    "unused-class-members": "error",
+    "circular-dependencies": "error",
+    "unlisted-dependencies": "error",
+    "unresolved-imports": "error",
+    "unused-dev-dependencies": "error",
+    "stale-suppressions": "error"
+  }
+}

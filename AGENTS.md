@@ -4,7 +4,7 @@ This file contains shared context for agents working in this repository.
 Keep it focused on information that multiple agents need: repository purpose, current architecture, constraints, commands, and known gotchas.
 Do not turn this into a task log.
 
-Project-level reusable workflows belong in `.agents/skills/`.
+Project-level reusable workflows belong in `.pi/skills/`.
 This repo currently includes skills for Anthropic OAuth debugging, Pi CLI repro loops, and Pi skill frontmatter conventions.
 
 ## Project
@@ -99,7 +99,7 @@ Current source layout:
 
 ### Project Skills
 
-Project skills live in `.agents/skills/`.
+Project skills live in `.pi/skills/`.
 
 Current skills:
 
@@ -377,6 +377,6 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 2. `docs/architecture.md`
 3. `docs/plans/minimal-anthropic-override.md`
 4. `docs/plans/gap-analysis-and-next-steps.md`
-5. `.agents/skills/`
+5. `.pi/skills/`
 6. Upstream reference clone: `~/development/pi-mono`
 7. Example reference project: `~/development/opencode-anthropic-auth`

@@ -86,7 +86,7 @@ When a live CLI repro fails:
 
 ## References
 
-- `.agents/skills/anthropic/SKILL.md`
+- `.pi/skills/anthropic/SKILL.md`
 - `docs/plans/gap-analysis-and-next-steps.md`
 - `src/index.ts`
 - `test/pi-anthropic-ordering-experiment.test.ts`
