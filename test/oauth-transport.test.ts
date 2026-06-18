@@ -6,7 +6,7 @@ import type {
   Model,
   SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
-import { test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
   createAnthropicOAuthStreamSimple,
   isAnthropicOAuthToken,
@@ -75,6 +75,15 @@ function systemTexts(payload: unknown): string[] {
     : [];
 }
 
+// Resolve the captured onPayload callback the wrapper handed the delegate.
+function resolveOnPayload(
+  calls: CapturingDelegate["calls"],
+): NonNullable<SimpleStreamOptions["onPayload"]> {
+  const onPayload = calls[0]?.options?.onPayload;
+  assert.ok(onPayload);
+  return onPayload;
+}
+
 test("isAnthropicOAuthToken recognizes only sk-ant-oat access tokens", () => {
   assert.equal(isAnthropicOAuthToken(OAUTH_TOKEN), true);
   assert.equal(isAnthropicOAuthToken(API_KEY), false);
@@ -82,97 +91,85 @@ test("isAnthropicOAuthToken recognizes only sk-ant-oat access tokens", () => {
   assert.equal(isAnthropicOAuthToken(""), false);
 });
 
-test("delegates to the underlying transport with composed options", () => {
-  const { delegate, calls } = createCapturingDelegate();
-  const wrapped = createAnthropicOAuthStreamSimple(delegate);
+describe("createAnthropicOAuthStreamSimple", () => {
+  let calls: CapturingDelegate["calls"];
+  let wrapped: ReturnType<typeof createAnthropicOAuthStreamSimple>;
 
-  const result = wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+  beforeEach(() => {
+    const capturing = createCapturingDelegate();
+    calls = capturing.calls;
+    wrapped = createAnthropicOAuthStreamSimple(capturing.delegate);
+  });
 
-  assert.equal(result, STREAM_STUB);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.model, MODEL);
-  assert.equal(calls[0]?.context, CONTEXT);
-  assert.equal(calls[0]?.options?.apiKey, OAUTH_TOKEN);
-  assert.equal(typeof calls[0]?.options?.onPayload, "function");
-});
+  test("delegates to the underlying transport with composed options", () => {
+    const result = wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
 
-test("shapes the payload for OAuth access tokens", async () => {
-  const { delegate, calls } = createCapturingDelegate();
-  const wrapped = createAnthropicOAuthStreamSimple(delegate);
+    assert.equal(result, STREAM_STUB);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.model, MODEL);
+    assert.equal(calls[0]?.context, CONTEXT);
+    assert.equal(calls[0]?.options?.apiKey, OAUTH_TOKEN);
+    assert.equal(typeof calls[0]?.options?.onPayload, "function");
+  });
 
-  wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
-  const onPayload = calls[0]?.options?.onPayload;
-  assert.ok(onPayload);
+  test("shapes the payload for OAuth access tokens", async () => {
+    wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
 
-  const shaped = await onPayload(samplePayload(), MODEL);
-  const texts = systemTexts(shaped);
+    const shaped = await resolveOnPayload(calls)(samplePayload(), MODEL);
+    const texts = systemTexts(shaped);
 
-  assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
-  assert.ok(
-    texts.some((text) =>
-      text.includes("You are Claude Code, Anthropic's official CLI"),
-    ),
-  );
-});
+    assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
+    assert.ok(
+      texts.some((text) =>
+        text.includes("You are Claude Code, Anthropic's official CLI"),
+      ),
+    );
+  });
 
-test("leaves the payload untouched for API-key requests", async () => {
-  const { delegate, calls } = createCapturingDelegate();
-  const wrapped = createAnthropicOAuthStreamSimple(delegate);
+  test("leaves the payload untouched for API-key requests", async () => {
+    wrapped(MODEL, CONTEXT, { apiKey: API_KEY });
 
-  wrapped(MODEL, CONTEXT, { apiKey: API_KEY });
-  const onPayload = calls[0]?.options?.onPayload;
-  assert.ok(onPayload);
+    const input = samplePayload();
+    const result = await resolveOnPayload(calls)(input, MODEL);
+    const texts = systemTexts(result);
 
-  const input = samplePayload();
-  const result = await onPayload(input, MODEL);
-  const texts = systemTexts(result);
+    assert.equal(result, input);
+    assert.ok(
+      !texts.some((text) => text.includes("x-anthropic-billing-header:")),
+    );
+  });
 
-  assert.equal(result, input);
-  assert.ok(
-    !texts.some((text) => text.includes("x-anthropic-billing-header:")),
-  );
-});
-
-test("composes a caller-provided onPayload before shaping", async () => {
-  const { delegate, calls } = createCapturingDelegate();
-  const wrapped = createAnthropicOAuthStreamSimple(delegate);
-
-  const callerOnPayload: SimpleStreamOptions["onPayload"] = (payload) => {
-    const next = payload as ReturnType<typeof samplePayload>;
-    return {
-      ...next,
-      system: [...next.system, { type: "text", text: "INJECTED_BY_CALLER" }],
+  test("composes a caller-provided onPayload before shaping", async () => {
+    const callerOnPayload: SimpleStreamOptions["onPayload"] = (payload) => {
+      const next = payload as ReturnType<typeof samplePayload>;
+      return {
+        ...next,
+        system: [...next.system, { type: "text", text: "INJECTED_BY_CALLER" }],
+      };
     };
-  };
 
-  wrapped(MODEL, CONTEXT, {
-    apiKey: OAUTH_TOKEN,
-    onPayload: callerOnPayload,
+    wrapped(MODEL, CONTEXT, {
+      apiKey: OAUTH_TOKEN,
+      onPayload: callerOnPayload,
+    });
+
+    const shaped = await resolveOnPayload(calls)(samplePayload(), MODEL);
+    const texts = systemTexts(shaped);
+
+    // Caller transform ran (its block survives) and our shaping ran on top.
+    assert.ok(texts.includes("INJECTED_BY_CALLER"));
+    assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
   });
-  const onPayload = calls[0]?.options?.onPayload;
-  assert.ok(onPayload);
 
-  const shaped = await onPayload(samplePayload(), MODEL);
-  const texts = systemTexts(shaped);
+  test("falls back to the original payload when caller onPayload returns undefined", async () => {
+    wrapped(MODEL, CONTEXT, {
+      apiKey: OAUTH_TOKEN,
+      onPayload: () => undefined,
+    });
 
-  // Caller transform ran (its block survives) and our shaping ran on top.
-  assert.ok(texts.includes("INJECTED_BY_CALLER"));
-  assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
-});
+    const shaped = await resolveOnPayload(calls)(samplePayload(), MODEL);
+    const texts = systemTexts(shaped);
 
-test("falls back to the original payload when caller onPayload returns undefined", async () => {
-  const { delegate, calls } = createCapturingDelegate();
-  const wrapped = createAnthropicOAuthStreamSimple(delegate);
-
-  wrapped(MODEL, CONTEXT, {
-    apiKey: OAUTH_TOKEN,
-    onPayload: () => undefined,
+    assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
   });
-  const onPayload = calls[0]?.options?.onPayload;
-  assert.ok(onPayload);
-
-  const shaped = await onPayload(samplePayload(), MODEL);
-  const texts = systemTexts(shaped);
-
-  assert.ok(texts[0]?.includes("x-anthropic-billing-header:"));
 });
