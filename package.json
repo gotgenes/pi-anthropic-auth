@@ -60,12 +60,10 @@
     "@earendil-works/pi-coding-agent": ">=0.79.1"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
     "fallow": "^2.91.0",
     "@biomejs/biome": "^2.4.16",
     "@earendil-works/pi-ai": "0.79.1",
     "@earendil-works/pi-coding-agent": "0.79.1",
-    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.3",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",

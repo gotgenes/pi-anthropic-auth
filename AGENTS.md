@@ -148,7 +148,6 @@ This repo depends on:
 
 1. `@earendil-works/pi-coding-agent`
 2. `@earendil-works/pi-ai`
-3. `@anthropic-ai/sdk`
 
 When possible, import Pi behavior from `@earendil-works/pi-ai/oauth` rather than copying code from upstream.
 
@@ -239,7 +238,8 @@ pnpm fallow:dead-code  # unused files, exports, types, deps
 pnpm fallow:dupes      # duplicated code blocks
 ```
 
-Fallow is a local-only tool here — it is not part of `pnpm run lint` or CI.
+Fallow runs in CI (`.github/workflows/ci.yml`, mirroring `pi-packages`): a `fallow audit` on pull requests, a `fallow dead-code` gate on `main`, and a non-blocking full `fallow` report on `main`.
+It is not part of `pnpm run lint`, so run the `fallow:*` scripts locally before pushing.
 
 ### TypeScript
 

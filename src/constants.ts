@@ -40,16 +40,6 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
   "Show file paths clearly when working with files.",
 ].join("\n");
 
-/**
- * Prefix of Claude Code's identity injection block.
- *
- * Used to detect OAuth Anthropic payloads built by Pi's built-in Anthropic
- * provider, which injects a "You are Claude Code, Anthropic's official CLI"
- * system block for OAuth sessions.
- */
-export const CLAUDE_CODE_IDENTITY_PREFIX =
-  "You are Claude Code, Anthropic's official CLI";
-
 // ---------------------------------------------------------------------------
 // Billing header constants
 //
