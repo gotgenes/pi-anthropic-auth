@@ -4,8 +4,8 @@ This file contains shared context for agents working in this repository.
 Keep it focused on information that multiple agents need: repository purpose, current architecture, constraints, commands, and known gotchas.
 Do not turn this into a task log.
 
-Project-level reusable workflows belong in `.pi/skills/`.
-This repo currently includes skills for Anthropic OAuth debugging, Pi CLI repro loops, and Pi skill frontmatter conventions.
+Project-level reusable workflows belong in `.pi/skills/`, reusable slash-command flows in `.pi/prompts/`, and custom subagents in `.pi/agents/`.
+This repo includes repo-specific skills (Anthropic OAuth debugging, Pi CLI repro, frontmatter) plus a shared workflow toolkit (code design, testing, fallow, improvement discovery, pre-completion, and others) kept in parity with `~/development/pi/pi-packages/`.
 
 ## Project
 
@@ -101,11 +101,46 @@ Current source layout:
 
 Project skills live in `.pi/skills/`.
 
-Current skills:
+Repo-specific skills:
 
 1. `anthropic`: Anthropic OAuth compatibility lessons and debugging workflow
 2. `pi-cli-repro`: repeatable `pi -p ... -e ...` repro workflow
 3. `frontmatter`: Pi skill frontmatter template and rules
+
+Shared workflow skills (synced from `pi-packages`, adapted to this single package):
+
+1. `code-design`: TypeScript conventions, SOLID, file organization, Pi SDK patterns
+2. `design-review`: dependency and structural smell review
+3. `improvement-discovery`: smell taxonomy and prioritization for improvement rounds
+4. `testing`: vitest mock patterns, assertion strategy, TDD planning rules
+5. `pre-completion`: pre-completion protocol that dispatches the `pre-completion-reviewer` subagent
+6. `fallow`: dead-code, duplication, and complexity analysis via the `fallow` CLI
+7. `markdown-conventions`: rumdl-enforced markdown rules
+8. `mermaid`: Mermaid authoring and verification
+9. `pi-extension-lifecycle`: Pi turn/tool execution and extension event lifecycle
+
+### Project Prompts
+
+Reusable slash-command flows live in `.pi/prompts/` (synced from `pi-packages`, adapted to this repo):
+
+1. `plan-issue`: read a GitHub issue and write a numbered plan to `docs/plans/`
+2. `tdd-plan`: execute a plan's TDD steps as red→green→commit cycles
+3. `build-plan`: execute a non-TDD plan (docs/config/prose changes)
+4. `pr-review`: triage a third-party PR (adopt/adapt/decline) and hand off to `plan-issue`
+5. `ship-issue`: push, close the issue, and merge the release-please PR
+6. `ship-no-issue`: push, verify CI, and merge the release-please PR (no issue)
+7. `retro`: review a session for workflow improvements and persist retro notes
+8. `retro-note`: persist a quick retro observation to `docs/retro/`
+
+The fallow-discovery prompts (`plan-improvements`, `finish-phase`) from `pi-packages` are intentionally not ported.
+
+### Project Agents
+
+Custom subagents live in `.pi/agents/`:
+
+1. `pre-completion-reviewer`: fresh-context quality reviewer run before `/ship-issue`
+
+The `ship-*` and CI/issue steps in the prompts use the `@gotgenes/pi-github-tools` extension, declared in `.pi/settings.json`.
 
 ### Upstream Dependencies
 
@@ -192,6 +227,17 @@ Run the typecheck:
 ```bash
 pnpm run check
 ```
+
+Run fallow analysis (single package):
+
+```bash
+pnpm fallow            # full analysis
+pnpm fallow:health     # complexity, hotspots, refactoring targets
+pnpm fallow:dead-code  # unused files, exports, types, deps
+pnpm fallow:dupes      # duplicated code blocks
+```
+
+Fallow is a local-only tool here — it is not part of `pnpm run lint` or CI.
 
 ### TypeScript
 
@@ -378,5 +424,9 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 3. `docs/plans/minimal-anthropic-override.md`
 4. `docs/plans/gap-analysis-and-next-steps.md`
 5. `.pi/skills/`
-6. Upstream reference clone: `~/development/pi-mono`
-7. Example reference project: `~/development/opencode-anthropic-auth`
+6. `.pi/prompts/`
+7. `.pi/agents/`
+8. `.fallowrc.json`
+9. Workflow parity source: `~/development/pi/pi-packages/`
+10. Upstream reference clone: `~/development/pi-mono`
+11. Example reference project: `~/development/opencode-anthropic-auth`
