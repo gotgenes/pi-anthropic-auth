@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type {
   SimpleStreamOptions,
   StreamFunction,
@@ -50,9 +50,10 @@ export async function resolveBuiltinAnthropicStreamSimple(): Promise<
   const rootFile = fileURLToPath(rootUrl);
   // `<pkg>/dist/index.js` → `<pkg>/dist` → `<pkg>`.
   const packageDir = dirname(dirname(rootFile));
-  const providerModuleUrl = new URL(
+  // `pathToFileURL` (not `new URL(path, "file:///")`) percent-encodes path
+  // components, so an install path containing `#` or `?` resolves correctly.
+  const providerModuleUrl = pathToFileURL(
     join(packageDir, ANTHROPIC_PROVIDER_RELATIVE_PATH),
-    "file:///",
   ).href;
 
   const module = (await import(providerModuleUrl)) as {
