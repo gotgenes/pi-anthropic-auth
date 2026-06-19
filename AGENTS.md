@@ -76,7 +76,8 @@ It uses one Pi extension seam:
 1. `pi.registerProvider("anthropic", { oauth, api: "anthropic-messages", streamSimple })`
 
 The `streamSimple` wrapper is the single shaping point.
-It captures Pi's built-in `anthropic-messages` transport via `getApiProvider` before registering, then delegates to it while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
+It delegates to Pi's built-in `streamSimpleAnthropic` (imported directly from `@earendil-works/pi-ai/anthropic`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
+The delegate is imported directly rather than captured from the registry so pi-ai 0.79.8's lazy re-register cannot overwrite this wrapper (Issue #28).
 Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
 Important upstream behavior confirmed from `pi-mono`:
@@ -411,8 +412,9 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 ### Registering `streamSimple`
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
-The wrapper stays thin — it delegates to Pi's own `streamSimpleAnthropic` and only injects an `onPayload` shaping step gated on the OAuth token.
-It must capture the built-in transport via `getApiProvider("anthropic-messages")` *before* registering, or delegation would recurse into the wrapper itself.
+The wrapper stays thin — it delegates to Pi's own `streamSimpleAnthropic` (imported directly from `@earendil-works/pi-ai/anthropic`) and only injects an `onPayload` shaping step gated on the OAuth token.
+The delegate is imported directly rather than read out of the registry: pi-ai 0.79.8 registers a lazy `anthropic-messages` stub whose first call re-registers the bare built-in via `registerApiProvider`, which would overwrite this wrapper (Issue #28).
+Importing the real transport means that re-register never fires through our delegation.
 
 ### Model ID Alias Drift
 

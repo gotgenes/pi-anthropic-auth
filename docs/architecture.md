@@ -46,8 +46,8 @@ flowchart TD
     G --> AN["Anthropic /v1/messages"]
 ```
 
-The wrapper must capture the built-in transport via `getApiProvider("anthropic-messages")` **before** registering itself.
-Delegating to the registered wrapper instead of the captured built-in would recurse infinitely.
+The wrapper delegates to Pi's built-in `streamSimpleAnthropic`, imported directly from `@earendil-works/pi-ai/anthropic` rather than read out of the API registry.
+Importing it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
 
 ## OAuth gating
 
