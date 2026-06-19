@@ -72,6 +72,12 @@ This workflow has already been used successfully in this repo to validate:
 - Use `PI_ANTHROPIC_AUTH_DEBUG=tool-use` to log only tool-using Anthropic OAuth requests, or `PI_ANTHROPIC_AUTH_DEBUG=all` to log every shaped OAuth request.
 - If validation errors mention block counts or payload shape, inspect `system[]`, `cache_control`, and `messages` ordering.
 
+### 3. Render real before/after shaping (ground truth, not a hand fixture)
+
+To check what shaping does to a real prompt, import upstream `buildSystemPrompt` from `@earendil-works/pi-coding-agent/dist/core/system-prompt.js`, build a realistic prompt, and pipe it through `shapeAnthropicOAuthSystemPrompt` to see the exact removed/retained split.
+Write the script in the repo root, not `/tmp` — relative `./node_modules` and `./src` imports resolve against the script's directory (Refs #10).
+This is a debug-only technique; tests still build fixtures inline (see Testing Guidance in `AGENTS.md`).
+
 ## Implementation Guidance
 
 ### Shape in the `streamSimple` transport wrapper

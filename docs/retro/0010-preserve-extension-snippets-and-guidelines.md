@@ -40,3 +40,47 @@ No production code changed; this was a docs-and-test close-out of behavior that 
 - Pre-completion reviewer: PASS — all 3 acceptance criteria code-verified, deterministic checks green (`pnpm test` 47, `tsc --noEmit`, lint, `fallow dead-code`), Conventional Commits clean, cross-step invariants (#9, #23) hold, mermaid validates.
   No WARN findings.
 - Both steps complete; next step is `/ship-issue` (release independently).
+
+## Stage: Final Retrospective (2026-06-18T22:00:00Z)
+
+### Session summary
+
+Closed out issue #10 across four stages (Planning, Build, Ship, Retro): discovered the core anchor sanitizer had already shipped in `f740a35` during the #9 cycle, then planned and landed a docs-and-test close-out (one characterization test plus three doc reconciliations) and shipped it.
+Execution was clean — pre-completion reviewer PASS, CI green, issue closed — with only two trivial self-corrected tooling hiccups.
+
+### Observations
+
+#### What went well
+
+- Real before/after render as a decision tool: when the operator asked mid-planning "do we show tools in the system prompt, or are those getting filtered out?", the agent imported the real upstream `buildSystemPrompt` and piped a realistic prompt through `shapeAnthropicOAuthSystemPrompt`, producing the exact removed/retained split.
+  This turned a prose worry into ground-truth evidence and directly resolved the snippet-policy decision (keep `Available tools:`).
+- Caught that #10 was already implemented (`f740a35`, tagged `(issue #10)`) before drafting a redundant feature plan; the planning correctly pivoted to a docs-and-test close-out, avoiding building behavior that already existed.
+- Incremental verification: test ran after step 1, lint after each step, full suite (`pnpm test`) plus `tsc --noEmit` at the end — no end-loaded feedback-loop gap.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified) — the first Planning `ask_user` call omitted the required `prompt` field and returned `Invalid ask_user payload: questions[0].prompt: prompt is required`; retried immediately with the field added.
+  Impact: 1 wasted tool call, no rework.
+- `rabbit-hole` (minor, self-resolved) — the before/after script was first written to `/tmp/before-after.mjs`, whose relative `./node_modules` and `./src` imports resolved against `/tmp` and failed with `ERR_MODULE_NOT_FOUND`; rewrote it into the repo root as `./tmp-before-after.mjs`.
+  Impact: 1 wasted tool call, no rework.
+
+#### What caused friction (user side)
+
+- Process gap, not a user fault: `f740a35` landed the #10 sanitizer during the #9 cycle and was even tagged `(issue #10)`, yet #10 stayed open.
+  That left a full planning cycle spent largely on rediscovery and confirmation.
+  Closing or annotating #10 when its work landed would have collapsed this to a quick verification.
+- The operator's mid-planning probe ("do we show tools…?") was a high-value redirecting question — it surfaced the snippet-policy decision crisply and prompted the before/after evidence.
+  Framed as a positive: interleaved `ask_user` plus a strategic user probe worked well here.
+
+### Diagnostic details
+
+- Model-performance correlation: Planning and Build ran on `claude-opus-4-8` (judgment-heavy: discovery, plan authoring, test/doc design); Ship ran on `claude-sonnet-4-6` (mechanical: `git`, CI watch, `issue_close`).
+  Appropriate split — no reasoning-weak model on judgment work and no high-cost model on pure mechanics.
+- Escalation-delay: no error sequence exceeded 1 retry; both hiccups self-resolved on the next call.
+  No subagent dispatch warranted.
+- Feedback-loop: verification was incremental, not end-loaded (see "What went well").
+
+### Changes made
+
+1. `docs/retro/0010-preserve-extension-snippets-and-guidelines.md` — appended this Final Retrospective stage entry.
+2. `.pi/skills/anthropic/SKILL.md` — added "### 3. Render real before/after shaping (ground truth, not a hand fixture)" to the Fast Debugging Workflow, capturing the upstream-`buildSystemPrompt` render technique and the repo-root (not `/tmp`) import caveat.
