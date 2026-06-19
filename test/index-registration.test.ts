@@ -17,9 +17,8 @@ import type {
   ExtensionAPI,
   ProviderConfig,
 } from "@earendil-works/pi-coding-agent";
+import type { Mock } from "vitest";
 import { beforeEach, describe, onTestFinished, test, vi } from "vitest";
-
-// `onTestFinished` is invoked inside each test (vitest requires it in test scope).
 
 const OAUTH_TOKEN = "sk-ant-oat01-example-access-token";
 
@@ -32,40 +31,51 @@ const MODEL = {
 const CONTEXT = { messages: [] } as unknown as Context;
 
 /**
- * Stubbed transport recorded as the pi-ai 0.79.8 "bare built-in"
- * `streamSimpleAnthropic`.
+ * Stubbed transport standing in for the pi-ai 0.79.8 "bare built-in"
+ * `streamSimpleAnthropic` that the host resolver hands `src/index.ts`.
  *
- * The `vi.mock` factory references it, so it must be created inside
- * `vi.hoisted` — Vitest hoists `vi.mock` above ordinary declarations, which
- * would otherwise leave the stub `undefined` when the factory runs.
+ * `src/index.ts` resolves the delegate via `#src/host-transport`, so mocking
+ * that module's resolver is the seam that controls the delegate without
+ * touching jiti's subpath resolution (which only the live `pi` loader
+ * exercises).  The `vi.mock` factory references the stub, so it must be
+ * created inside `vi.hoisted` — Vitest hoists `vi.mock` above ordinary
+ * declarations, which would otherwise leave the stub `undefined` when the
+ * factory runs.
  */
 const { delegateCalls, streamSimpleAnthropicMock } = vi.hoisted(() => {
   const delegateCalls: Array<{ options?: SimpleStreamOptions }> = [];
-  const streamSimpleAnthropicMock = vi.fn(
+  const streamSimpleAnthropicMock: Mock<
     (
-      _model: Model<Api>,
-      _context: Context,
+      model: Model<Api>,
+      context: Context,
       options?: SimpleStreamOptions,
-    ): AssistantMessageEventStream => {
-      delegateCalls.push({ options });
-      return createAssistantMessageEventStream();
-    },
-  );
+    ) => AssistantMessageEventStream
+  > = vi.fn((_model, _context, options) => {
+    delegateCalls.push({ options });
+    return createAssistantMessageEventStream();
+  });
   return { delegateCalls, streamSimpleAnthropicMock };
 });
 
-vi.mock("@earendil-works/pi-ai/anthropic", () => ({
-  streamAnthropic: streamSimpleAnthropicMock,
-  streamSimpleAnthropic: streamSimpleAnthropicMock,
+vi.mock("#src/host-transport", () => ({
+  resolveBuiltinAnthropicStreamSimple: () =>
+    // The resolver returns the narrow built-in transport type; the wide mock
+    // satisfies it structurally (the registry only ever invokes it for
+    // `anthropic-messages` models).
+    Promise.resolve(streamSimpleAnthropicMock),
 }));
 
 /**
  * Simulates the pi-ai 0.79.8 lazy-stub registry entry for `anthropic-messages`.
  *
- * On first call it re-registers the bare built-in transport (the mocked
+ * On first call it re-registers the bare built-in transport (the stubbed
  * `streamSimpleAnthropic`), mirroring `anthropic.ts`'s `register()` overwrite,
  * then forwards the call (with its `options`) to that bare built-in — exactly
  * what `createLazySimpleStream`'s `loadAndRegisterProvider` does.
+ *
+ * This is the clobber path the fix must survive: if `src/index.ts` delegated to
+ * this stub instead of the directly-resolved transport, the first call would
+ * overwrite our wrapper and the second call would bypass our shaping.
  */
 function lazyStubStreamSimple(
   model: Model<Api>,
@@ -164,7 +174,7 @@ describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber 
     });
 
     const { default: registerExtension } = await import("#src/index");
-    registerExtension(createFakePi());
+    await registerExtension(createFakePi());
 
     // Simulate two Anthropic OAuth calls (e.g. compaction via completeSimple,
     // which issues requests with no caller-provided onPayload).
