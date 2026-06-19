@@ -45,5 +45,25 @@ Test count went from 47 to 48 (5 → 6 files); all gates (`check`, `lint`, `test
 - Pre-completion reviewer: WARN (no blocking failures), with two findings both addressed in follow-up commits: (1) `docs/architecture.md` Related-files line still said `src/index.ts` "captures the built-in transport" — the Step-4 grep missed it because it searched "capture the built-in" without the trailing `s`; (2) `AnthropicStreamSimpleDelegate` was a speculative export with no external consumer (shielded from fallow by `ignoreExportsUsedInFile: true`) — unexported in a `refactor:` commit.
 - `vi.mock("@earendil-works/pi-ai/anthropic")` with a `vi.hoisted` stub is the clean way to fake the built-in transport without network I/O; the lazy-stub simulation mirrors `anthropic.ts`'s `register()` overwrite and `createLazySimpleStream`'s options-forwarding.
 
+## Stage: Implementation — runtime resolution fix (2026-06-19T00:00:00Z)
+
+### Session summary
+
+The static `import { streamSimpleAnthropic } from "@earendil-works/pi-ai/anthropic"` shipped in the first TDD pass failed at runtime under the real pi loader with `Cannot find module '.../dist/index.js/anthropic'`.
+Diagnosed the cause (pi's `jiti` extension loader aliases the bare `@earendil-works/pi-ai` and `@earendil-works/pi-ai/oauth` but not the `./anthropic` subpath, so the subpath import resolves to `dist/index.js/anthropic`), then replaced the static import with a runtime resolver in a new `src/host-transport.ts` that the operator chose over inlining into `oauth-transport.ts`.
+`src/index.ts` is now `async` (Pi's `ExtensionFactory` permits `Promise<void>`).
+Live `pi -e src/index.ts` repro confirms the extension loads and the wrapper registers; all gates green.
+
+### Observations
+
+- Root cause of the runtime failure: `jiti`'s alias map in `pi-coding-agent/dist/core/extensions/loader.js` has explicit entries for `@earendil-works/pi-ai` and `@earendil-works/pi-ai/oauth` but no entry for `@earendil-works/pi-ai/anthropic`; jiti's prefix-based alias matching turns the subpath into `<root-alias-target>/anthropic` and ignores the package `exports` map.
+- A `createRequire`-based fallback was rejected: the CJS resolver does not honor the `exports` "import" condition for the subpath either, and anchoring `createRequire` inside the package triggers package-self-resolution semantics that reject the subpath.
+- Working approach (verified with a throwaway probe extension under the real loader): `import.meta.resolve("@earendil-works/pi-ai")` succeeds (jiti-aliased to the host's `dist/index.js`), so derive the package dir and dynamic-import the concrete `dist/providers/anthropic.js` — the same file the `exports` `./anthropic` subpath maps to across both 0.79.1 and 0.79.8.
+- `pi-packages` did not have a prior solution for this exact problem — its packages import only the root `@earendil-works/pi-ai` (jiti-aliased) and never a provider subpath; the `./oauth` alias in pi's loader was added specifically for this repo's prior needs.
+- The regression test was reworked to mock `#src/host-transport`'s `resolveBuiltinAnthropicStreamSimple` (returning a capturing stub) instead of `@earendil-works/pi-ai/anthropic`, since `src/index.ts` no longer touches the subpath; this isolates the registration-wiring invariant (the #28 concern) from jiti resolution, which only the live loader exercises.
+- The mock is typed `Mock<(...Model<Api>...) => AssistantMessageEventStream>` (wide) so the lazy-stub simulation and fake-`pi` calls typecheck, with a structural-satisfaction comment at the resolver-return site; casting to the narrow `StreamFunction<"anthropic-messages">` erased `.mockClear()` and broke `tsc`.
+- `.pi/settings.json` was committed (`51e5bf9`) to load the local dev copy via `"../"` and suppress the global `npm:@gotgenes/pi-anthropic-auth` with empty `extensions`/`skills` (dedupe-by-identity, project wins over user); verified against pi's `package-manager.js` (`getPackageIdentity` ignores npm version, `dedupePackages` keeps project scope).
+- Pre-completion reviewer has not been re-run for this follow-up stage; recommend re-dispatching before `/ship-issue`.
+
 [#18]: https://github.com/gotgenes/pi-anthropic-auth/issues/18
 [#27]: https://github.com/gotgenes/pi-anthropic-auth/pull/27
