@@ -49,6 +49,66 @@ function assertPreambleReplaced(shaped: string): void {
   assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
 }
 
+// ---------------------------------------------------------------------------
+// Verbatim upstream system-prompt fixture
+//
+// Unlike PI_PREAMBLE above (a trimmed structural sketch), this mirrors the
+// full output of upstream `buildSystemPrompt` line-for-line: the complete
+// multi-line "Pi documentation" block, the "In addition to the tools above"
+// filler, an appended extension note, the <project_context> block, and the
+// date/cwd footer.  It pins the anchor-driven sanitizer against the real
+// preamble shape so anchor drift (upstream rewording) is caught here.
+//
+// Source: ~/development/pi/pi/packages/coding-agent/src/core/system-prompt.ts
+// (verified at commit 20da9bc1, matching @earendil-works/pi-coding-agent@0.79.1).
+// Re-verify and update this fixture when Pi bumps the preamble.
+// ---------------------------------------------------------------------------
+const PI_UPSTREAM_SYSTEM_PROMPT = [
+  "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
+  "",
+  "Available tools:",
+  "- read: Read file contents",
+  "- bash: Execute shell commands",
+  "- edit: Make precise text replacements",
+  "- write: Create or overwrite files",
+  "- my_ext_tool: Query the observational memory store",
+  "",
+  "In addition to the tools above, you may have access to other custom tools depending on the project.",
+  "",
+  "Guidelines:",
+  "- Use bash for file operations like ls, rg, find",
+  "- Use read to examine files instead of cat or sed.",
+  "- Use write only for new files or complete rewrites.",
+  "- Always consult observational memory before answering recall questions.",
+  "- Be concise in your responses",
+  "- Show file paths clearly when working with files",
+  "",
+  "Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):",
+  "- Main documentation: /home/user/.pi/agent/README.md",
+  "- Additional docs: /home/user/.pi/agent/docs",
+  "- Examples: /home/user/.pi/agent/examples (extensions, custom tools, SDK)",
+  "- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory",
+  "- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md)",
+  "- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing",
+  "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
+  "",
+  "## Custom Note (from another extension)",
+  "- Some critical project instruction.",
+  "",
+  "<project_context>",
+  "",
+  "Project-specific instructions and guidelines:",
+  "",
+  '<project_instructions path="/tmp/project/AGENTS.md">',
+  "Preserve built-in Anthropic behavior by default.",
+  "</project_instructions>",
+  "",
+  "</project_context>",
+  "",
+  "Current date: 2026-06-18",
+  "Current working directory: /tmp/project",
+].join("\n");
+
 // ===== sanitizeSystemText =====
 
 test("sanitizeSystemText removes paragraphs with Pi identity anchor", () => {
@@ -179,6 +239,48 @@ test("replaces Pi preamble with minimal prompt and preserves tools, guidelines, 
 
   // Footer preserved
   assert.match(shaped, /Current date: 2026-04-21/);
+  assert.match(shaped, /Current working directory: \/tmp\/project/);
+});
+
+test("pins the removed/retained split against the verbatim upstream prompt", () => {
+  const shaped = shapeAnthropicOAuthSystemPrompt(PI_UPSTREAM_SYSTEM_PROMPT);
+
+  // Pi identity paragraph replaced with the minimal neutral prompt.
+  assertPreambleReplaced(shaped);
+  assert.match(shaped, /Be concise and helpful\./);
+
+  // Retained: Available tools block, including built-in and extension snippets.
+  assert.match(shaped, /Available tools:/);
+  assert.match(shaped, /- read: Read file contents/);
+  assert.match(shaped, /- write: Create or overwrite files/);
+  assert.match(shaped, /- my_ext_tool: Query the observational memory store/);
+
+  // Retained: Guidelines block, including the extension-contributed guideline.
+  assert.match(shaped, /Guidelines:/);
+  assert.match(
+    shaped,
+    /- Always consult observational memory before answering recall questions\./,
+  );
+  assert.match(shaped, /- Be concise in your responses/);
+
+  // Removed: the custom-tool filler paragraph.
+  assert.doesNotMatch(shaped, /In addition to the tools above/);
+
+  // Removed: the entire Pi documentation block (header and its doc-path bullets).
+  assert.doesNotMatch(
+    shaped,
+    /Pi documentation \(read only when the user asks about pi itself/,
+  );
+  assert.doesNotMatch(shaped, /- Main documentation:/);
+  assert.doesNotMatch(shaped, /- Additional docs:/);
+  assert.doesNotMatch(shaped, /docs\/extensions\.md/);
+
+  // Retained: appended extension content, project context, and the footer.
+  assert.match(shaped, /## Custom Note \(from another extension\)/);
+  assert.match(shaped, /- Some critical project instruction\./);
+  assert.match(shaped, /<project_context>/);
+  assert.match(shaped, /Preserve built-in Anthropic behavior by default\./);
+  assert.match(shaped, /Current date: 2026-06-18/);
   assert.match(shaped, /Current working directory: \/tmp\/project/);
 });
 
