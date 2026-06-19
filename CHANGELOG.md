@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.1...v0.6.2) (2026-06-19)
+
+
+### Bug Fixes
+
+* set usesCallbackServer on anthropicOAuthOverride ([ae2996f](https://github.com/gotgenes/pi-anthropic-auth/commit/ae2996f0507e0432f1d7f05a057c0299c90e052c))
+
+
+### Documentation
+
+* **pr-review:** triage PR [#27](https://github.com/gotgenes/pi-anthropic-auth/issues/27) → adopt-as-is ([ae34ece](https://github.com/gotgenes/pi-anthropic-auth/commit/ae34eced8f35722a08859bb04e8a92693ad04dca))
+* **retro:** add retro notes for issue [#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28) ([f605a36](https://github.com/gotgenes/pi-anthropic-auth/commit/f605a360e6e36a43354b7f3d669a59674871361c))
+
 ## [0.6.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.0...v0.6.1) (2026-06-19)
 
 
