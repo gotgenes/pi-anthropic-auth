@@ -86,7 +86,7 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 ## Related files
 
-- `src/index.ts` — captures the built-in transport and registers the override plus wrapper.
+- `src/index.ts` — imports `streamSimpleAnthropic` directly and registers the OAuth override plus `streamSimple` wrapper.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
