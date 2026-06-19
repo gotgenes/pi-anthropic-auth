@@ -37,7 +37,7 @@ The current implementation does the following:
 3. Hardens refresh behavior so missing rotated refresh tokens fall back to the previous refresh token
 4. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path (main loop, compaction, and background agents)
 5. Prepends an Anthropic billing/content-consistency header block to `system[]`
-6. Replaces Pi's default system prompt preamble with a minimal neutral prompt during the same shaping pass
+6. Sanitizes Pi's default preamble by anchor during the same shaping pass — removing the Pi identity, custom-tool filler, and Pi documentation paragraphs and replacing only the identity with a minimal neutral prompt — while preserving tool snippets, guidelines, and appended extension content
 7. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
@@ -94,7 +94,7 @@ Current source layout:
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
 3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
 4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
-5. `src/system-prompt-shaping.ts`: minimal Anthropic OAuth prompt replacement for Pi's default prompt
+5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
 6. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
 
 ### Project Skills
@@ -366,7 +366,7 @@ Current suites map roughly to:
 1. `test/anthropic-oauth.test.ts` — OAuth callback parsing, manual-code edge cases, and refresh-token rotation fallback.
 2. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, and delegation to the built-in transport.
 3. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, and the structural messages-payload guard.
-4. `test/system-prompt-shaping.test.ts` — preamble replacement, appended-content preservation, and degraded-mode fallbacks.
+4. `test/system-prompt-shaping.test.ts` — anchor-based paragraph removal, tool-snippet and guideline preservation, appended-content preservation, the verbatim upstream-prompt fixture, and degraded-mode fallbacks.
 5. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
 
 Priority areas for new tests:

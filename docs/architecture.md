@@ -62,7 +62,7 @@ This replaces the previous, brittle approach of sniffing system-prompt markers a
 For OAuth requests, the injected `onPayload` runs `shapeAnthropicOAuthPayload`, which:
 
 1. normalizes assistant message ordering when Pi serializes `[tool_use..., text]` for Anthropic,
-2. replaces Pi's default system-prompt preamble with a minimal neutral prompt (de-fingerprinting), and
+2. sanitizes Pi's default preamble by anchor (de-fingerprinting) — removing the identity, custom-tool filler, and Pi documentation paragraphs, replacing only the identity with a minimal neutral prompt, and preserving tool snippets, guidelines, and appended content — and
 3. prepends an `x-anthropic-billing-header` system block (without `cache_control`).
 
 The wrapper composes, rather than replaces, any caller-provided `onPayload`.
@@ -89,5 +89,5 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 - `src/index.ts` — captures the built-in transport and registers the override plus wrapper.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
-- `src/system-prompt-shaping.ts` — minimal neutral prompt replacement.
+- `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
 - `src/anthropic-oauth.ts` — OAuth login override and refresh fallback.

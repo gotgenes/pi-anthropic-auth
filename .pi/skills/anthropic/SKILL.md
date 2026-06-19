@@ -82,7 +82,7 @@ All request shaping runs in the transport wrapper (`src/oauth-transport.ts`), wh
 - `system[]` block ordering
 - cache-control adjustments
 - assistant message ordering normalization
-- system prompt de-fingerprinting (replaces Pi's default preamble with a minimal neutral prompt)
+- system prompt de-fingerprinting (anchor-based removal of the Pi identity, custom-tool filler, and Pi documentation paragraphs; preserves tool snippets, guidelines, and appended content)
 
 Gate on the `sk-ant-oat` access-token prefix (`options.apiKey`), the same signal Pi uses internally.
 This covers every OAuth call path, including compaction and background agents.
