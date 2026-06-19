@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.6.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.0...v0.6.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* import streamSimpleAnthropic directly to avoid lazy re-register clobber ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([c7b8078](https://github.com/gotgenes/pi-anthropic-auth/commit/c7b8078e6122cbd6e6e4fc2090fba4b5a0cee31a))
+* resolve built-in Anthropic transport at runtime for jiti loader ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([8ba196e](https://github.com/gotgenes/pi-anthropic-auth/commit/8ba196e0565209a5507b69e5b1da470f64844d6c))
+* use pathToFileURL for provider module resolution ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([27301da](https://github.com/gotgenes/pi-anthropic-auth/commit/27301da9656cf05523f6ed7dd63fec4576710a3f))
+
+
+### Documentation
+
+* describe anchor-driven prompt sanitizer that preserves extension contributions ([#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10)) ([ec64b66](https://github.com/gotgenes/pi-anthropic-auth/commit/ec64b6682f7acb0e730db7b6917888bd6af42e92))
+* describe runtime host-transport resolution for jiti loader ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([bfecd63](https://github.com/gotgenes/pi-anthropic-auth/commit/bfecd6367d62b9df468f8d0e921f9eb2ba885376))
+* fix stale index.ts description in architecture related-files ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([4e65899](https://github.com/gotgenes/pi-anthropic-auth/commit/4e65899b3bf9f34a9492fcd4d70cb78852268238))
+* plan fix for pi-ai 0.79.8 lazy registration clobber ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([26aa85e](https://github.com/gotgenes/pi-anthropic-auth/commit/26aa85ee785ccd8baa597332646b1cc5699e8f0f))
+* plan sanitizer close-out for extension snippets and guidelines ([#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10)) ([d1813ee](https://github.com/gotgenes/pi-anthropic-auth/commit/d1813eec1c6b21c644799ced628ccb293a58c6c4))
+* **retro:** add build stage notes for issue [#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10) ([47d1696](https://github.com/gotgenes/pi-anthropic-auth/commit/47d1696bc82893923ca914454a88ea4726956235))
+* **retro:** add planning stage notes for issue [#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10) ([dfcf0a2](https://github.com/gotgenes/pi-anthropic-auth/commit/dfcf0a2cc406f4f936f149e48ad3bdc330b7284f))
+* **retro:** add planning stage notes for issue [#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28) ([b548477](https://github.com/gotgenes/pi-anthropic-auth/commit/b5484776c03cdc4b1bc92632460bd20706b52bc2))
+* **retro:** add retro notes for issue [#10](https://github.com/gotgenes/pi-anthropic-auth/issues/10) ([a495775](https://github.com/gotgenes/pi-anthropic-auth/commit/a495775a48a87355f405a87eb1e308e2734f8c39))
+* **retro:** add retro notes for issue [#23](https://github.com/gotgenes/pi-anthropic-auth/issues/23) ([34de7f7](https://github.com/gotgenes/pi-anthropic-auth/commit/34de7f7b545283672bf628d08b27a540e6731fdc))
+* **retro:** add runtime-resolution stage notes for issue [#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28) ([8a58432](https://github.com/gotgenes/pi-anthropic-auth/commit/8a5843210d480c3c68aa018063b95dec8a19e9a1))
+* **retro:** add TDD stage notes for issue [#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28) ([9303393](https://github.com/gotgenes/pi-anthropic-auth/commit/9303393f1082c979382b10dc2a4ea2cbe90aeffd))
+* **retro:** note post-review polish for issue [#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28) ([2a38838](https://github.com/gotgenes/pi-anthropic-auth/commit/2a38838edf9a50b064450f727368d4091c08e5d6))
+* reword oauth-transport JSDoc for direct-import delegate ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([2d6e7ec](https://github.com/gotgenes/pi-anthropic-auth/commit/2d6e7ecf8ea851233326fdb72119e8e3592ec926))
+* update architecture for direct-import transport delegate ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([d42b2a8](https://github.com/gotgenes/pi-anthropic-auth/commit/d42b2a805f25ecea2a4dc44bc6569768230ff73b))
+
+
+### Miscellaneous Chores
+
+* load local extension copy and suppress global npm package ([#28](https://github.com/gotgenes/pi-anthropic-auth/issues/28)) ([51e5bf9](https://github.com/gotgenes/pi-anthropic-auth/commit/51e5bf90deaeb293bdb485365485a1febe7e7c80))
+
 ## [0.6.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.5.1...v0.6.0) (2026-06-18)
 
 
