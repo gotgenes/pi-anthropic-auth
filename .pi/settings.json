@@ -1,3 +1,11 @@
 {
-  "packages": ["npm:@gotgenes/pi-github-tools"]
+  "packages": [
+    "../",
+    {
+      "source": "npm:@gotgenes/pi-anthropic-auth",
+      "extensions": [],
+      "skills": []
+    },
+    "npm:@gotgenes/pi-github-tools"
+  ]
 }
