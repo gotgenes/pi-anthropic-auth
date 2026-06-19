@@ -21,7 +21,7 @@ const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
  * The real built-in Anthropic `streamSimple` transport, typed for the
  * `anthropic-messages` API it serves.
  */
-export type AnthropicStreamSimpleDelegate = StreamFunction<
+type AnthropicStreamSimpleDelegate = StreamFunction<
   "anthropic-messages",
   SimpleStreamOptions
 >;
