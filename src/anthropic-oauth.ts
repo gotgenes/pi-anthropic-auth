@@ -24,6 +24,7 @@ export function mergeRefreshedCredentials(
 
 export const anthropicOAuthOverride = {
   name: "Anthropic (Claude Pro/Max)",
+  usesCallbackServer: true,
   login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
     return loginAnthropic(callbacks);
   },
