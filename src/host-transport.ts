@@ -6,6 +6,18 @@ import type {
 } from "@earendil-works/pi-ai";
 
 /**
+ * Pi's built-in Anthropic `streamSimple` transport, typed for the
+ * `anthropic-messages` API it serves.
+ *
+ * This is the delegate our `streamSimple` wrapper shapes around — declared
+ * here because `resolveBuiltinAnthropicStreamSimple` is what produces it.
+ */
+export type AnthropicStreamSimpleDelegate = StreamFunction<
+  "anthropic-messages",
+  SimpleStreamOptions
+>;
+
+/**
  * The concrete file the `@earendil-works/pi-ai` `./anthropic` subpath maps to
  * across every supported version (verified 0.79.1 through 0.79.8).
  *
@@ -43,9 +55,7 @@ const ANTHROPIC_PROVIDER_RELATIVE_PATH = "dist/providers/anthropic.js";
  *   does not export `streamSimpleAnthropic` (e.g. a future pi-ai layout
  *   change).
  */
-export async function resolveBuiltinAnthropicStreamSimple(): Promise<
-  StreamFunction<"anthropic-messages", SimpleStreamOptions>
-> {
+export async function resolveBuiltinAnthropicStreamSimple(): Promise<AnthropicStreamSimpleDelegate> {
   const rootUrl = import.meta.resolve("@earendil-works/pi-ai");
   const rootFile = fileURLToPath(rootUrl);
   // `<pkg>/dist/index.js` → `<pkg>/dist` → `<pkg>`.
@@ -65,5 +75,5 @@ export async function resolveBuiltinAnthropicStreamSimple(): Promise<
       `Resolved Anthropic provider module ${providerModuleUrl} does not export streamSimpleAnthropic.`,
     );
   }
-  return transport as StreamFunction<"anthropic-messages", SimpleStreamOptions>;
+  return transport as AnthropicStreamSimpleDelegate;
 }

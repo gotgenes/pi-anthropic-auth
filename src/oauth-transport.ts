@@ -4,8 +4,8 @@ import type {
   Context,
   Model,
   SimpleStreamOptions,
-  StreamFunction,
 } from "@earendil-works/pi-ai";
+import type { AnthropicStreamSimpleDelegate } from "./host-transport";
 import { shapeAnthropicOAuthPayload } from "./request-shaping";
 
 /**
@@ -16,15 +16,6 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
  * our shaping aligned with Pi's own OAuth detection.
  */
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
-
-/**
- * The real built-in Anthropic `streamSimple` transport, typed for the
- * `anthropic-messages` API it serves.
- */
-type AnthropicStreamSimpleDelegate = StreamFunction<
-  "anthropic-messages",
-  SimpleStreamOptions
->;
 
 /**
  * The transport-level `streamSimple` handler shape Pi's API registry uses.
