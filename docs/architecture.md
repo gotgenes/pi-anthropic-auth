@@ -46,8 +46,9 @@ flowchart TD
     G --> AN["Anthropic /v1/messages"]
 ```
 
-The wrapper delegates to Pi's built-in `streamSimpleAnthropic`, imported directly from `@earendil-works/pi-ai/anthropic` rather than read out of the API registry.
-Importing it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
+The wrapper delegates to Pi's built-in `streamSimpleAnthropic`, resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
+Resolving it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
+The resolver is needed because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath — a static subpath import resolves to `dist/index.js/anthropic` and fails. The resolver uses `import.meta.resolve("@earendil-works/pi-ai")` (jiti-aliased, works), derives the package directory, and dynamic-imports the concrete `dist/providers/anthropic.js` the subpath maps to.
 
 ## OAuth gating
 
@@ -86,7 +87,8 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 ## Related files
 
-- `src/index.ts` — imports `streamSimpleAnthropic` directly and registers the OAuth override plus `streamSimple` wrapper.
+- `src/index.ts` — resolves the built-in `streamSimpleAnthropic` at runtime and registers the OAuth override plus `streamSimple` wrapper.
+- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime, working around jiti's missing `./anthropic` subpath alias (Issue #28).
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.

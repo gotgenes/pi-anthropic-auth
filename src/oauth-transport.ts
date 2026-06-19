@@ -76,14 +76,15 @@ export function isAnthropicOAuthToken(
  * token, the payload passes through untouched, preserving Pi's normal
  * API-key and non-Anthropic transport behavior.
  *
- * @param delegate Pi's built-in Anthropic `streamSimple` transport, imported
- *   directly from `@earendil-works/pi-ai/anthropic`.  Importing it directly
- *   (rather than reading it out of the API registry) avoids the pi-ai 0.79.8
- *   lazy-registration clobber: the registry's `anthropic-messages` entry is a
- *   lazy stub whose first call re-registers the bare built-in via
- *   `registerApiProvider`, overwriting this wrapper.  Delegating to the
- *   imported transport means that re-register never fires through us, so our
- *   shaping stays in place for the lifetime of the session (Issue #28).
+ * @param delegate Pi's built-in Anthropic `streamSimple` transport, resolved
+ *   at runtime by `resolveBuiltinAnthropicStreamSimple` (see
+ *   `src/host-transport.ts`).  Resolving it directly (rather than reading it
+ *   out of the API registry) avoids the pi-ai 0.79.8 lazy-registration clobber:
+ *   the registry's `anthropic-messages` entry is a lazy stub whose first call
+ *   re-registers the bare built-in via `registerApiProvider`, overwriting this
+ *   wrapper.  Delegating to the resolved transport means that re-register
+ *   never fires through us, so our shaping stays in place for the lifetime of
+ *   the session (Issue #28).
  */
 export function createAnthropicOAuthStreamSimple(
   delegate: AnthropicStreamSimpleDelegate,
