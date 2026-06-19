@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { loginAnthropic } from "@earendil-works/pi-ai/oauth";
 import { onTestFinished, test } from "vitest";
 
-import { mergeRefreshedCredentials } from "#src/anthropic-oauth";
+import {
+  anthropicOAuthOverride,
+  mergeRefreshedCredentials,
+} from "#src/anthropic-oauth";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -36,6 +39,10 @@ function getJsonBody(init?: RequestInit): Record<string, string> {
 
   return JSON.parse(init.body) as Record<string, string>;
 }
+
+test("anthropicOAuthOverride sets usesCallbackServer to keep the built-in manual redirect-URL paste input (#27)", () => {
+  assert.equal(anthropicOAuthOverride.usesCallbackServer, true);
+});
 
 test("mergeRefreshedCredentials keeps the previous refresh token when the refresh response omits it", () => {
   const refreshed = mergeRefreshedCredentials(
