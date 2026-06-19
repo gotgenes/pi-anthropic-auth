@@ -4,6 +4,7 @@ import type {
   Context,
   Model,
   SimpleStreamOptions,
+  StreamFunction,
 } from "@earendil-works/pi-ai";
 import { shapeAnthropicOAuthPayload } from "./request-shaping";
 
@@ -15,6 +16,15 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
  * our shaping aligned with Pi's own OAuth detection.
  */
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
+
+/**
+ * The real built-in Anthropic `streamSimple` transport, typed for the
+ * `anthropic-messages` API it serves.
+ */
+export type AnthropicStreamSimpleDelegate = StreamFunction<
+  "anthropic-messages",
+  SimpleStreamOptions
+>;
 
 /**
  * The transport-level `streamSimple` handler shape Pi's API registry uses.
@@ -72,7 +82,7 @@ export function isAnthropicOAuthToken(
  *   wrapper, otherwise calls would recurse.
  */
 export function createAnthropicOAuthStreamSimple(
-  delegate: AnthropicStreamSimple,
+  delegate: AnthropicStreamSimpleDelegate,
 ): AnthropicStreamSimple {
   return (model, context, options) => {
     const callerOnPayload = options?.onPayload;
@@ -92,6 +102,13 @@ export function createAnthropicOAuthStreamSimple(
       return shapeAnthropicOAuthPayload(upstream);
     };
 
-    return delegate(model, context, { ...options, onPayload });
+    // The registry only invokes this transport for `anthropic-messages`
+    // models (its `wrapStreamSimple` validates `model.api` before delegating),
+    // so the wide `Model<Api>` is guaranteed to be `Model<"anthropic-messages">`
+    // at runtime — safe to narrow for the delegate call.
+    return delegate(model as Model<"anthropic-messages">, context, {
+      ...options,
+      onPayload,
+    });
   };
 }

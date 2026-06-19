@@ -1,15 +1,9 @@
-import { getApiProvider } from "@earendil-works/pi-ai";
+import { streamSimpleAnthropic } from "@earendil-works/pi-ai/anthropic";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { anthropicOAuthOverride } from "./anthropic-oauth";
 import { createAnthropicOAuthStreamSimple } from "./oauth-transport";
 
 export default function (pi: ExtensionAPI) {
-  // Capture Pi's built-in anthropic-messages transport BEFORE we override it,
-  // so our wrapper can delegate to it (delegating to the registered wrapper
-  // instead would recurse).  pi-ai registers its built-ins on import, so this
-  // is resolved by the time extensions load.
-  const builtinTransport = getApiProvider("anthropic-messages");
-
   // Re-register the built-in `anthropic` provider with:
   //   1. our OAuth login + refresh override (`oauth`), and
   //   2. a thin transport wrapper (`streamSimple`) that applies Claude Code
@@ -22,15 +16,17 @@ export default function (pi: ExtensionAPI) {
   // and failed with Anthropic "extra usage" 400s.  Registering `streamSimple`
   // routes through Pi's singleton API registry, so the same shaping now covers
   // the main loop, `completeSimple` compaction, and `agentLoop` background work.
+  //
+  // The delegate is imported directly from `@earendil-works/pi-ai/anthropic`
+  // rather than read out of the registry.  Starting with pi-ai 0.79.8 the
+  // registry holds a lazy stub that, on first call, runs `anthropic.ts`'s
+  // `register()` and overwrites this wrapper via `registerApiProvider`'s
+  // `Map.set`.  Importing the real transport means our wrapper never delegates
+  // to that stub, so the lazy re-register never fires and our shaping stays in
+  // place for the lifetime of the session (see Issue #28).
   pi.registerProvider("anthropic", {
     oauth: anthropicOAuthOverride,
-    ...(builtinTransport
-      ? {
-          api: "anthropic-messages",
-          streamSimple: createAnthropicOAuthStreamSimple(
-            builtinTransport.streamSimple,
-          ),
-        }
-      : {}),
+    api: "anthropic-messages",
+    streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
   });
 }
