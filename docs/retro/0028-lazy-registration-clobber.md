@@ -68,5 +68,50 @@ Live `pi -e src/index.ts` repro confirms the extension loads and the wrapper reg
 - Post-review polish: hoisted the duplicated `StreamFunction<"anthropic-messages", SimpleStreamOptions>` into a single exported `AnthropicStreamSimpleDelegate` type owned by `src/host-transport.ts` and imported by `src/oauth-transport.ts`.
 - Tracked but deferred: the hardcoded `dist/providers/anthropic.js` couples to pi-ai's internal layout; a future-robust resolver could read pi-ai's `package.json` `exports["./anthropic"]` instead, but both supported versions agree and the new happy-path test guards breakage.
 
+## Stage: Final Retrospective (2026-06-19T15:23:27Z)
+
+### Session summary
+
+Diagnosed the pi v0.79.7→0.79.8 regression, filed [#28] as the root-cause companion to [#26], planned and implemented the fix across TDD, runtime-resolution, ship, and close-out stages, and released v0.6.1.
+The arc had one significant rework loop (a fix that passed every automated gate but failed under the real pi loader) and one close-out formatting miss.
+
+### Observations
+
+#### What went well
+
+- The live `pi -e` repro plus a throwaway probe extension nailed the jiti root cause empirically (`import.meta.resolve("@earendil-works/pi-ai")` works, the `./anthropic` subpath does not) instead of guessing — turning an opaque `Cannot find module .../dist/index.js/anthropic` into a precise fix.
+- The pre-completion reviewer earned its keep twice: it caught the `pathToFileURL` correctness bug and a speculative export, both on judgment-heavy review a mechanical check would have missed.
+- Reading pi's own `package-manager.js` before writing `.pi/settings.json` (confirming `getPackageIdentity` ignores npm version and `dedupePackages` lets project scope win) meant the local-override settings worked first try.
+
+#### What caused friction (agent side)
+
+- `missing-context` (feedback-loop gap) — the first TDD pass shipped a static `import { streamSimpleAnthropic } from "@earendil-works/pi-ai/anthropic"` that passed `check`, `lint`, `test` (48/48), and `fallow` but failed at runtime under pi's `jiti` loader; the failure surfaced only when the operator restarted pi.
+  Impact: a full second implementation stage — new `src/host-transport.ts`, an `async` factory, a reworked regression test, and four more commits.
+  Root cause of the miss: vitest/esbuild honors `exports` subpaths, but pi's `jiti` loader resolves via an alias map that does not; no test or gate exercised the real loader, so loader-specific resolution was never verified before "done."
+- `other` (close-out formatting) — the `issue_close` comment for [#26] used literal `\n` escapes, which rendered as backslash-n instead of newlines.
+  Impact: a malformed public comment requiring a follow-up; minor, but user-caught.
+- `instruction-violation` (self-inflicted process) — when fixing that comment I posted a *new* comment via `gh issue comment` instead of editing the broken one; the operator corrected "we just need to *edit* the comment."
+  Impact: a duplicate comment left on [#26]; user-caught.
+  Fix for next time: `gh api repos/<owner>/<repo>/issues/<n>/comments/<id> -X PATCH -f body=...` to edit, and pass real newlines (not `\n`) to comment tools.
+
+#### What caused friction (user side)
+
+- The operator restarted pi to load the local extension copy (the right move), which is exactly what exposed the runtime jiti failure that the local gates had hidden — a reminder that the agent should have driven a live-loader smoke test proactively rather than relying on the operator's restart to surface it.
+
+### Diagnostic details
+
+- Feedback-loop gap: verification ran incrementally and well *within* each stage (`check`/`lint`/`test` after every change), but the entire first stage used only the test-runner loader; the real-loader check (`pi -e src/index.ts`) was absent until after the runtime failure.
+  This is the single highest-value lesson — for a Pi extension, green local gates do not imply the extension loads under `jiti`.
+- Escalation-delay: the jiti diagnosis was methodical (read `loader.js` → test `createRequire` → test `import.meta.resolve` → probe extension), each step progressing; no single-error loop exceeded the 5-call threshold.
+- Unused-tool: `web_search`/`librarian` could have described jiti alias behavior, but reading the installed `loader.js` plus an empirical probe was more authoritative; no real miss.
+- Model-performance: the session cycled models (`sonnet-4-6`, `opus-4-8`, with `deepseek-v4-flash`/`glm-5.2` transient selections); the two `pre-completion-reviewer` dispatches ran on the default and handled judgment-heavy review well, so no model/task mismatch is flagged.
+
+### Changes made
+
+1. `AGENTS.md` (Testing § Live Pi repro) — added a one-sentence rule: changes to import specifiers, module resolution, or extension registration must pass a live `pi -e` smoke test before done, because green `check`/`lint`/`test` can still fail under pi's `jiti` loader.
+2. Proposal P2 (issue-comment mechanics note) was declined; the lesson is recorded in the observations above only.
+
 [#18]: https://github.com/gotgenes/pi-anthropic-auth/issues/18
+[#26]: https://github.com/gotgenes/pi-anthropic-auth/issues/26
 [#27]: https://github.com/gotgenes/pi-anthropic-auth/pull/27
+[#28]: https://github.com/gotgenes/pi-anthropic-auth/issues/28

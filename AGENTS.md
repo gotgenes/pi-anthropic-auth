@@ -345,6 +345,8 @@ pi \
   -p "How many lines are in @AGENTS.md ?"
 ```
 
+Run this live repro before treating any change to import specifiers, module resolution, or extension registration as done: green `check`/`lint`/`test` can still fail under pi's `jiti` loader, which resolves module specifiers differently from vitest (Refs #28).
+
 Debug modes for live repros:
 
 ```bash
