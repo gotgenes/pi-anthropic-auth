@@ -41,7 +41,7 @@ The current implementation does the following:
 7. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
-The wrapper delegates to Pi's own `streamSimpleAnthropic` and only injects an `onPayload` shaping step.
+The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` shaping step.
 
 ## Principles
 
@@ -76,7 +76,7 @@ It uses one Pi extension seam:
 1. `pi.registerProvider("anthropic", { oauth, api: "anthropic-messages", streamSimple })`
 
 The `streamSimple` wrapper is the single shaping point.
-It delegates to Pi's built-in `streamSimpleAnthropic` (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
+It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
 The delegate is resolved at runtime rather than captured from the registry so pi-ai 0.79.8's lazy re-register cannot overwrite this wrapper (Issue #28).
 Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
@@ -415,7 +415,7 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 ### Registering `streamSimple`
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
-The wrapper stays thin — it delegates to Pi's own `streamSimpleAnthropic` (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
+The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the registry: pi-ai 0.79.8 registers a lazy `anthropic-messages` stub whose first call re-registers the bare built-in via `registerApiProvider`, which would overwrite this wrapper (Issue #28).
 Runtime resolution (rather than a static `@earendil-works/pi-ai/anthropic` import) is required because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath.
 
