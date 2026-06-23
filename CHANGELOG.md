@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.2...v0.6.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* resolve built-in Anthropic transport across pi-ai layout change ([#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33)) ([9fcdc28](https://github.com/gotgenes/pi-anthropic-auth/commit/9fcdc287137500df03b78feb93464aa60409ea61))
+
+
+### Documentation
+
+* describe dual-layout host-transport resolution ([#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33)) ([4217f35](https://github.com/gotgenes/pi-anthropic-auth/commit/4217f35d25baa85d2b40ad72db1b7f916457e8a2))
+* plan dual-layout host-transport resolution ([#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33)) ([d6e7a4e](https://github.com/gotgenes/pi-anthropic-auth/commit/d6e7a4e3942478c42968dd39fc698067811a75fa))
+* remove version-specific streamSimpleAnthropic from AGENTS.md ([#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33)) ([3bb330f](https://github.com/gotgenes/pi-anthropic-auth/commit/3bb330f16163dc75d5a014b5b44f4dbdc492c3ed))
+* **retro:** add planning stage notes for issue [#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33) ([2f93524](https://github.com/gotgenes/pi-anthropic-auth/commit/2f9352405f11556c77aa148a4a1c688ce08a4ba5))
+* **retro:** add retro notes for issue [#27](https://github.com/gotgenes/pi-anthropic-auth/issues/27) ([abe718f](https://github.com/gotgenes/pi-anthropic-auth/commit/abe718f99a304b63caf2887f0f23f7345ae4450b))
+* **retro:** add TDD stage notes for issue [#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33) ([aac077e](https://github.com/gotgenes/pi-anthropic-auth/commit/aac077ef3c5bc178b7319cb23e4bb6fdd92b5575))
+
 ## [0.6.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.1...v0.6.2) (2026-06-19)
 
 
