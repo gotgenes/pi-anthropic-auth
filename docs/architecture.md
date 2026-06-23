@@ -10,7 +10,7 @@ The extension re-registers Pi's built-in `anthropic` provider with two things:
 2. a thin `streamSimple` transport wrapper that shapes outgoing OAuth requests.
 
 The wrapper is the single shaping point.
-It delegates to Pi's own `streamSimpleAnthropic` and only injects an `onPayload` step, so it does not reimplement Pi's Anthropic transport.
+It delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` step, so it does not reimplement Pi's Anthropic transport.
 
 ## The problem: a hook-coverage gap
 
@@ -41,14 +41,15 @@ flowchart TD
     W --> D{"sk-ant-oat token?"}
     D -->|"yes"| S["Inject onPayload shaping"]
     D -->|"no"| P["Pass through unchanged"]
-    S --> G["streamSimpleAnthropic delegate"]
+    S --> G["built-in Anthropic streamSimple delegate"]
     P --> G
     G --> AN["Anthropic /v1/messages"]
 ```
 
-The wrapper delegates to Pi's built-in `streamSimpleAnthropic`, resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
+The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport (`streamSimpleAnthropic` in pi-ai ≤ 0.79.x; `streamSimple` in the upcoming api/* split), resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
 Resolving it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
-The resolver is needed because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath — a static subpath import resolves to `dist/index.js/anthropic` and fails. The resolver uses `import.meta.resolve("@earendil-works/pi-ai")` (jiti-aliased, works), derives the package directory, and dynamic-imports the concrete `dist/providers/anthropic.js` the subpath maps to.
+The resolver is needed because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath — a static subpath import resolves to `dist/index.js/anthropic` and fails.
+The resolver uses `import.meta.resolve("@earendil-works/pi-ai")` (jiti-aliased, works), derives the package directory, then tries an ordered candidate list — new layout (`dist/api/anthropic-messages.js` → `streamSimple`) first, legacy layout (`dist/providers/anthropic.js` → `streamSimpleAnthropic`) second — returning the first export that is a function (Issue #33).
 
 ## OAuth gating
 
@@ -87,8 +88,8 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 ## Related files
 
-- `src/index.ts` — resolves the built-in `streamSimpleAnthropic` at runtime and registers the OAuth override plus `streamSimple` wrapper.
-- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime, working around jiti's missing `./anthropic` subpath alias (Issue #28).
+- `src/index.ts` — resolves the built-in Anthropic transport at runtime and registers the OAuth override plus `streamSimple` wrapper.
+- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via dual-layout candidate resolution (Issue #28, Issue #33), working around jiti's missing `./anthropic` subpath alias.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.

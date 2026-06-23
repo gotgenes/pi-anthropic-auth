@@ -35,7 +35,7 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
 - Assistant message ordering must be normalized when Pi serializes `[tool_use..., text]` for Anthropic.
 - Pi's default system prompt can act as an Anthropic fingerprint and trigger disguised rejection errors.
-- Shaping runs in a thin `streamSimple` transport wrapper (delegating to Pi's `streamSimpleAnthropic`), so it applies to every OAuth call path — main loop, `completeSimple` compaction, and `agentLoop` background agents — gated on the `sk-ant-oat` token.
+- Shaping runs in a thin `streamSimple` transport wrapper (delegating to Pi's built-in Anthropic transport, resolved from the installed pi-ai layout), so it applies to every OAuth call path — main loop, `completeSimple` compaction, and `agentLoop` background agents — gated on the `sk-ant-oat` token.
 
 ## Fast Debugging Workflow
 
@@ -82,7 +82,7 @@ This is a debug-only technique; tests still build fixtures inline (see Testing G
 
 ### Shape in the `streamSimple` transport wrapper
 
-All request shaping runs in the transport wrapper (`src/oauth-transport.ts`), which delegates to Pi's `streamSimpleAnthropic` and injects an `onPayload` step:
+All request shaping runs in the transport wrapper (`src/oauth-transport.ts`), which delegates to Pi's built-in Anthropic `streamSimple` transport (resolved by `src/host-transport.ts`) and injects an `onPayload` step:
 
 - billing-header injection
 - `system[]` block ordering
@@ -106,7 +106,7 @@ This covers every OAuth call path, including compaction and background agents.
 
 - wholesale OpenCode debranding logic
 - `mcp_` tool prefix transport hacks
-- reimplementing Pi's Anthropic transport (the wrapper delegates to `streamSimpleAnthropic` instead)
+- reimplementing Pi's Anthropic transport (the wrapper delegates to the built-in transport resolved by `src/host-transport.ts`)
 
 ## Useful References
 
