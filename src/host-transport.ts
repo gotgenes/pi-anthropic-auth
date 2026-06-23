@@ -18,20 +18,55 @@ export type AnthropicStreamSimpleDelegate = StreamFunction<
 >;
 
 /**
- * The concrete file the `@earendil-works/pi-ai` `./anthropic` subpath maps to
- * across every supported version (verified 0.79.1 through 0.79.8).
+ * A candidate location and export name to try when resolving Pi's built-in
+ * Anthropic transport from the installed `@earendil-works/pi-ai` package.
  *
- * Both the exports-map target and the on-disk layout are stable, so deriving
- * the package root from the resolved root entry and joining this relative path
- * lands on the real provider module regardless of which pi-ai install is
- * active.
+ * The resolver tries candidates in order and returns the first that yields
+ * a function — allowing the extension to span both the legacy layout
+ * (`dist/providers/anthropic.js` / `streamSimpleAnthropic`, pi-ai ≤ 0.79.x)
+ * and the new API-split layout (`dist/api/anthropic-messages.js` /
+ * `streamSimple`) without requiring a peer-dependency floor bump.
  */
-const ANTHROPIC_PROVIDER_RELATIVE_PATH = "dist/providers/anthropic.js";
+export interface AnthropicTransportCandidate {
+  readonly relativePath: string;
+  readonly exportName: string;
+}
+
+/**
+ * A function that dynamically imports a module by URL and returns its
+ * namespace as a plain record.
+ *
+ * The injectable seam lets unit tests substitute a fake importer so the
+ * new-layout and legacy fallback branches can be exercised without installing
+ * the unreleased pi-ai version.
+ */
+export type ModuleImporter = (url: string) => Promise<Record<string, unknown>>;
+
+/**
+ * Ordered list of candidates to try when resolving Pi's built-in Anthropic
+ * streaming transport.
+ *
+ * New layout first (pi-ai api/* split, `streamSimple`), legacy second
+ * (pi-ai ≤ 0.79.x, `streamSimpleAnthropic`).  The first candidate whose
+ * module loads **and** exports the named function wins.
+ */
+const ANTHROPIC_TRANSPORT_CANDIDATES: readonly AnthropicTransportCandidate[] = [
+  // New layout (pi-ai api/* split): dist/api/anthropic-messages.js exports streamSimple.
+  {
+    relativePath: "dist/api/anthropic-messages.js",
+    exportName: "streamSimple",
+  },
+  // Legacy layout (pi-ai <= 0.79.x): dist/providers/anthropic.js exports streamSimpleAnthropic.
+  {
+    relativePath: "dist/providers/anthropic.js",
+    exportName: "streamSimpleAnthropic",
+  },
+];
 
 /**
  * Resolves Pi's built-in Anthropic `streamSimple` transport at runtime.
  *
- * A static `import { streamSimpleAnthropic } from "@earendil-works/pi-ai/anthropic"`
+ * A static `import { streamSimple } from "@earendil-works/pi-ai/anthropic"`
  * does **not** work under Pi's extension loader: pi loads extensions with
  * `jiti`, whose alias map covers `@earendil-works/pi-ai` (→ the host's
  * `dist/index.js`) and `@earendil-works/pi-ai/oauth` but **not** the
@@ -40,40 +75,70 @@ const ANTHROPIC_PROVIDER_RELATIVE_PATH = "dist/providers/anthropic.js";
  * `import.meta.resolve("@earendil-works/pi-ai/anthropic")` fails the same way.
  *
  * `import.meta.resolve("@earendil-works/pi-ai")` *does* resolve (jiti's alias
- * handles the bare specifier), so this helper resolves the root entry, derives
- * the package directory, and dynamically imports the concrete provider file —
- * the same file the `exports` `./anthropic` subpath points at.  That yields
- * the real `streamSimpleAnthropic`, not pi-ai 0.79.8's lazy registry stub
- * (see Issue #28).
+ * handles the bare specifier), so this function resolves the root entry,
+ * derives the package directory, and delegates to `selectAnthropicStreamSimple`
+ * with the real `import()` to try both the new-layout path (`dist/api/
+ * anthropic-messages.js`, export `streamSimple`) and the legacy path
+ * (`dist/providers/anthropic.js`, export `streamSimpleAnthropic`).
  *
- * Resolving the delegate this way (rather than capturing it from the API
- * registry) is what keeps our `streamSimple` wrapper from being clobbered by
- * the lazy stub's first-call `register()`.
+ * Resolving the delegate directly (rather than capturing it from the API
+ * registry) also prevents pi-ai 0.79.8's lazy-registration clobber: the
+ * registry's `anthropic-messages` entry is a stub whose first call
+ * re-registers the bare built-in via `registerApiProvider`, overwriting our
+ * wrapper (Issue #28).
  *
- * @returns the built-in `streamSimpleAnthropic` transport.
- * @throws when the root package cannot be resolved or the provider module
- *   does not export `streamSimpleAnthropic` (e.g. a future pi-ai layout
- *   change).
+ * @returns a Promise for the built-in Anthropic streaming transport.
+ * @throws when no candidate path exports a function matching its `exportName`.
  */
-export async function resolveBuiltinAnthropicStreamSimple(): Promise<AnthropicStreamSimpleDelegate> {
+export function resolveBuiltinAnthropicStreamSimple(): Promise<AnthropicStreamSimpleDelegate> {
   const rootUrl = import.meta.resolve("@earendil-works/pi-ai");
-  const rootFile = fileURLToPath(rootUrl);
   // `<pkg>/dist/index.js` → `<pkg>/dist` → `<pkg>`.
-  const packageDir = dirname(dirname(rootFile));
-  // `pathToFileURL` (not `new URL(path, "file:///")`) percent-encodes path
-  // components, so an install path containing `#` or `?` resolves correctly.
-  const providerModuleUrl = pathToFileURL(
-    join(packageDir, ANTHROPIC_PROVIDER_RELATIVE_PATH),
-  ).href;
+  const packageDir = dirname(dirname(fileURLToPath(rootUrl)));
+  return selectAnthropicStreamSimple(
+    packageDir,
+    ANTHROPIC_TRANSPORT_CANDIDATES,
+    (url) => import(url) as Promise<Record<string, unknown>>,
+  );
+}
 
-  const module = (await import(providerModuleUrl)) as {
-    streamSimpleAnthropic?: unknown;
-  };
-  const transport = module.streamSimpleAnthropic;
-  if (typeof transport !== "function") {
-    throw new Error(
-      `Resolved Anthropic provider module ${providerModuleUrl} does not export streamSimpleAnthropic.`,
-    );
+/**
+ * Iterates `candidates` in order, importing each from `packageDir` via
+ * `importModule`, and returns the first export that is a function.
+ *
+ * When a module import rejects (e.g. absent path on the current layout) or the
+ * named export is not a function, that candidate is recorded in the error
+ * accumulator and the next is tried.  Throws an aggregated `Error` naming
+ * every attempted path and reason when no candidate succeeds.
+ *
+ * @param packageDir - absolute path to the root of the installed pi-ai package.
+ * @param candidates - ordered list of `{ relativePath, exportName }` to try.
+ * @param importModule - injectable module loader; production callers pass
+ *   `(url) => import(url)`, tests pass a fake.
+ */
+export async function selectAnthropicStreamSimple(
+  packageDir: string,
+  candidates: readonly AnthropicTransportCandidate[],
+  importModule: ModuleImporter,
+): Promise<AnthropicStreamSimpleDelegate> {
+  const attempts: string[] = [];
+  for (const { relativePath, exportName } of candidates) {
+    // `pathToFileURL` (not `new URL(path, "file:///")`) percent-encodes path
+    // components so an install path containing `#` or `?` resolves correctly.
+    const moduleUrl = pathToFileURL(join(packageDir, relativePath)).href;
+    let mod: Record<string, unknown>;
+    try {
+      mod = await importModule(moduleUrl);
+    } catch {
+      attempts.push(`${relativePath} (import failed)`);
+      continue;
+    }
+    const transport = mod[exportName];
+    if (typeof transport === "function") {
+      return transport as AnthropicStreamSimpleDelegate;
+    }
+    attempts.push(`${relativePath} (no ${exportName} export)`);
   }
-  return transport as AnthropicStreamSimpleDelegate;
+  throw new Error(
+    `Could not resolve the built-in Anthropic streamSimple transport from @earendil-works/pi-ai. Tried: ${attempts.join("; ")}.`,
+  );
 }
