@@ -41,6 +41,7 @@ No `src/` or `test/` files changed; the near-term bare-root `compat` import swit
 - Near-term decision unchanged: bare-root `compat` import to fix Issue [#31] across loader modes, deferred to a follow-up issue with a compat-cliff TODO.
 - Pre-completion reviewer (run against the first framing): WARN, no FAILs, deterministic checks PASS. Its two WARNs (AGENTS.md "Related Files" not listing the new docs; architecture.md's "(jiti-aliased, works)" annotation) remain deferred to the follow-up code issue.
 - Commits were reset and rewritten to carry the reframed framing rather than the original "get the transport" framing.
+- Searched `earendil-works/pi` for prior art: the exact seam ask is unfiled. Closest are the withdrawn `pi#4980` (compaction-bypass slice, never resubmitted — our ask supersedes it) and the landed `pi#3262` (export `AssistantMessageEventStream` for `streamSimple` wrappers, same Claude Pro/Max domain — precedent the use case is accepted). Both docs now cite these. Adjacent asks `pi#3987`/`pi#5061` (fetch hook) and `pi#4038` (post-`onPayload` hook) were closed without landing, two labeled `possibly-openclaw-clanker` — reinforcing that the operator must author the upstream issue in a human voice.
 
 [#31]: https://github.com/gotgenes/pi-anthropic-auth/issues/31
 [#32]: https://github.com/gotgenes/pi-anthropic-auth/issues/32
