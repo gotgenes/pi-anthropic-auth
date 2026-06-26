@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.3...v0.6.4) (2026-06-26)
+
+
+### Documentation
+
+* add upstream brief for a provider-bound payload transform ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([98cead6](https://github.com/gotgenes/pi-anthropic-auth/commit/98cead67b2db8e8c389c972a4b0f4255dd395294))
+* cite upstream prior art (supersedes pi[#4980](https://github.com/gotgenes/pi-anthropic-auth/issues/4980), precedent pi[#3262](https://github.com/gotgenes/pi-anthropic-auth/issues/3262)) ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([bd53b09](https://github.com/gotgenes/pi-anthropic-auth/commit/bd53b09960956b627e2368977cb6f8e0106676df))
+* cross-reference the transport seam decision record from architecture ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([854fecd](https://github.com/gotgenes/pi-anthropic-auth/commit/854fecdb5255eb459df05ac03fd01e7e7804eebb))
+* link the decision record from the upstream brief ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([687a766](https://github.com/gotgenes/pi-anthropic-auth/commit/687a7663ed7e29347476e026a1c31e17b643ba45))
+* plan transport seam gap doc + upstream brief ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([f53e68b](https://github.com/gotgenes/pi-anthropic-auth/commit/f53e68b601552d72e237ca9952d04de3700c16ad))
+* record the OAuth payload-shaping seam gap and near-term direction ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([3c92752](https://github.com/gotgenes/pi-anthropic-auth/commit/3c92752b438d115f2e3aa1505ce1e69d20a0fba0))
+* record upstream filing as pi[#6089](https://github.com/gotgenes/pi-anthropic-auth/issues/6089) ([#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35)) ([eda6eb0](https://github.com/gotgenes/pi-anthropic-auth/commit/eda6eb01ae2bab17efa95dd734ab740dc5d7f769))
+* **retro:** add build stage notes for issue [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) ([67b451f](https://github.com/gotgenes/pi-anthropic-auth/commit/67b451f3fc1e63d0a80043a62063ca8508da5a4b))
+* **retro:** add planning stage notes for issue [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) ([f71e6b6](https://github.com/gotgenes/pi-anthropic-auth/commit/f71e6b631c97303ead5b6772a3e8c44ad15b33c5))
+* **retro:** add retro notes for issue [#33](https://github.com/gotgenes/pi-anthropic-auth/issues/33) ([1b9855f](https://github.com/gotgenes/pi-anthropic-auth/commit/1b9855f993a778e580ed9f03376c2847b9f1c03e))
+* **retro:** note upstream prior-art search for issue [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) ([34e115d](https://github.com/gotgenes/pi-anthropic-auth/commit/34e115d0bdc11bc6defa724023911e936bbe81f4))
+
 ## [0.6.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.2...v0.6.3) (2026-06-23)
 
 
