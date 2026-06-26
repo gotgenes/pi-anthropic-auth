@@ -3,7 +3,7 @@
 This is source material for an upstream pi issue, not a finished issue body.
 It is organized so the operator can decide which ask to lead with and write the issue in their own voice; the pi project rejects AI-composed issues, so nothing here is meant to be pasted verbatim.
 
-The full internal reasoning, the handle inventory, and the rejected near-term alternatives live in the maintainer-facing decision record at `docs/builtin-transport-seam-gap.md`; this brief restates only the evidence an upstream reader needs and the candidate asks.
+The full internal reasoning, the handle inventory, and the rejected near-term alternatives live in the maintainer-facing decision record at [`docs/builtin-transport-seam-gap.md`](./builtin-transport-seam-gap.md); this brief restates only the evidence an upstream reader needs and the candidate asks.
 
 All facts were verified against the pi workspace at `~/development/pi/pi` at `@earendil-works/pi-ai` 0.80.2.
 
