@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.4...v0.6.5) (2026-06-26)
+
+
+### Bug Fixes
+
+* resolve built-in Anthropic transport via bare-root import ([#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31)) ([ee3013a](https://github.com/gotgenes/pi-anthropic-auth/commit/ee3013ab44ace44a129f6c4a30de597332c77d65))
+
+
+### Documentation
+
+* clarify bare-root import keeps the &gt;=0.79.1 peer floor ([#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31)) ([f061fa6](https://github.com/gotgenes/pi-anthropic-auth/commit/f061fa615b6032c4772e3cf7df51d511642ce5e0))
+* describe bare-root host-transport resolution ([#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31)) ([4dcdbba](https://github.com/gotgenes/pi-anthropic-auth/commit/4dcdbba04d11957e2eda171a3e5a3eb79cad2877))
+* plan bare-root host-transport import fix ([#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31)) ([f07d96e](https://github.com/gotgenes/pi-anthropic-auth/commit/f07d96e5b32685952f0d118f3dfb6113f0b4a346))
+* **retro:** add planning stage notes for issue [#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31) ([be88420](https://github.com/gotgenes/pi-anthropic-auth/commit/be88420358dd048c5da0f538d23d3bcbc29d21e6))
+* **retro:** add retro notes for issue [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) ([17f9e3f](https://github.com/gotgenes/pi-anthropic-auth/commit/17f9e3f0970814016f2e88fc271d1d5ea96d4a86))
+* **retro:** add TDD stage notes for issue [#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31) ([6fb64cc](https://github.com/gotgenes/pi-anthropic-auth/commit/6fb64cc3d61e1a77b4f61986c047dae8c4c0e2f2))
+
 ## [0.6.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.3...v0.6.4) (2026-06-26)
 
 
