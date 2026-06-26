@@ -62,6 +62,9 @@ Do not start from a broken baseline.
 
 ## Execute the plan steps
 
+When a step's deliverable is the reasoning itself — a decision record, design analysis, or upstream-request brief, not mechanical edits (path fix, cross-reference, table update) — investigate first, then present the findings and proposed framing for the user's alignment **before** writing and committing.
+A committed framing the user then redirects forces a full rewrite (Refs #35).
+
 For **each** numbered step in the plan's "TDD Order" (or equivalent execution section), in order:
 
 1. **Implement** the change the step describes.
