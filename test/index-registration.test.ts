@@ -19,6 +19,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { Mock } from "vitest";
 import { beforeEach, describe, onTestFinished, test, vi } from "vitest";
+import type { StatusCommandContext } from "#src/diagnostics";
 
 const OAUTH_TOKEN = "sk-ant-oat01-example-access-token";
 
@@ -90,14 +91,26 @@ function lazyStubStreamSimple(
   return streamSimpleAnthropicMock(model, context, options);
 }
 
+type CapturedCommand = {
+  description?: string;
+  handler: (args: string, ctx: StatusCommandContext) => Promise<void>;
+};
+
 /**
  * Mirrors `ModelRegistry.applyProviderConfig`'s `streamSimple` branch: when an
  * extension registers a `streamSimple`, both `stream` and `streamSimple` are
  * routed through it via `registerApiProvider` with a `provider:<name>` source
  * id.
+ *
+ * Also captures `registerCommand` calls so tests can assert on and invoke
+ * registered commands without needing the full Pi runtime.
  */
-function createFakePi(): ExtensionAPI {
-  return {
+function createFakePi(): {
+  pi: ExtensionAPI;
+  commands: Map<string, CapturedCommand>;
+} {
+  const commands = new Map<string, CapturedCommand>();
+  const pi: ExtensionAPI = {
     registerProvider(name: string, config: ProviderConfig): void {
       if (config.streamSimple) {
         const streamSimple = config.streamSimple;
@@ -111,7 +124,14 @@ function createFakePi(): ExtensionAPI {
         );
       }
     },
+    registerCommand(
+      name: string,
+      options: { description?: string; handler: CapturedCommand["handler"] },
+    ): void {
+      commands.set(name, options);
+    },
   } as unknown as ExtensionAPI;
+  return { pi, commands };
 }
 
 function samplePayload() {
@@ -174,7 +194,8 @@ describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber 
     });
 
     const { default: registerExtension } = await import("#src/index");
-    await registerExtension(createFakePi());
+    const { pi } = createFakePi();
+    await registerExtension(pi);
 
     // Simulate two Anthropic OAuth calls (e.g. compaction via completeSimple,
     // which issues requests with no caller-provided onPayload).
@@ -199,5 +220,63 @@ describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber 
       true,
       "second OAuth call must still be shaped — the lazy re-register must not displace our wrapper",
     );
+  });
+});
+
+describe("index registration: diagnostics command", () => {
+  beforeEach(() => {
+    clearApiProviders();
+    delegateCalls.length = 0;
+    streamSimpleAnthropicMock.mockClear();
+    registerApiProvider({
+      api: "anthropic-messages",
+      stream: lazyStubStreamSimple,
+      streamSimple: lazyStubStreamSimple,
+    });
+  });
+
+  test("registers the anthropic-auth:status command", async () => {
+    onTestFinished(() => {
+      clearApiProviders();
+      registerBuiltInApiProviders();
+    });
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, commands } = createFakePi();
+    await registerExtension(pi);
+
+    assert.ok(
+      commands.has("anthropic-auth:status"),
+      "anthropic-auth:status command must be registered",
+    );
+  });
+
+  test("anthropic-auth:status handler report includes version, module path, and transport marker", async () => {
+    onTestFinished(() => {
+      clearApiProviders();
+      registerBuiltInApiProviders();
+    });
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, commands } = createFakePi();
+    await registerExtension(pi);
+
+    const command = commands.get("anthropic-auth:status");
+    assert.ok(command, "command must be registered before invoking handler");
+
+    await command.handler("", {
+      hasUI: false,
+      ui: { notify: vi.fn() },
+    });
+
+    assert.equal(consoleSpy.mock.calls.length, 1);
+    const [report] = consoleSpy.mock.calls[0];
+    // Version from package.json (semver pattern)
+    assert.match(report, /\d+\.\d+\.\d+/);
+    // Filesystem path to src/index.ts (POSIX or Windows separator)
+    assert.match(report, /src[/\\]index\.ts/);
+    // Transport resolved marker
+    assert.match(report, /resolved/i);
   });
 });

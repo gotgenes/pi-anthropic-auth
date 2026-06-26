@@ -1,5 +1,10 @@
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { anthropicOAuthOverride } from "./anthropic-oauth";
+import {
+  createStatusCommandHandler,
+  type ExtensionDiagnostics,
+} from "./diagnostics";
 import { resolveBuiltinAnthropicStreamSimple } from "./host-transport";
 import { createAnthropicOAuthStreamSimple } from "./oauth-transport";
 
@@ -30,11 +35,29 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // dynamic import; Pi's `ExtensionFactory` permits a `Promise<void>` return,
   // and registration is deferred until the delegate is in hand so no Anthropic
   // call can resolve before our wrapper is registered.
+  const pkg = (await import("../package.json", { with: { type: "json" } })) as {
+    default: { version: string };
+  };
   const streamSimpleAnthropic = await resolveBuiltinAnthropicStreamSimple();
+
+  const diagnostics: ExtensionDiagnostics = {
+    version: pkg.default.version,
+    modulePath: fileURLToPath(import.meta.url),
+    transportResolved: true,
+  };
 
   pi.registerProvider("anthropic", {
     oauth: anthropicOAuthOverride,
     api: "anthropic-messages",
     streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
+  });
+
+  // The /anthropic-auth:status command surfaces the loaded version, module
+  // path, and transport resolution result so users can confirm the extension
+  // is actually loaded and from which install location.
+  pi.registerCommand("anthropic-auth:status", {
+    description:
+      "Show pi-anthropic-auth diagnostics: version, loaded module path, and transport status.",
+    handler: createStatusCommandHandler(diagnostics),
   });
 }
