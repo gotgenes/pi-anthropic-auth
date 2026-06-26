@@ -25,3 +25,20 @@ Wrote `docs/plans/0031-bare-root-host-transport-import.md` and committed it.
 - Key risk flagged: vitest resolves the bare-root import only against installed 0.79.1, never the host `compat` alias or Bun `virtualModules` path, so the green suite does not prove the fix — the live `pi -e` repro is the real validation (per the AGENTS.md import-resolution rule).
 - Release: ship independently (not in any roadmap batch). Not breaking — `fix:`.
 - The `compat`-removal cliff remains tracked in Issue #35; this plan documents it as a known limitation rather than fixing it.
+
+## Stage: Implementation — TDD (2026-06-26T17:25:48Z)
+
+### Session summary
+
+Executed the 2-step plan: rewrote `src/host-transport.ts` to use a bare-root `await import("@earendil-works/pi-ai")` + the pure `pickAnthropicStreamSimple` helper (removing the dual-layout candidate machinery), rewrote `test/host-transport.test.ts` accordingly, then updated `docs/architecture.md` and `AGENTS.md`.
+Both steps landed as planned (`fix:` then `docs:`).
+Test count went 55 → 53 (removed 5 `selectAnthropicStreamSimple` candidate tests, added 3 `pickAnthropicStreamSimple` tests; the integration test stayed).
+
+### Observations
+
+- No deviations from the plan. The `src/index.ts` call site needed no change (resolver signature preserved), as predicted.
+- One transient lint failure during Step 1: biome wanted the `{ streamSimpleAnthropic: "not a function" }` object literal reflowed onto multiple lines. Fixed with `biome check --write` before committing — no logic impact.
+- Live `pi -e` repro (the real validation vitest can't provide) passed under the jiti loader: extension loaded via the bare-root import → host `compat` alias → `streamSimpleAnthropic`; the `before-provider-request` debug line showed `systemBlockCount` 2→3 (billing header injected), the `Read` tool fired, and the model returned the correct line count. This confirms the bare-root import resolves correctly through Pi's loader indirection.
+- Post-checks all green: `pnpm test` (53), `pnpm run check`, `pnpm run lint`, `pnpm fallow:dead-code` (removed exports left no orphans), no `pnpm-lock.yaml` changes.
+- Module-Level Changes matched the actual diff exactly (4 files; `.pi/skills/anthropic/SKILL.md` correctly untouched). Not a numbered roadmap step, so no architecture `✅` to flip.
+- Pre-completion reviewer: **PASS** — ready for `/ship-issue`. No WARN findings.
