@@ -90,6 +90,7 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 - `src/index.ts` — resolves the built-in Anthropic transport at runtime and registers the OAuth override plus `streamSimple` wrapper.
 - `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via dual-layout candidate resolution (Issue #28, Issue #33), working around jiti's missing `./anthropic` subpath alias.
+  See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
