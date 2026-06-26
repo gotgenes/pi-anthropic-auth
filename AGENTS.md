@@ -91,13 +91,14 @@ Important upstream behavior confirmed from `pi-mono`:
 
 Current source layout:
 
-1. `src/index.ts`: extension registration (OAuth override + transport wrapper)
+1. `src/index.ts`: extension registration (OAuth override + transport wrapper + `/anthropic-auth:status` command)
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
 3. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31)
 4. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
 5. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 6. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
 7. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
+8. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, and handler factory for the `/anthropic-auth:status` command
 
 ### Project Skills
 

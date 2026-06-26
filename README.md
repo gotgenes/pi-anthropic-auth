@@ -39,6 +39,40 @@ pi -e npm:@gotgenes/pi-anthropic-auth
 2. Select a Claude Pro/Max model and start chatting. The extension handles compatibility transparently.
 3. API-key behavior is unaffected; the extension's changes apply only to OAuth sessions.
 
+## Troubleshooting
+
+### Verify the extension is loaded
+
+Run `/anthropic-auth:status` in Pi to print a diagnostics report:
+
+```text
+pi-anthropic-auth diagnostics
+  version: 0.6.5
+  module:  /root/.pi/agent/.../src/index.ts
+  built-in Anthropic transport: resolved
+```
+
+The `module` line shows which copy of the extension loaded.
+If the command is not found, the extension is not loaded at all.
+
+### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
+
+Pi's auth resolver gives stored credentials priority over environment variables.
+If you have previously run `/login anthropic` and credentials are stored in `~/.pi/agent/auth.json`, Pi uses the stored OAuth token on every request — even when `ANTHROPIC_API_KEY` is also set.
+
+To use the API key instead, run `/logout anthropic` inside Pi to remove the stored credentials, or delete `auth.json` before starting the session.
+
+### Docker: extension missing after volume mount
+
+If you install the extension at image build time with `RUN pi install npm:@gotgenes/pi-anthropic-auth` and then mount a persistent volume over `~/.pi/agent` at runtime, Docker may mask the build-time install.
+Docker seeds a named volume with the image directory only on its first creation.
+If the volume already exists from a previous image, the extension directory inside it may be empty or out of date.
+
+To fix this, either:
+
+- Remove the volume and let Docker re-seed it: `docker volume rm <volume-name>`.
+- Or install the extension at container startup rather than at image build time, after the volume is mounted.
+
 ## Development
 
 ### Requirements

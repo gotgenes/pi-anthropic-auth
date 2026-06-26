@@ -39,6 +39,12 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 
 ## Fast Debugging Workflow
 
+### 0. Confirm the extension is loaded
+
+Before anything else, run `/anthropic-auth:status` in Pi.
+The command prints the loaded version, the module path (which install it loaded from), and whether the built-in Anthropic transport resolved.
+If the command is not found, the extension is not loaded — check for a Docker volume or `pi install` issue before debugging request shaping.
+
 ### 1. Reproduce with the real `pi` CLI
 
 Use the actual CLI rather than only unit tests:
@@ -114,6 +120,7 @@ This covers every OAuth call path, including compaction and background agents.
 - `docs/plans/minimal-anthropic-override.md`
 - `docs/plans/gap-analysis-and-next-steps.md`
 - `src/index.ts`
+- `src/diagnostics.ts`
 - `src/oauth-transport.ts`
 - `src/request-shaping.ts`
 - `src/system-prompt-shaping.ts`

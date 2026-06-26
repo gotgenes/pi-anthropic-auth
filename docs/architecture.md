@@ -89,10 +89,11 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 ## Related files
 
-- `src/index.ts` — resolves the built-in Anthropic transport at runtime and registers the OAuth override plus `streamSimple` wrapper.
+- `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the OAuth override, `streamSimple` wrapper, and the `/anthropic-auth:status` diagnostics command.
 - `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
 - `src/anthropic-oauth.ts` — OAuth login override and refresh fallback.
+- `src/diagnostics.ts` — `ExtensionDiagnostics` value object, `formatDiagnosticsReport`, and `createStatusCommandHandler`; surfaced by the `/anthropic-auth:status` command registered in `src/index.ts`.
