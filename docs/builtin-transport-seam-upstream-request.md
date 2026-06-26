@@ -58,6 +58,19 @@ The bare root resolves to `dist/compat.js`, whose header marks it for deletion w
 The intersection of the two yes columns is empty: nothing is both reachable in every loader mode and durable.
 A payload-transform seam sidesteps this table entirely, because the extension never obtains the transport at all.
 
+## Prior art and how this ask differs
+
+A search of `earendil-works/pi` found no existing request for this seam, but two adjacent issues position it.
+
+1. [pi#4980] ("Compaction requests bypass `before_provider_request`") is the closest precedent and the one this ask supersedes.
+   It raised only the compaction slice and was withdrawn by its author pending internal review, never resubmitted.
+   It does not cover third-party `agentLoop` agents (the harder half of the gap) or the transport-acquisition problem, so a fix scoped to it would still leave foreign background-agent traffic unshaped.
+2. [pi#3262] ("Export `AssistantMessageEventStream` for extensions that wrap `streamSimple`") came from the same Claude Pro/Max wrapping domain and was accepted and landed.
+   It is evidence the maintainer supports the `streamSimple`-wrapping use case; it solved the return-type export but not the all-paths transform this ask is about.
+
+Adjacent extension-point requests for a wire-layer `fetch` hook ([pi#3987], [pi#5061]) and a post-`onPayload` hook ([pi#4038]) were closed without landing, two flagged by the project as suspected machine-generated.
+That is the strongest reason to write this issue in a human voice, grounded in the concrete code references above.
+
 ## Candidate directions
 
 Ranked by how completely each serves the actual need (mutate every outgoing payload for one provider), not pre-selected — the operator chooses which to lead with.
@@ -81,3 +94,9 @@ These are questions the operator may want pi maintainers to answer, framed as ge
 2. Is `onPayload` intended to be settable provider-wide by an extension, or is it deliberately scoped to per-call options set by the coding-agent?
 3. When `compat.ts` is removed, what is the expected migration for extensions that currently reach the bare-root surface — does the bare root keep resolving to a durable entrypoint, or are extensions expected to move to specific subpaths?
 4. Are the `/api/*` and `/providers/*` subpaths intended to be extension-facing at all, or is the registry/factory API the intended public surface for this use case?
+
+[pi#3262]: https://github.com/earendil-works/pi/issues/3262
+[pi#3987]: https://github.com/earendil-works/pi/issues/3987
+[pi#4038]: https://github.com/earendil-works/pi/issues/4038
+[pi#4980]: https://github.com/earendil-works/pi/issues/4980
+[pi#5061]: https://github.com/earendil-works/pi/issues/5061

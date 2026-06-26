@@ -46,6 +46,7 @@ They are not inherent to what the user needs.
 ## The layering constraint that rules out the easy fix
 
 The obvious fix — "thread `before_provider_request` into compaction too" — does not actually close Issue [#18].
+That compaction-only slice is exactly what upstream [pi#4980] proposed and then withdrew, and it would still leave foreign `agentLoop` callers uncovered.
 `before_provider_request` is a coding-agent extension event, emitted by the extension runner (`packages/coding-agent/src/core/extensions/runner.ts`).
 Third-party background agents call pi-ai's `agentLoop` directly, below the extension host; coding-agent cannot emit its event into them.
 
@@ -90,6 +91,18 @@ Ranked, for the operator to weigh in `docs/builtin-transport-seam-upstream-reque
 3. Fallbacks (least elegant — keep the current wrap-and-delegate design alive).
    Alias/virtualize the `/api/*` subpaths for extensions, or export a stable transport handle from the durable core past the `compat` removal.
 
+## Upstream prior art
+
+A search of `earendil-works/pi` confirmed this exact ask is unfiled, but two adjacent issues frame it.
+
+1. [pi#4980] ("Compaction requests bypass `before_provider_request`") proposed the compaction-only slice and was withdrawn by its author pending internal review; it was never resubmitted, and it does not address foreign `agentLoop` callers or the transport-acquisition problem.
+   Our ask supersedes it.
+2. [pi#3262] ("Export `AssistantMessageEventStream` for extensions that wrap `streamSimple`") came from the same Claude Pro/Max wrapping domain and landed — the class is now exported from pi-ai's root and this extension imports it.
+   It is precedent that the maintainer accepts the `streamSimple`-wrapping use case, but it solved only the return-type export, not the all-paths transform.
+
+Adjacent extension-point requests for a wire-layer `fetch` hook ([pi#3987], [pi#5061]) and a post-`onPayload` hook ([pi#4038]) were closed without landing, two of them flagged by the project as suspected machine-generated.
+The upstream issue should therefore be authored in the operator's own voice, grounded in concrete code references.
+
 ## Near-term decision
 
 The upstream change is not in hand, so this repo keeps shaping at the registry transport for now and only hardens how it obtains the built-in delegate.
@@ -115,8 +128,15 @@ Alternatives considered and rejected for the near term:
 3. Issue [#31] — `import.meta.resolve` fails when installed via `pi install`; the breakage the near-term path fixes.
 4. Issue [#32] — the proposed parent-`node_modules` walk, rejected here.
 5. Issue [#33] — the dual-layout resolution the current resolver uses, superseded by the bare-root compat import when the follow-up lands.
+6. [pi#4980] — the withdrawn upstream compaction-bypass precedent our ask supersedes.
+7. [pi#3262] — the landed upstream precedent that the `streamSimple`-wrapping use case is accepted.
 
 [#18]: https://github.com/gotgenes/pi-anthropic-auth/issues/18
+[pi#3262]: https://github.com/earendil-works/pi/issues/3262
+[pi#3987]: https://github.com/earendil-works/pi/issues/3987
+[pi#4038]: https://github.com/earendil-works/pi/issues/4038
+[pi#4980]: https://github.com/earendil-works/pi/issues/4980
+[pi#5061]: https://github.com/earendil-works/pi/issues/5061
 [#28]: https://github.com/gotgenes/pi-anthropic-auth/issues/28
 [#31]: https://github.com/gotgenes/pi-anthropic-auth/issues/31
 [#32]: https://github.com/gotgenes/pi-anthropic-auth/issues/32
