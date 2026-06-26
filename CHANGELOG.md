@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.7.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.5...v0.7.0) (2026-06-26)
+
+
+### Features
+
+* add anthropic-auth:status command handler ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([7a6d352](https://github.com/gotgenes/pi-anthropic-auth/commit/7a6d3529891b2998707fa766931318dcc2d73343))
+* add diagnostics report formatter ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([7134b0c](https://github.com/gotgenes/pi-anthropic-auth/commit/7134b0cadcc9ed52bbdf7be7e173dadb352e2ec5))
+* register /anthropic-auth:status diagnostics command ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([b022ca3](https://github.com/gotgenes/pi-anthropic-auth/commit/b022ca36f422588b13b3d6af4401c1dcb203406b))
+
+
+### Documentation
+
+* document container auth precedence and the diagnostics command ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([29abb77](https://github.com/gotgenes/pi-anthropic-auth/commit/29abb77e216b1d48746a6d5e4daeb4f367713fb1))
+* fix command name in diagnostics JSDoc comment ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([e271d3e](https://github.com/gotgenes/pi-anthropic-auth/commit/e271d3e22c470064fdb6adf72434c8543cfd9f93))
+* plan diagnostics command and container auth-precedence docs ([#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37)) ([39d939c](https://github.com/gotgenes/pi-anthropic-auth/commit/39d939c3a6395179a31cb8695755e87ebac84bc7))
+* **retro:** add planning stage notes for issue [#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37) ([4f4da8e](https://github.com/gotgenes/pi-anthropic-auth/commit/4f4da8edd6fb3a1343794514c243ef330fdcde2c))
+* **retro:** add retro notes for issue [#31](https://github.com/gotgenes/pi-anthropic-auth/issues/31) ([989c945](https://github.com/gotgenes/pi-anthropic-auth/commit/989c945ec095f4b2999f33cbcc4912de33632182))
+* **retro:** add TDD stage notes for issue [#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37) ([459188e](https://github.com/gotgenes/pi-anthropic-auth/commit/459188e52f02146d83d5163cf4e3a9e3cbba1ec5))
+
 ## [0.6.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.4...v0.6.5) (2026-06-26)
 
 
