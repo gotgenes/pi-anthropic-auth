@@ -76,7 +76,11 @@ Otherwise continue.
 If the plan or its retro defers work to a follow-up issue ("created at ship time", "deferred to a follow-up"), create it now with `gh issue create` before closing — the shipped issue's close comment should reference its number.
 Skip if the plan names no deferred follow-up.
 
-## 5. Close the issue
+## 5. Close the issue (or comment and leave open)
+
+If the issue's resolution is a hypothesis pending the reporter's confirmation — a third-party report you answered diagnostically rather than with a confirmed fix — do not close it.
+Post your findings as a comment and leave it open; the reporter confirms the fix.
+Otherwise, close it as below.
 
 Build the close comment from the commits since the previous release:
 
@@ -92,6 +96,8 @@ The comment should include:
 - One sentence on user-visible behavior change.
 - A note flagging any breaking change (matches `feat!:` commits).
 - If the change unblocks or partially addresses other issues, mention them.
+- If the comment cites the released version, post it after the release tag lands (step 6), or derive the bump from commit types (`feat` → minor, `fix`/`chore` → patch).
+  Do not guess a patch bump.
 
 Then use `issue_close` with issue number `$1` and the summary as the comment.
 
