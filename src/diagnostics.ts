@@ -1,6 +1,6 @@
 /**
  * Diagnostic information captured at extension load time and surfaced via the
- * `/anthropic-auth-status` command.
+ * `/anthropic-auth:status` command.
  */
 export interface ExtensionDiagnostics {
   /** Published version read from `package.json` at load time. */
