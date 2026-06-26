@@ -19,7 +19,8 @@ This works in local dev (`pi -e ...`) because pi-ai is a devDependency present i
 It fails when the extension is installed via `pi install` (which runs `npm install --omit=dev`, and pi-ai is only a peer/dev dependency) and in the Bun-compiled standalone binary.
 The reason is that `import.meta.resolve` bypasses the host loader's module indirection: the host resolves the bare `@earendil-works/pi-ai` specifier through a jiti `alias` (Node) or `virtualModules` entry (Bun binary), but jiti consults neither on the `resolve` path — so `import.meta.resolve` falls through to filesystem resolution from the extension's own directory and finds nothing.
 
-The fix is to stop deriving a filesystem path at all and instead let the host's indirection do the resolution: a bare-root `await import("@earendil-works/pi-ai")` goes through jiti's *import* path, which the host aliases (Node) / virtualizes (Bun) to its bundled `compat` entrypoint, and read the transport off that namespace.
+The fix is to stop deriving a filesystem path at all and instead let the host's indirection do the resolution: a bare-root `await import("@earendil-works/pi-ai")` goes through jiti's *import* path, which the host aliases (Node) / virtualizes (Bun) to its own bundled pi-ai entrypoint, and read the transport off that namespace.
+Note this imports the *bare* specifier, not the `@earendil-works/pi-ai/compat` subpath: each host version maps the bare specifier to whatever entrypoint it bundles (`dist/index.js` on pi 0.79.x, `dist/compat.js` on pi 0.80.x), so the fix needs no peer-floor bump even though `compat.ts` only exists from 0.80.0.
 
 The operator confirmed this direction (it is the near-term recommendation committed in the Issue #35 decision record, now being implemented here) and chose the **thin** selector shape during planning (`ask_user`): read `streamSimpleAnthropic` off the namespace and throw if it is absent, removing the dual-layout candidate machinery introduced for Issue #33.
 
@@ -27,6 +28,8 @@ The operator confirmed this direction (it is the near-term recommendation commit
 
 - Resolve Pi's built-in Anthropic `streamSimple` transport via a bare-root `import("@earendil-works/pi-ai")` so resolution works under `pi install` and the Bun standalone binary, not only in local dev.
 - Keep the change non-breaking and preserve the `resolveBuiltinAnthropicStreamSimple()` contract (a `Promise<AnthropicStreamSimpleDelegate>`), so `src/index.ts` is untouched.
+- Keep the peer-dependency floor at `>=0.79.1`.
+  The fix imports the bare `@earendil-works/pi-ai` specifier (which each host version maps to its own entrypoint), not the `@earendil-works/pi-ai/compat` subpath (which would require the 0.80.0 floor where `compat.ts` was introduced).
 - Preserve the Issue #28 invariant: the delegate is a directly-captured transport function, never read from the lazy API-registry stub.
 - Remove the now-obsolete dual-layout candidate selector (`selectAnthropicStreamSimple`, `AnthropicTransportCandidate`, `ModuleImporter`, `ANTHROPIC_TRANSPORT_CANDIDATES`) and its `node:path`/`node:url` dependencies.
 - Keep the error path (transport missing or not a function) unit-testable.
@@ -53,12 +56,14 @@ The resolver's promise contract does not change, so `index.ts` stays as-is.
 
 Verified facts (against the pi workspace at `~/development/pi/pi`, pi-ai 0.80.2, and the installed devDependency 0.79.1):
 
-1. The host loader (`packages/coding-agent/src/core/extensions/loader.ts`) aliases the bare specifier `@earendil-works/pi-ai` to the host's `ai/dist/compat.js` in Node mode, and maps it to the bundled `compat` module via `virtualModules` in Bun-binary mode.
-   Both modes resolve a bare-root import to `compat`.
+1. The host loader maps the bare specifier `@earendil-works/pi-ai` to its own bundled pi-ai entrypoint, and the target differs by host version:
+   - pi 0.79.10 (`dist/core/extensions/loader.js`, verified via `npm pack`) aliases `@earendil-works/pi-ai` → `ai/dist/index.js` in Node mode and virtualizes it to the bare-root namespace in Bun mode — `compat.ts` did not exist yet.
+   - pi 0.80.2 (`packages/coding-agent/src/core/extensions/loader.ts`) aliases `@earendil-works/pi-ai` → `ai/dist/compat.js` in Node mode and virtualizes it to the bundled `compat` module in Bun mode.
+   Either way a bare-root import resolves to a namespace that exports `streamSimpleAnthropic`.
 2. jiti consults the `alias`/`virtualModules` maps on the import/require path but not on the `resolve` path, which is why `import.meta.resolve` falls through and a bare-root `import` does not.
-3. pi-ai 0.80.2 `compat.ts` re-exports `streamSimpleAnthropic` (a `@deprecated` alias from `legacy-api-aliases.ts`, defined as `anthropicMessagesApi().streamSimple`).
-4. pi-ai 0.79.1's root `dist/index.js` exports `streamSimpleAnthropic` directly.
-   So a bare-root import yields a `streamSimpleAnthropic` function in every current environment: installed 0.79.1 (vitest), live Node-mode `compat`, and live Bun-mode `compat`.
+3. pi-ai 0.79.1's root `dist/index.js` exports `streamSimpleAnthropic` directly.
+4. pi-ai 0.80.2 `compat.ts` re-exports `streamSimpleAnthropic` (a `@deprecated` alias from `legacy-api-aliases.ts`, defined as `anthropicMessagesApi().streamSimple`).
+   So a bare-root import yields a `streamSimpleAnthropic` function in every current environment: installed 0.79.1 (vitest), live 0.79.x hosts (root `index.js`), and live 0.80.x hosts (`compat`), in both Node and Bun modes — without raising the `>=0.79.1` peer floor.
 5. `streamSimpleAnthropic` in 0.80.2 is a `lazyApi` wrapper (`packages/ai/src/api/lazy.ts`) that lazily `import()`s the real `anthropic-messages.ts` implementation on first call.
    `anthropic-messages.ts` contains no `registerApiProvider` side effect, so capturing this delegate does **not** re-enter the API registry — the Issue #28 clobber stays avoided.
 
@@ -96,7 +101,8 @@ export function pickAnthropicStreamSimple(
 /**
  * Resolves Pi's built-in Anthropic `streamSimple` transport at runtime via a
  * bare-root import, which the host loader aliases (Node) / virtualizes (Bun)
- * to its bundled `compat` entrypoint.
+ * to its own bundled pi-ai entrypoint (`dist/index.js` on pi 0.79.x,
+ * `dist/compat.js` on pi 0.80.x). Both expose `streamSimpleAnthropic`.
  */
 export async function resolveBuiltinAnthropicStreamSimple(): Promise<AnthropicStreamSimpleDelegate> {
   const namespace = (await import("@earendil-works/pi-ai")) as PiAiNamespace;
@@ -113,8 +119,8 @@ Why `streamSimpleAnthropic` and not the generic `streamSimple`: the root/`compat
 Edge cases:
 
 1. Installed 0.79.1 (vitest) — root exports `streamSimpleAnthropic` → returned.
-2. Live Node mode — bare-root aliased to `compat`, which re-exports `streamSimpleAnthropic` → returned.
-3. Live Bun-binary mode — bare-root virtualized to bundled `compat` → returned.
+2. Live 0.79.x host — bare-root aliased/virtualized to the root `index.js`, which exports `streamSimpleAnthropic` → returned.
+3. Live 0.80.x host — bare-root aliased/virtualized to `compat`, which re-exports `streamSimpleAnthropic` → returned (both Node and Bun modes).
 4. `streamSimpleAnthropic` absent or not a function (a future `compat` that drops the deprecated alias) → `pickAnthropicStreamSimple` throws a clear error; this is the Issue #35 cliff, surfaced loudly rather than silently mis-resolving.
 
 Consumer call site (unchanged in `src/index.ts`):
