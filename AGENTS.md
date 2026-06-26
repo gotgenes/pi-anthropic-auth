@@ -425,6 +425,11 @@ The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file imp
 Pi CLI model aliases and the locally installed `@earendil-works/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.
 In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and repro commands, and `claude-haiku-4-5` in tests that call `getModel("anthropic", ...)` directly.
 
+### Verify Each pi Version And Loader Mode
+
+When asserting that behavior holds across pi/pi-ai versions or loader modes — Node `alias` vs Bun `virtualModules`, or `0.79.x` vs `0.80.x` — verify each one independently; do not extrapolate from the installed host.
+Example: the bare `@earendil-works/pi-ai` specifier resolves to `dist/index.js` on pi `0.79.x` but `dist/compat.js` on `0.80.x` (Refs #31, #33).
+
 ## Related Files
 
 1. `README.md`
