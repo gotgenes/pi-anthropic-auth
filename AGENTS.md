@@ -93,7 +93,7 @@ Current source layout:
 
 1. `src/index.ts`: extension registration (OAuth override + transport wrapper)
 2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
-3. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport, working around jiti's missing `./anthropic` subpath alias (Issue #28)
+3. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31)
 4. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
 5. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 6. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
@@ -417,7 +417,8 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
 The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the registry: pi-ai 0.79.8 registers a lazy `anthropic-messages` stub whose first call re-registers the bare built-in via `registerApiProvider`, which would overwrite this wrapper (Issue #28).
-Runtime resolution (rather than a static `@earendil-works/pi-ai/anthropic` import) is required because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath.
+The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai entrypoint (`dist/index.js` on pi 0.79.x, `dist/compat.js` on pi 0.80.x; both export `streamSimpleAnthropic`).
+The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).
 
 ### Model ID Alias Drift
 

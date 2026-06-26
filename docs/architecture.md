@@ -46,10 +46,11 @@ flowchart TD
     G --> AN["Anthropic /v1/messages"]
 ```
 
-The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport (`streamSimpleAnthropic` in pi-ai ≤ 0.79.x; `streamSimple` in the upcoming api/* split), resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
+The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport (`streamSimpleAnthropic`), resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
 Resolving it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
-The resolver is needed because Pi loads extensions with `jiti`, whose alias map covers the bare `@earendil-works/pi-ai` specifier but not the `./anthropic` subpath — a static subpath import resolves to `dist/index.js/anthropic` and fails.
-The resolver uses `import.meta.resolve("@earendil-works/pi-ai")` (jiti-aliased, works), derives the package directory, then tries an ordered candidate list — new layout (`dist/api/anthropic-messages.js` → `streamSimple`) first, legacy layout (`dist/providers/anthropic.js` → `streamSimpleAnthropic`) second — returning the first export that is a function (Issue #33).
+The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's extension loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai entrypoint — `dist/index.js` on pi 0.79.x, `dist/compat.js` on pi 0.80.x — both of which export `streamSimpleAnthropic`.
+A bare-root import is required because `import.meta.resolve` and subpath imports bypass that host indirection: jiti consults its `alias`/`virtualModules` maps on the import path but not on the `resolve` path, so the former `import.meta.resolve("@earendil-works/pi-ai")` plus derived `dist/...` file import fell through to filesystem resolution from the extension's own directory and failed when pi-ai was absent from it — the `pi install` and Bun-binary cases (Issue #31).
+Reading `streamSimpleAnthropic` off the namespace resolves across host versions and loader modes with no peer-floor bump; the `compat`-removal cliff that will eventually break this is tracked in Issue #35.
 
 ## OAuth gating
 
@@ -89,7 +90,7 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 ## Related files
 
 - `src/index.ts` — resolves the built-in Anthropic transport at runtime and registers the OAuth override plus `streamSimple` wrapper.
-- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via dual-layout candidate resolution (Issue #28, Issue #33), working around jiti's missing `./anthropic` subpath alias.
+- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
