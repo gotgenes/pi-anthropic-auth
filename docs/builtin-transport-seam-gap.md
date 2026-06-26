@@ -80,6 +80,7 @@ The intersection of the two yes columns is empty: everything bare-root reachable
 
 Because `onPayload` already exists on every transport and the registry is already the universal chokepoint, the best-targeted upstream change is to let an extension attach a payload transform to a provider without replacing its transport.
 We are not asking for access to pi's transport; we are asking to register a transform.
+This direction was filed upstream as [pi#6089] (see the brief at [`docs/builtin-transport-seam-upstream-request.md`](./builtin-transport-seam-upstream-request.md) for status).
 Ranked, for the operator to weigh in `docs/builtin-transport-seam-upstream-request.md`:
 
 1. Primary — a provider-bound payload transform.
@@ -130,9 +131,11 @@ Alternatives considered and rejected for the near term:
 5. Issue [#33] — the dual-layout resolution the current resolver uses, superseded by the bare-root compat import when the follow-up lands.
 6. [pi#4980] — the withdrawn upstream compaction-bypass precedent our ask supersedes.
 7. [pi#3262] — the landed upstream precedent that the `streamSimple`-wrapping use case is accepted.
+8. [pi#6089] — the upstream feature request this direction was filed as.
 
 [#18]: https://github.com/gotgenes/pi-anthropic-auth/issues/18
 [pi#3262]: https://github.com/earendil-works/pi/issues/3262
+[pi#6089]: https://github.com/earendil-works/pi/issues/6089
 [pi#3987]: https://github.com/earendil-works/pi/issues/3987
 [pi#4038]: https://github.com/earendil-works/pi/issues/4038
 [pi#4980]: https://github.com/earendil-works/pi/issues/4980

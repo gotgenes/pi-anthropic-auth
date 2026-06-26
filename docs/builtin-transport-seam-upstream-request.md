@@ -7,6 +7,14 @@ The full internal reasoning, the handle inventory, and the rejected near-term al
 
 All facts were verified against the pi workspace at `~/development/pi/pi` at `@earendil-works/pi-ai` 0.80.2.
 
+## Status: filed as [pi#6089]
+
+This brief was used to author [pi#6089], filed 2026-06-25.
+The operator wrote the issue by hand in their own voice (the brief is source material, not the posted text).
+The filed issue leads with the provider-bound `onPayload` transform as the preferred ask and composable registration (`registerApiProvider` returning the previous provider, or taking a decorator) as the fallback, matching the ranking below.
+A follow-up comment cross-links the prior art ([pi#4980] superset, [pi#3262] precedent, plus [pi#3987], [pi#5061], [pi#4038]).
+The issue was auto-closed by the project's new-contributor bot and awaits the maintainers' daily review of auto-closed issues; track reopen/`lgtm` status there.
+
 ## The ask, in one sentence
 
 An extension that overrides a built-in provider should be able to register a payload transform bound to that provider — applied by pi-ai's own dispatch on every call path — without having to replace and re-implement (or reach inside pi-ai to obtain and delegate to) the built-in transport.
@@ -96,6 +104,7 @@ These are questions the operator may want pi maintainers to answer, framed as ge
 4. Are the `/api/*` and `/providers/*` subpaths intended to be extension-facing at all, or is the registry/factory API the intended public surface for this use case?
 
 [pi#3262]: https://github.com/earendil-works/pi/issues/3262
+[pi#6089]: https://github.com/earendil-works/pi/issues/6089
 [pi#3987]: https://github.com/earendil-works/pi/issues/3987
 [pi#4038]: https://github.com/earendil-works/pi/issues/4038
 [pi#4980]: https://github.com/earendil-works/pi/issues/4980
