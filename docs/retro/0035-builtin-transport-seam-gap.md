@@ -23,5 +23,24 @@ No `src/host-transport.ts` change lands here; the near-term code switch is commi
 - Release: ships independently — no roadmap/batch reference in `docs/architecture.md`.
 - Next step is `/build-plan` (docs-only, no test cycles); the build step must verify loader-mode and handle-table claims against the pi workspace at `~/development/pi/pi` rather than restating the issue body.
 
+## Stage: Implementation — Build (2026-06-25T00:00:00Z)
+
+### Session summary
+
+Wrote the two docs-only artifacts and the `docs/architecture.md` cross-reference, then revised both docs after a design discussion with the operator.
+The discussion reframed the upstream ask away from "expose / resolve the built-in transport" toward "register a provider-bound payload transform," because our wrapper exists only to inject `onPayload` — a primitive pi-ai already applies on every call path.
+No `src/` or `test/` files changed; the near-term bare-root `compat` import switch stays deferred to a follow-up issue.
+
+### Observations
+
+- Operator pushed back on jumping straight to artifacts; the substance is the design analysis, not the doc. Held a discussion before finalizing.
+- Key design finding (verified in source): `src/oauth-transport.ts` does nothing but set `onPayload` and delegate to pi's built-in transport. `onPayload` is a first-class `SimpleStreamOptions` field (`types.ts`) that every api applies (`api/anthropic-messages.ts` calls it after `buildParams`). pi wires its `onPayload` seam (`before_provider_request`) only into the main loop (`sdk.ts`), so reaching compaction + foreign `agentLoop` forces us down to the replace-only api-registry transport (`compat.ts` `registerApiProvider` = `Map.set`) — and delegating from there is what creates the whole resolution/`compat` problem.
+- Layering constraint confirmed: `before_provider_request` is a coding-agent event; foreign background agents call pi-ai `agentLoop` directly, below the extension host, so a durable transform must live at the pi-ai registry/dispatch layer.
+- Decided (Decide gate): foreign background-agent coverage is a real requirement (all call paths must stay covered), so the registry seam is unavoidable and the reframed ask stands.
+- Reframed upstream ask, ranked: (1) provider-bound payload transform (`registerProvider("anthropic", { oauth, onPayload })`, applied at the pi-ai registry layer, given the `isOAuth` signal pi already computes); (2) composable registration (hand back / decorate the previous provider — also kills the Issue [#28] clobber); (3) fallbacks — alias `/api/*` subpaths or a stable core handle (least elegant, keep wrap-and-delegate alive).
+- Near-term decision unchanged: bare-root `compat` import to fix Issue [#31] across loader modes, deferred to a follow-up issue with a compat-cliff TODO.
+- Pre-completion reviewer (run against the first framing): WARN, no FAILs, deterministic checks PASS. Its two WARNs (AGENTS.md "Related Files" not listing the new docs; architecture.md's "(jiti-aliased, works)" annotation) remain deferred to the follow-up code issue.
+- Commits were reset and rewritten to carry the reframed framing rather than the original "get the transport" framing.
+
 [#31]: https://github.com/gotgenes/pi-anthropic-auth/issues/31
 [#32]: https://github.com/gotgenes/pi-anthropic-auth/issues/32
