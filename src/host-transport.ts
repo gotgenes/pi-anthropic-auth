@@ -18,22 +18,22 @@ export type AnthropicStreamSimpleDelegate = StreamFunction<
 /**
  * A pi-ai module namespace, treated as a plain record for property lookup.
  *
- * The bare-root import yields the host's pi-ai entrypoint namespace, which
- * differs by host version (`dist/index.js` on pi 0.79.x, `dist/compat.js` on
- * pi 0.80.x); this type captures only the index-signature access the resolver
- * needs, so `pickAnthropicStreamSimple` is unit-testable with a plain object.
+ * The bare-root import yields the host's pi-ai compat entrypoint
+ * (`dist/compat.js` on pi >=0.80.x), which the host loader aliases (Node) /
+ * virtualizes (Bun) the bare specifier to.
+ * This type captures only the index-signature access the resolver needs, so
+ * `pickAnthropicStreamSimple` is unit-testable with a plain object.
  */
 export type PiAiNamespace = Record<string, unknown>;
 
 /**
  * Reads the built-in Anthropic `streamSimple` transport off a pi-ai namespace.
  *
- * Both host generations expose `streamSimpleAnthropic`: pi 0.79.x's root
- * `dist/index.js` exports it directly, and pi 0.80.x's `dist/compat.js`
- * re-exports it as a deprecated alias of `anthropicMessagesApi().streamSimple`.
- * We read this Anthropic-specific transport rather than the generic
- * `streamSimple` dispatcher, which would route through the API registry and
- * re-arm the lazy-registration clobber (Issue #28).
+ * On pi >=0.80.x the compat entrypoint re-exports `streamSimpleAnthropic` as a
+ * deprecated alias of `anthropicMessagesApi().streamSimple`.
+ * We read the delegate directly off the namespace rather than from the API
+ * registry to avoid infinite recursion: the registry entry for
+ * `anthropic-messages` is our own wrapper, so reading from it would loop.
  *
  * @param namespace - the imported pi-ai module namespace.
  * @returns the built-in Anthropic streaming transport.
@@ -59,9 +59,9 @@ export function pickAnthropicStreamSimple(
  *
  * A bare-root `import("@earendil-works/pi-ai")` goes through Pi's extension
  * loader, which aliases (Node) / virtualizes (Bun) the bare specifier to its
- * own bundled pi-ai entrypoint (`dist/index.js` on pi 0.79.x, `dist/compat.js`
- * on pi 0.80.x).  Both expose `streamSimpleAnthropic`, so this resolves across
- * host versions and loader modes without a peer-floor bump.
+ * bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
+ * The compat entrypoint exposes `streamSimpleAnthropic` as a deprecated alias
+ * of `anthropicMessagesApi().streamSimple`.
  *
  * The previous approach — `import.meta.resolve("@earendil-works/pi-ai")` plus a
  * dynamic import of a derived `dist/...` file path — bypassed that host
@@ -69,11 +69,6 @@ export function pickAnthropicStreamSimple(
  * path but not on the `resolve` path, so `import.meta.resolve` fell through to
  * filesystem resolution from the extension's own directory and failed when
  * pi-ai was absent from it (the `pi install` and Bun-binary cases, Issue #31).
- *
- * Reading the delegate directly off the namespace (rather than from the API
- * registry) also avoids pi-ai's lazy-registration clobber: the registry's
- * `anthropic-messages` entry is a stub whose first call re-registers the bare
- * built-in via `registerApiProvider`, overwriting our wrapper (Issue #28).
  *
  * @returns a Promise for the built-in Anthropic streaming transport.
  * @throws when the namespace does not export a `streamSimpleAnthropic` function.
