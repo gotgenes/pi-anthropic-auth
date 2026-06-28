@@ -6,13 +6,12 @@ import type {
   Model,
   SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import {
-  clearApiProviders,
-  createAssistantMessageEventStream,
   getApiProvider,
   registerApiProvider,
-  registerBuiltInApiProviders,
-} from "@earendil-works/pi-ai";
+  resetApiProviders,
+} from "@earendil-works/pi-ai/compat";
 import type {
   ExtensionAPI,
   ProviderConfig,
@@ -32,8 +31,8 @@ const MODEL = {
 const CONTEXT = { messages: [] } as unknown as Context;
 
 /**
- * Stubbed transport standing in for the pi-ai 0.79.8 "bare built-in"
- * `streamSimpleAnthropic` that the host resolver hands `src/index.ts`.
+ * Stubbed transport standing in for the bare built-in `streamSimpleAnthropic`
+ * that the host resolver hands `src/index.ts`.
  *
  * `src/index.ts` resolves the delegate via `#src/host-transport`, so mocking
  * that module's resolver is the seam that controls the delegate without
@@ -172,13 +171,19 @@ async function delegateCallWasShaped(call: {
   );
 }
 
-describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber (#28)", () => {
+// This describe block simulates the pi-ai 0.79.8 lazy re-registration clobber
+// as a regression guard: the lazyStubStreamSimple replaces the registry entry
+// on first call (mirroring how 0.79.x's `register()` side-effect clobbered our
+// wrapper).  With the floor at >=0.80.0 this scenario no longer occurs in
+// production, but the test still ensures our wrapper survives any re-registration.
+describe("index registration: wrapper survives a re-register clobber (#28 regression guard)", () => {
   beforeEach(() => {
-    clearApiProviders();
+    resetApiProviders();
     delegateCalls.length = 0;
     streamSimpleAnthropicMock.mockClear();
 
-    // Seed the registry with the 0.79.8 lazy stub, as pi-ai would at import.
+    // Seed the registry with the lazy-stub, simulating a provider that
+    // re-registers itself on first call (the 0.79.x clobber pattern).
     registerApiProvider({
       api: "anthropic-messages",
       stream: lazyStubStreamSimple,
@@ -189,8 +194,7 @@ describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber 
   test("every OAuth call resolves our wrapper and is shaped across multiple calls", async () => {
     onTestFinished(() => {
       // Restore real built-ins so the singleton registry is clean for later tests.
-      clearApiProviders();
-      registerBuiltInApiProviders();
+      resetApiProviders();
     });
 
     const { default: registerExtension } = await import("#src/index");
@@ -225,7 +229,7 @@ describe("index registration survives the pi-ai 0.79.8 lazy re-register clobber 
 
 describe("index registration: diagnostics command", () => {
   beforeEach(() => {
-    clearApiProviders();
+    resetApiProviders();
     delegateCalls.length = 0;
     streamSimpleAnthropicMock.mockClear();
     registerApiProvider({
@@ -237,8 +241,7 @@ describe("index registration: diagnostics command", () => {
 
   test("registers the anthropic-auth:status command", async () => {
     onTestFinished(() => {
-      clearApiProviders();
-      registerBuiltInApiProviders();
+      resetApiProviders();
     });
     const { default: registerExtension } = await import("#src/index");
     const { pi, commands } = createFakePi();
@@ -252,8 +255,7 @@ describe("index registration: diagnostics command", () => {
 
   test("anthropic-auth:status handler report includes version, module path, and transport marker", async () => {
     onTestFinished(() => {
-      clearApiProviders();
-      registerBuiltInApiProviders();
+      resetApiProviders();
     });
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());

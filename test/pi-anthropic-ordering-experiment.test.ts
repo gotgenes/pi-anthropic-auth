@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import {
-  type Context,
-  getModel,
-  streamSimple,
-  Type,
-} from "@earendil-works/pi-ai";
+import { type Context, Type } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
+import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { test } from "vitest";
 
 import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
@@ -41,7 +38,7 @@ function createMockSseResponse(): Response {
 }
 
 test("experiment: Pi serializer preserves trailing assistant text after tool_use blocks", async () => {
-  const model = getModel("anthropic", TEST_MODEL);
+  const model = getBuiltinModel("anthropic", TEST_MODEL);
 
   const context: Context = {
     systemPrompt: "Follow the user's instructions.",

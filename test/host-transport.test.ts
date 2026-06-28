@@ -1,24 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import type { PiAiNamespace } from "#src/host-transport";
-import {
-  pickAnthropicStreamSimple,
-  resolveBuiltinAnthropicStreamSimple,
-} from "#src/host-transport";
+import { pickAnthropicStreamSimple } from "#src/host-transport";
 
-// This exercises the real resolution path against the installed
-// `@earendil-works/pi-ai` (not a mock): a bare-root `import(...)` of the
-// package, resolving to the installed 0.79.1 root under vitest's Node
-// resolver, then reading `streamSimpleAnthropic` off the namespace.  The
-// registration regression test mocks this module out, so this is the only
-// automated guard that the root namespace still exposes the expected function
-// for the installed version — a future pi-ai that drops `streamSimpleAnthropic`
-// fails here at test time.  Note: vitest resolves the devDependency root, not
-// the host's aliased/virtualized entrypoint, so this does not by itself prove
-// the `pi install` / Bun loader fix — the live `pi -e` repro does (Issue #28,
-// Issue #31).
-test("resolveBuiltinAnthropicStreamSimple resolves the built-in transport", async () => {
-  const transport = await resolveBuiltinAnthropicStreamSimple();
+// Guards that the compat entrypoint — which the host loader aliases the bare
+// `@earendil-works/pi-ai` specifier to on 0.80.x — still exports
+// `streamSimpleAnthropic`.  On 0.80.x the bare-root `import()` in
+// `resolveBuiltinAnthropicStreamSimple` lands on compat at host runtime (via
+// jiti's alias), but vitest's Node resolver hits the devDep root barrel
+// (dist/index.js), which on 0.80.x no longer re-exports `streamSimpleAnthropic`.
+// Importing from `/compat` directly mirrors the actual runtime resolution path
+// and fails here if a future pi-ai removes the alias.
+// Note: the live `pi -e` repro is still required to verify the full host
+// resolution chain end-to-end.
+test("streamSimpleAnthropic is present on the pi-ai compat entrypoint", async () => {
+  const namespace = (await import(
+    "@earendil-works/pi-ai/compat"
+  )) as PiAiNamespace;
+  const transport = pickAnthropicStreamSimple(namespace);
 
   assert.equal(typeof transport, "function");
 });
