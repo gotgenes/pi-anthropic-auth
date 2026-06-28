@@ -47,10 +47,10 @@ flowchart TD
 ```
 
 The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport (`streamSimpleAnthropic`), resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
-Resolving it directly avoids both the recursion risk (delegating to the registered wrapper would recurse infinitely) and the pi-ai 0.79.8 lazy-registration clobber: the registry's `anthropic-messages` entry is a lazy stub whose first call re-registers the bare built-in via `registerApiProvider`, overwriting this wrapper (Issue #28).
-The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's extension loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai entrypoint — `dist/index.js` on pi 0.79.x, `dist/compat.js` on pi 0.80.x — both of which export `streamSimpleAnthropic`.
+Resolving it directly avoids infinite recursion: the registry's `anthropic-messages` entry is our own wrapper, so reading the delegate from the registry would loop.
+On pi >=0.80.0 the host loader aliases (Node) / virtualizes (Bun) the bare `@earendil-works/pi-ai` specifier to its bundled compat entrypoint (`dist/compat.js`), which re-exports `streamSimpleAnthropic` as a deprecated alias of `anthropicMessagesApi().streamSimple`.
 A bare-root import is required because `import.meta.resolve` and subpath imports bypass that host indirection: jiti consults its `alias`/`virtualModules` maps on the import path but not on the `resolve` path, so the former `import.meta.resolve("@earendil-works/pi-ai")` plus derived `dist/...` file import fell through to filesystem resolution from the extension's own directory and failed when pi-ai was absent from it — the `pi install` and Bun-binary cases (Issue #31).
-Reading `streamSimpleAnthropic` off the namespace resolves across host versions and loader modes with no peer-floor bump; the `compat`-removal cliff that will eventually break this is tracked in Issue #35.
+The `compat`-removal cliff that will eventually break `streamSimpleAnthropic` is tracked in Issue #35.
 
 ## OAuth gating
 

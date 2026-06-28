@@ -77,7 +77,8 @@ It uses one Pi extension seam:
 
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
-The delegate is resolved at runtime rather than captured from the registry so pi-ai 0.79.8's lazy re-register cannot overwrite this wrapper (Issue #28).
+The delegate is resolved at runtime rather than read from the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
+On pi >=0.80.0, the pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.80.0` peer floor.
 Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
 Important upstream behavior confirmed from `pi-mono`:
@@ -417,19 +418,19 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
 The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
-The delegate is resolved at runtime rather than read out of the registry: pi-ai 0.79.8 registers a lazy `anthropic-messages` stub whose first call re-registers the bare built-in via `registerApiProvider`, which would overwrite this wrapper (Issue #28).
-The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai entrypoint (`dist/index.js` on pi 0.79.x, `dist/compat.js` on pi 0.80.x; both export `streamSimpleAnthropic`).
+The delegate is resolved at runtime rather than read out of the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
+The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x), which re-exports `streamSimpleAnthropic`.
 The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).
 
 ### Model ID Alias Drift
 
 Pi CLI model aliases and the locally installed `@earendil-works/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.
-In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and repro commands, and `claude-haiku-4-5` in tests that call `getModel("anthropic", ...)` directly.
+In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and repro commands, and `claude-haiku-4-5` in tests that call `getBuiltinModel("anthropic", ...)` directly.
 
-### Verify Each pi Version And Loader Mode
+### Verify Each Loader Mode
 
-When asserting that behavior holds across pi/pi-ai versions or loader modes — Node `alias` vs Bun `virtualModules`, or `0.79.x` vs `0.80.x` — verify each one independently; do not extrapolate from the installed host.
-Example: the bare `@earendil-works/pi-ai` specifier resolves to `dist/index.js` on pi `0.79.x` but `dist/compat.js` on `0.80.x` (Refs #31, #33).
+When asserting that behavior holds across loader modes — Node `alias` vs Bun `virtualModules` — verify each one independently; do not extrapolate from the installed host.
+The minimum supported host is pi >=0.80.0; both loader modes alias the bare `@earendil-works/pi-ai` specifier to `dist/compat.js` on that generation.
 
 ## Related Files
 

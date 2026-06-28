@@ -24,12 +24,11 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   //
   // The delegate is the built-in `streamSimpleAnthropic` resolved at runtime
   // (see `resolveBuiltinAnthropicStreamSimple`) rather than read out of the
-  // registry.  Starting with pi-ai 0.79.8 the registry holds a lazy stub that,
-  // on first call, runs `anthropic.ts`'s `register()` and overwrites this
-  // wrapper via `registerApiProvider`'s `Map.set`.  Resolving the real
-  // transport directly means our wrapper never delegates to that stub, so the
-  // lazy re-register never fires and our shaping stays in place for the
-  // lifetime of the session (see Issue #28).
+  // registry, to avoid infinite recursion: the registry entry for
+  // `anthropic-messages` is this wrapper, so delegating to the registry would
+  // loop.  On pi >=0.80.0, the floor also precludes the older 0.79.x
+  // lazy-registration clobber that would have displaced this wrapper on the
+  // second turn (Issue #28, fixed by the >=0.80.0 peer floor in Issue #40).
   //
   // The factory is `async` because resolving the host transport performs a
   // dynamic import; Pi's `ExtensionFactory` permits a `Promise<void>` return,
