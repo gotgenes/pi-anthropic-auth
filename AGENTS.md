@@ -432,6 +432,11 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 When asserting that behavior holds across loader modes — Node `alias` vs Bun `virtualModules` — verify each one independently; do not extrapolate from the installed host.
 The minimum supported host is pi >=0.80.0; both loader modes alias the bare `@earendil-works/pi-ai` specifier to `dist/compat.js` on that generation.
 
+### Diagnose Version Regressions From The Tag Source
+
+When a regression's root cause is a version difference, `git diff` the source at both release tags (the `~/development/pi/pi` and `~/development/pi-mono` clones have them) before writing the diagnosis.
+Eyeball greps that "look identical" and the installed dev copy both mislead (Refs #40).
+
 ## Related Files
 
 1. `README.md`

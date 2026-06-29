@@ -43,3 +43,51 @@ Pre-completion reviewer returned PASS.
   Historical references in plan/retro files and test simulation comments were intentionally left.
 - **Live repro:** operator confirmed two-turn session (hello/ping) on a 0.80.x host passed with no "out of extra usage" 400 on the second turn.
 - Pre-completion reviewer: PASS.
+
+## Stage: Final Retrospective (2026-06-29T00:20:59Z)
+
+### Session summary
+
+Shipped issue #40 end-to-end across Planning, Build, and Ship as `v1.0.0` (major bump from a `fix!:` / `BREAKING CHANGE:`): raised the pi-ai / pi-coding-agent peer floor to `>=0.80.0` to close the 0.79.x lazy-stub `register()` clobber that displaced the shaping wrapper on the second turn.
+The diagnosis was initially wrong (a hypothesised multi-turn transport defect) and was corrected only after the operator pushed for a full source diff at both release tags, which exposed the real `register()`-clobber mechanism.
+
+### Observations
+
+#### What went well
+
+- Clean recovery once redirected: a single full `diff` of `v0.79.8` vs `v0.80.0` source (turns 37-39) exposed the `register()` clobber, and the corrected diagnosis then held unchanged through the live repro, the pre-completion reviewer PASS, and the `v1.0.0` release.
+- Incremental verification in Build: green baseline -> dep bump -> immediate `pnpm run check`/`pnpm test` caught the 0.80.x API split instantly (turn 60), then re-verified after each fix and ran lint after each edit. No end-only verification, no wrong commit landed.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught) / `missing-context` — During Planning, formed and wrote the *entire* plan (turn 31) around a version-difference hypothesis ("0.79.x transport has a multi-turn defect fixed in 0.80.x") without diffing the actual tag source; extrapolated from the installed 0.79.1 dev copy and eyeball greps that "looked identical."
+  This violated the existing `AGENTS.md` gotcha "do not extrapolate from the installed host."
+  Impact: operator had to nudge four times (turns 7, 11, 16, 32); after the decisive "check both tags" nudge, 5 `Edit` calls (turns 40-44) rewrote the plan's Background / Goals / Design / Risks / Open-Questions before the commit. Caught pre-commit, but substantial rework.
+- `missing-context` — The plan's Test Impact Analysis asserted "the test surface barely moves" and "no assertion changes" for `test/host-transport.test.ts`, reasoning from the host *source tree* (`packages/ai/src`) rather than the published 0.80.2 *dist exports* the devDep resolves.
+  In Build the 0.80.x root barrel had dropped `streamSimpleAnthropic`, made `clearApiProviders` private, deprecated `getModel`, and moved registry functions to `/compat`.
+  Impact: ~10 investigation tool calls (turns 61-78) to map root vs compat exports and rewrites across 3 test files; caught immediately by the bump-then-verify feedback loop, so no wrong commit.
+
+#### What caused friction (user side)
+
+- The operator's progressive hints (0.79.8 version -> compat.ts -> peer-floor question -> "check both tags") were appropriate scaffolding, not withheld context.
+  The opportunity is agent-side: after the first version-specific hint (turn 7), the agent should have escalated straight to a full tag diff rather than continuing ~20 sequential greps that "looked identical."
+
+### Diagnostic details
+
+- **Model-performance correlation:** Planning and Retro ran under `claude-opus-4-8` (judgment-heavy: root-cause diagnosis, the `ask_user` architecture decision, plan synthesis); Build and Ship ran under `claude-sonnet-4-6` (mechanical: dep bump, test/doc edits, push/CI/merge).
+  The `pre-completion-reviewer` subagent (turn 106) returned a thorough PASS.
+  Allocation was clean — no reasoning-weak-on-judgment or high-cost-on-mechanical mismatch.
+- **Escalation-delay:** the wrong-hypothesis stretch ran from turn 8 to the turn-32 nudge — roughly 20 sequential bash greps on the same version-difference approach, including an explicit "looks identical at a glance" (turn 35) before the full diff at turn 37. Well past the 5-call threshold for changing strategy.
+- **Unused-tool:** the two-tag transport comparison was parallelizable — an `Explore` subagent over `~/development/pi/pi` at both tags could have produced the diff in one dispatch instead of ~20 in-thread greps.
+- **Feedback-loop:** no gap — verification ran incrementally throughout Build, not just at the end.
+
+### Follow-up (not landed)
+
+- **Dependency-bump import probe (P2):** when a plan bumps a dependency's version, probe the new version's *actual published exports* for every symbol the codebase imports from it (across `src/` and `test/`), not just the symbol the fix touches — reasoning from the host source tree under-predicted the 0.80.x dist API split.
+  Home would be the shared `.pi/prompts/plan-issue.md` Test Impact Analysis section; deferred because Build's bump-then-verify loop already catches it cleanly and the prompt is synced from `pi-packages`.
+  If this recurs across packages, open an issue and run `/plan-issue` on the shared prompt change.
+
+### Changes made
+
+1. `docs/retro/0040-raise-host-floor-to-0-80.md` — added the Final Retrospective stage entry (this section), including diagnostic details and the P2 follow-up note.
+2. `AGENTS.md` — added the "Diagnose Version Regressions From The Tag Source" gotcha after "Verify Each Loader Mode" (Proposal 1).
