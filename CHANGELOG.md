@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.7.0...v1.0.0) (2026-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* pi 0.79.x hosts are no longer supported. Upgrade pi to 0.80.0 or later. pi-anthropic-auth 0.6.3 remains usable on pi 0.79.x as a fallback. Refs #40.
+
+### Bug Fixes
+
+* require pi-ai/pi-coding-agent &gt;=0.80.0 to fix multi-turn OAuth 400 ([#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40)) ([1cdd14e](https://github.com/gotgenes/pi-anthropic-auth/commit/1cdd14eb922f01fc093ee6cb007cbfabf6da17ef))
+
+
+### Documentation
+
+* drop pi 0.79.x dual-layout notes after raising the floor ([#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40)) ([3a7fed9](https://github.com/gotgenes/pi-anthropic-auth/commit/3a7fed97d78495fc5c74af6d2a58e949e9283c09))
+* plan raising host floor to pi-ai 0.80.0 to fix multi-turn OAuth 400 ([#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40)) ([3a49518](https://github.com/gotgenes/pi-anthropic-auth/commit/3a495180f96a684c08afc774c659d63497d779d5))
+* **retro:** add build stage notes for issue [#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40) ([afe0077](https://github.com/gotgenes/pi-anthropic-auth/commit/afe00775cd9b063370c90241f98194cc69947041))
+* **retro:** add planning stage notes for issue [#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40) ([d8377ec](https://github.com/gotgenes/pi-anthropic-auth/commit/d8377ec9d1569033a6efd2dac83c9d2ea566267e))
+* **retro:** add retro notes for issue [#37](https://github.com/gotgenes/pi-anthropic-auth/issues/37) ([63ea6e0](https://github.com/gotgenes/pi-anthropic-auth/commit/63ea6e0f51434d0dd82d0b4293f9860bee3b2e42))
+* scope host-transport resolution to the pi-ai 0.80.x compat entry ([#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40)) ([87987b8](https://github.com/gotgenes/pi-anthropic-auth/commit/87987b8d2ba2299305f5967107195ccc7ad32003))
+
 ## [0.7.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.6.5...v0.7.0) (2026-06-26)
 
 
