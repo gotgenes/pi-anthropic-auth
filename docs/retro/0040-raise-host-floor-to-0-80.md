@@ -26,3 +26,20 @@ Wrote `docs/plans/0040-raise-host-floor-to-0-80.md` and committed it.
   Kept reading the (now-`@deprecated`-on-0.80) `streamSimpleAnthropic` alias for a surgical fix; deferred switching to `anthropicMessagesApi().streamSimple` as an Open Question.
 - **Process note:** the operator's "just double check the code at both tags" was the decisive correction — static greps looked identical, but the full diff plus reading 0.79.8's `register-builtins.ts` exposed the `register()` clobber. Check the tag source before trusting a version-difference hypothesis.
 - Routed to `/build-plan` (config + docs + live-repro gate, no new unit-test surface).
+
+## Stage: Implementation — Build (2026-06-29T00:00:37Z)
+
+### Session summary
+
+Executed all 4 plan steps: bumped peer floor and dev pins to >=0.80.0/0.80.2, updated three test files to the 0.80.x API split, confirmed multi-turn live repro passes with no 400, and cleaned up all dual-version and stale clobber-rationale prose in `src/`, `AGENTS.md`, and `docs/architecture.md`.
+Pre-completion reviewer returned PASS.
+
+### Observations
+
+- **Plan deviation (step 1 test updates):** the plan said "no assertion changes" for `test/host-transport.test.ts`, but the 0.80.x root barrel no longer exports `streamSimpleAnthropic`, so the integration test calling `resolveBuiltinAnthropicStreamSimple()` directly was replaced with a compat-import test that mirrors the actual host runtime resolution path.
+  This was an incorrect assumption in the plan's Test Impact Analysis.
+- **API changes in 0.80.x devDep:** `clearApiProviders` is private in compat (replaced with `resetApiProviders`); `getModel` is deprecated (replaced with `getBuiltinModel` from `@earendil-works/pi-ai/providers/all`); `streamSimple`/`getApiProvider`/`registerApiProvider`/`resetApiProviders` moved from root barrel to `/compat`.
+- **Grep sweep:** confirmed no residual `0.79`/`dist/index.js`/`both export`/`no peer-floor bump` prose in live docs or src.
+  Historical references in plan/retro files and test simulation comments were intentionally left.
+- **Live repro:** operator confirmed two-turn session (hello/ping) on a 0.80.x host passed with no "out of extra usage" 400 on the second turn.
+- Pre-completion reviewer: PASS.
