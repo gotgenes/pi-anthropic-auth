@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v1.0.0...v1.0.1) (2026-06-29)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40) ([b4dd58b](https://github.com/gotgenes/pi-anthropic-auth/commit/b4dd58bc19bd4aa1ccd4ead8af7b68f2f64e2284))
+
 ## [1.0.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.7.0...v1.0.0) (2026-06-29)
 
 
