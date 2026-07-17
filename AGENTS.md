@@ -81,7 +81,7 @@ Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal 
 
 Important upstream behavior confirmed from `~/development/pi/pi`:
 
-1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models
+1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models (still an available upstream capability, but this extension intentionally omits `oauth` since Issue #43 and delegates login/refresh to the built-in `anthropicOAuth`)
 2. Omitting `models` preserves Pi's built-in Anthropic model list
 3. `registerProvider({ api, streamSimple })` routes through pi-ai's singleton API registry (`registerApiProvider`), so the wrapper intercepts every `anthropic-messages` call path, including `completeSimple` compaction and `agentLoop` background work
 4. `before_provider_request` only fires for the interactive agent loop, so it cannot reach auxiliary OAuth calls — this is why the wrapper replaced the former hook-based shaping
