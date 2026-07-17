@@ -11,3 +11,7 @@ minimumReleaseAgeExclude:
   - '@rumdl/cli-linux-x64@0.2.14'
   - '@rumdl/cli-win32-x64@0.2.14'
   - rumdl@0.2.14
+  - '@earendil-works/pi-agent-core@0.80.10'
+  - '@earendil-works/pi-ai@0.80.10'
+  - '@earendil-works/pi-coding-agent@0.80.10'
+  - '@earendil-works/pi-tui@0.80.10'

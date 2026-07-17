@@ -12,11 +12,11 @@ importers:
         specifier: ^2.4.16
         version: 2.4.16
       '@earendil-works/pi-ai':
-        specifier: 0.80.2
-        version: 0.80.2(ws@8.20.0)(zod@4.4.3)
+        specifier: 0.80.10
+        version: 0.80.10(ws@8.20.0)(zod@4.4.3)
       '@earendil-works/pi-coding-agent':
-        specifier: 0.80.2
-        version: 0.80.2(ws@8.20.0)(zod@4.4.3)
+        specifier: 0.80.10
+        version: 0.80.10(ws@8.20.0)(zod@4.4.3)
       '@types/node':
         specifier: ^22.15.3
         version: 22.19.19
@@ -215,22 +215,22 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@earendil-works/pi-agent-core@0.80.2':
-    resolution: {integrity: sha512-BF9WPhixIFjT6Kp3Iz3H6ugkU+4AWotM8py96XE5pIK0arJbQKMWbR+dXSWWDEmR5yc/aFQODnuyowOEzMGO7Q==}
+  '@earendil-works/pi-agent-core@0.80.10':
+    resolution: {integrity: sha512-nwnOR3SuLYGRFfyQm8ri4Nj5VGVAvAM9GuqQd3u7BUQj0d6hmD2F8w7OHAAjThE3CuySIdM+v8E22QJG6/RfCg==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-ai@0.80.2':
-    resolution: {integrity: sha512-5GNKfdrRJ4uZ5Zd9iudoXggi/BbUcKnD/xfRHtdR+7q4vWqPvfx8auFuaT+ewGBVI8K4wj87eigFQ/iCSuy9RQ==}
-    engines: {node: '>=22.19.0'}
-    hasBin: true
-
-  '@earendil-works/pi-coding-agent@0.80.2':
-    resolution: {integrity: sha512-m9v7OUit0s9LklWfh61ca/XY5INjUzjtYtNZwy3cNvyjOLk3IpBgghP8aAp0iH35rLaiRwuuWiJ8t88ODMWY+A==}
+  '@earendil-works/pi-ai@0.80.10':
+    resolution: {integrity: sha512-Moe/H8c87yacDGK9dPbWphZNjVsrb3nTrIHycOQJAkFEnY9PYxOOd74+ny44kATfPU9Dm7aTHefar3pZF+UKUA==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
-  '@earendil-works/pi-tui@0.80.2':
-    resolution: {integrity: sha512-OvOAMIbXiC9OSse17YMiXIsI9AS5XM/ZV8N/k+UzdlRpPILDQYmLElevgGW92kkXR8qHBClIdzhCjuzlBGvphA==}
+  '@earendil-works/pi-coding-agent@0.80.10':
+    resolution: {integrity: sha512-aL4apbupCHiVLSXASXvRzH4Q2vmtfrDa+0s909CJuVu/GgGylbDzr7oyF1mPmip5E+VxYYxKWmph4hV04wUcQg==}
+    engines: {node: '>=22.19.0'}
+    hasBin: true
+
+  '@earendil-works/pi-tui@0.80.10':
+    resolution: {integrity: sha512-c2JO29PbhKPEQ6fgHQKAl0WhwuFqzWfzspMmP+8B5tpDuP+0mvarRbKKg8gq4b+pQx/QX+6aVS4ko7deoyjQjg==}
     engines: {node: '>=22.19.0'}
 
   '@emnapi/core@1.10.0':
@@ -1789,9 +1789,9 @@ snapshots:
   '@biomejs/cli-win32-x64@2.4.16':
     optional: true
 
-  '@earendil-works/pi-agent-core@0.80.2(ws@8.20.0)(zod@4.4.3)':
+  '@earendil-works/pi-agent-core@0.80.10(ws@8.20.0)(zod@4.4.3)':
     dependencies:
-      '@earendil-works/pi-ai': 0.80.2(ws@8.20.0)(zod@4.4.3)
+      '@earendil-works/pi-ai': 0.80.10(ws@8.20.0)(zod@4.4.3)
       ignore: 7.0.5
       typebox: 1.1.38
       yaml: 2.9.0
@@ -1803,7 +1803,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@0.80.2(ws@8.20.0)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.80.10(ws@8.20.0)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0
@@ -1824,11 +1824,11 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-coding-agent@0.80.2(ws@8.20.0)(zod@4.4.3)':
+  '@earendil-works/pi-coding-agent@0.80.10(ws@8.20.0)(zod@4.4.3)':
     dependencies:
-      '@earendil-works/pi-agent-core': 0.80.2(ws@8.20.0)(zod@4.4.3)
-      '@earendil-works/pi-ai': 0.80.2(ws@8.20.0)(zod@4.4.3)
-      '@earendil-works/pi-tui': 0.80.2
+      '@earendil-works/pi-agent-core': 0.80.10(ws@8.20.0)(zod@4.4.3)
+      '@earendil-works/pi-ai': 0.80.10(ws@8.20.0)(zod@4.4.3)
+      '@earendil-works/pi-tui': 0.80.10
       '@silvia-odwyer/photon-node': 0.3.4
       chalk: 5.6.2
       cross-spawn: 7.0.6
@@ -1854,7 +1854,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-tui@0.80.2':
+  '@earendil-works/pi-tui@0.80.10':
     dependencies:
       get-east-asian-width: 1.6.0
       marked: 18.0.5

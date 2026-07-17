@@ -56,14 +56,14 @@
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": ">=0.80.0",
-    "@earendil-works/pi-coding-agent": ">=0.80.0"
+    "@earendil-works/pi-ai": ">=0.80.8",
+    "@earendil-works/pi-coding-agent": ">=0.80.8"
   },
   "devDependencies": {
     "fallow": "^2.91.0",
     "@biomejs/biome": "^2.4.16",
-    "@earendil-works/pi-ai": "0.80.2",
-    "@earendil-works/pi-coding-agent": "0.80.2",
+    "@earendil-works/pi-ai": "0.80.10",
+    "@earendil-works/pi-coding-agent": "0.80.10",
     "@types/node": "^22.15.3",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
