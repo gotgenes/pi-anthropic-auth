@@ -1,6 +1,5 @@
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { anthropicOAuthOverride } from "./anthropic-oauth";
 import {
   createStatusCommandHandler,
   type ExtensionDiagnostics,
@@ -9,18 +8,25 @@ import { resolveBuiltinAnthropicStreamSimple } from "./host-transport";
 import { createAnthropicOAuthStreamSimple } from "./oauth-transport";
 
 export default async function (pi: ExtensionAPI): Promise<void> {
-  // Re-register the built-in `anthropic` provider with:
-  //   1. our OAuth login + refresh override (`oauth`), and
-  //   2. a thin transport wrapper (`streamSimple`) that applies Claude Code
-  //      OAuth request shaping on every Anthropic call path.
+  // Re-register the built-in `anthropic` provider with a thin transport
+  // wrapper (`streamSimple`) that applies Claude Code OAuth request shaping
+  // on every Anthropic call path.
   //
-  // Omitting `models` preserves Pi's built-in Anthropic model list.  The
-  // transport wrapper replaces our previous `before_provider_request` handler:
-  // that hook only fires for the interactive agent loop, so auxiliary OAuth
-  // requests (built-in compaction, third-party background agents) bypassed it
-  // and failed with Anthropic "extra usage" 400s.  Registering `streamSimple`
-  // routes through Pi's singleton API registry, so the same shaping now covers
-  // the main loop, `completeSimple` compaction, and `agentLoop` background work.
+  // Omitting `oauth` (and `models`) delegates login and refresh to Pi's
+  // built-in `anthropicOAuth` and preserves Pi's built-in Anthropic model
+  // list.  We previously supplied our own `oauth` override to harden refresh
+  // rotation, but Pi 0.80.8 removed `loginAnthropic`/`refreshAnthropicToken`
+  // from `@earendil-works/pi-ai/oauth`, so the override's deep import became
+  // undefined and crashed `/login` (Issue #43); the built-in `anthropicOAuth`
+  // now owns login/refresh instead.
+  //
+  // The transport wrapper replaces our previous `before_provider_request`
+  // handler: that hook only fires for the interactive agent loop, so auxiliary
+  // OAuth requests (built-in compaction, third-party background agents)
+  // bypassed it and failed with Anthropic "extra usage" 400s.  Registering
+  // `streamSimple` routes through Pi's singleton API registry, so the same
+  // shaping now covers the main loop, `completeSimple` compaction, and
+  // `agentLoop` background work.
   //
   // The delegate is the built-in `streamSimpleAnthropic` resolved at runtime
   // (see `resolveBuiltinAnthropicStreamSimple`) rather than read out of the
@@ -46,7 +52,6 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   };
 
   pi.registerProvider("anthropic", {
-    oauth: anthropicOAuthOverride,
     api: "anthropic-messages",
     streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
   });
