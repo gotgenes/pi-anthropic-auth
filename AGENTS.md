@@ -416,6 +416,13 @@ The delegate is resolved at runtime rather than read out of the registry to avoi
 The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x), which re-exports `streamSimpleAnthropic`.
 The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).
 
+### `registerProvider` Merges, It Does Not Replace
+
+Pi's `ModelRuntime.registerProvider` (0.80.8+) overlays each registration's *defined* values on the previous one and preserves keys left `undefined`.
+Omitting a field does not clear a value a prior registration set.
+A stale installed copy that registers `oauth` keeps it in the merged config even after a fixed copy re-registers without `oauth`, so `/login` still runs the stale override (Issue #43).
+When a local `-e`/`"../"` copy and an installed `packages[]` copy both load, isolate to one copy before validating a registration change.
+
 ### Model ID Alias Drift
 
 Pi CLI model aliases and the locally installed `@earendil-works/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.

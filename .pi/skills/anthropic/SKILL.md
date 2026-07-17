@@ -44,6 +44,11 @@ Before anything else, run `/anthropic-auth:status` in Pi.
 The command prints the loaded version, the module path (which install it loaded from), and whether the built-in Anthropic transport resolved.
 If the command is not found, the extension is not loaded — check for a Docker volume or `pi install` issue before debugging request shaping.
 
+Two copies can load at once — a local `-e`/`"../"` source copy and an installed npm copy from a `settings.json` `packages[]` entry (repo and global settings both contribute).
+Pi's `registerProvider` merges their `anthropic` configs, so a stale installed copy can reintroduce a broken `oauth` even when the fixed copy is loaded (Issue #43).
+Before validating a provider/OAuth change, isolate to the fixed copy (remove the global `packages[]` entry, or `--no-extensions -e <local>`).
+Test `/login` interactively; a green `pi -p` prompt exercises requests, not the login path.
+
 ### 1. Reproduce with the real `pi` CLI
 
 Use the actual CLI rather than only unit tests:
