@@ -30,7 +30,6 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 
 ### Confirmed local fixes
 
-- Refresh fallback preserves the previous refresh token when Anthropic omits `refresh_token`.
 - OAuth Anthropic payload shaping prepends an `x-anthropic-billing-header` system block.
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
 - Assistant message ordering must be normalized when Pi serializes `[tool_use..., text]` for Anthropic.
@@ -124,7 +123,6 @@ This covers every OAuth call path, including compaction and background agents.
 - `src/oauth-transport.ts`
 - `src/request-shaping.ts`
 - `src/system-prompt-shaping.ts`
-- `src/anthropic-oauth.ts`
 - `test/pi-anthropic-ordering-experiment.test.ts`
 - `test/system-prompt-shaping.test.ts`
 

@@ -32,13 +32,11 @@ That means preserving:
 
 The current implementation does the following:
 
-1. Re-registers the built-in `anthropic` provider with an `oauth` override and a thin `streamSimple` transport wrapper
-2. Reuses Pi's native Anthropic login flow from `@earendil-works/pi-ai/oauth`
-3. Hardens refresh behavior so missing rotated refresh tokens fall back to the previous refresh token
-4. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path (main loop, compaction, and background agents)
-5. Prepends an Anthropic billing/content-consistency header block to `system[]`
-6. Sanitizes Pi's default preamble by anchor during the same shaping pass — removing the Pi identity, custom-tool filler, and Pi documentation paragraphs and replacing only the identity with a minimal neutral prompt — while preserving tool snippets, guidelines, and appended extension content
-7. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
+1. Re-registers the built-in `anthropic` provider with a thin `streamSimple` transport wrapper (login and refresh are delegated to Pi's built-in `anthropicOAuth`)
+2. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path (main loop, compaction, and background agents)
+3. Prepends an Anthropic billing/content-consistency header block to `system[]`
+4. Sanitizes Pi's default preamble by anchor during the same shaping pass — removing the Pi identity, custom-tool filler, and Pi documentation paragraphs and replacing only the identity with a minimal neutral prompt — while preserving tool snippets, guidelines, and appended extension content
+5. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` shaping step.
@@ -57,7 +55,7 @@ Any OAuth-specific logic must be narrowly gated so it does not affect non-OAuth 
 
 ### Prefer Request Shaping Before Prompt Rewriting
 
-Start with refresh-token hardening, billing/header injection, and exact request-shape fixes.
+Start with billing/header injection and exact request-shape fixes.
 Do not add broader prompt rewriting unless real failures show it is necessary.
 
 ### Isolate Compatibility Logic
@@ -73,15 +71,15 @@ The main extension entrypoint is `src/index.ts`.
 
 It uses one Pi extension seam:
 
-1. `pi.registerProvider("anthropic", { oauth, api: "anthropic-messages", streamSimple })`
+1. `pi.registerProvider("anthropic", { api: "anthropic-messages", streamSimple })`
 
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
 The delegate is resolved at runtime rather than read from the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
-On pi >=0.80.0, the pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.80.0` peer floor.
+On pi >=0.80.8, the pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.80.8` peer floor.
 Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
-Important upstream behavior confirmed from `pi-mono`:
+Important upstream behavior confirmed from `~/development/pi/pi`:
 
 1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models
 2. Omitting `models` preserves Pi's built-in Anthropic model list
@@ -92,14 +90,13 @@ Important upstream behavior confirmed from `pi-mono`:
 
 Current source layout:
 
-1. `src/index.ts`: extension registration (OAuth override + transport wrapper + `/anthropic-auth:status` command)
-2. `src/anthropic-oauth.ts`: OAuth override wrapper and refresh fallback
-3. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31)
-4. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
-5. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
-6. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
-7. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
-8. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, and handler factory for the `/anthropic-auth:status` command
+1. `src/index.ts`: extension registration (transport wrapper + `/anthropic-auth:status` command)
+2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31)
+3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
+4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
+5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
+6. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
+7. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, and handler factory for the `/anthropic-auth:status` command
 
 ### Project Skills
 
@@ -153,11 +150,12 @@ This repo depends on:
 1. `@earendil-works/pi-coding-agent`
 2. `@earendil-works/pi-ai`
 
-When possible, import Pi behavior from `@earendil-works/pi-ai/oauth` rather than copying code from upstream.
+When possible, reuse Pi behavior from the built-in `anthropic` provider rather than copying code from upstream.
+As of pi-ai 0.80.8, `@earendil-works/pi-ai/oauth` re-exports types only; the low-level `loginAnthropic`/`refreshAnthropicToken` functions are module-private.
 
 ## Upstream Findings
 
-These were confirmed by inspecting upstream `badlogic/pi-mono`.
+These were confirmed by inspecting upstream `~/development/pi/pi` (GitHub: `earendil-works/pi`).
 
 ### Pi Already Handles
 
@@ -172,9 +170,8 @@ Note: Pi upstream already normalizes Anthropic OAuth tool names to Claude Code c
 
 ### Gap Identified So Far
 
-The clearest upstream gap found during initial inspection is refresh-token rotation robustness.
-Pi's built-in Anthropic refresh helper currently expects a fresh `refresh_token` on refresh responses.
-Other Pi OAuth providers already fall back to the previous refresh token when a new one is omitted.
+Refresh-token rotation robustness was previously patched locally by `mergeRefreshedCredentials`, preserving the previous `refresh_token` when a refresh response omitted one.
+That override was dropped for Pi 0.80.8 compatibility (Issue #43); login and refresh are now handled by Pi's built-in `anthropicOAuth`, which does not merge an omitted rotation token, so a dropped rotation would require a manual `/login anthropic`.
 
 A second gap surfaced from Issue #18: `before_provider_request` is threaded only into the interactive agent loop's `streamFn`.
 Auxiliary Anthropic OAuth calls bypass it — built-in compaction/summarization issues `completeSimple` without `onPayload`, and third-party background agents (for example pi-observational-memory's observer, reflector, and dropper running via `agentLoop`) use pi-ai's bare `streamSimple`.
@@ -369,19 +366,16 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 
 Current suites map roughly to:
 
-1. `test/anthropic-oauth.test.ts` — OAuth callback parsing, manual-code edge cases, and refresh-token rotation fallback.
-2. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, and delegation to the built-in transport.
-3. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, and the structural messages-payload guard.
-4. `test/system-prompt-shaping.test.ts` — anchor-based paragraph removal, tool-snippet and guideline preservation, appended-content preservation, the verbatim upstream-prompt fixture, and degraded-mode fallbacks.
-5. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
+1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, and delegation to the built-in transport.
+2. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, and the structural messages-payload guard.
+3. `test/system-prompt-shaping.test.ts` — anchor-based paragraph removal, tool-snippet and guideline preservation, appended-content preservation, the verbatim upstream-prompt fixture, and degraded-mode fallbacks.
+4. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
 
 Priority areas for new tests:
 
-1. OAuth callback parsing
-2. Refresh fallback when `refresh_token` is omitted
-3. Billing header generation
-4. OAuth-only request-body shaping
-5. System prompt shaping boundaries (preamble anchors, appended content preservation, fallback paths)
+1. Billing header generation
+2. OAuth-only request-body shaping
+3. System prompt shaping boundaries (preamble anchors, appended content preservation, fallback paths)
 
 ## Gotchas
 
@@ -430,11 +424,11 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 ### Verify Each Loader Mode
 
 When asserting that behavior holds across loader modes — Node `alias` vs Bun `virtualModules` — verify each one independently; do not extrapolate from the installed host.
-The minimum supported host is pi >=0.80.0; both loader modes alias the bare `@earendil-works/pi-ai` specifier to `dist/compat.js` on that generation.
+The minimum supported host is pi >=0.80.8; both loader modes alias the bare `@earendil-works/pi-ai` specifier to `dist/compat.js` on that generation.
 
 ### Diagnose Version Regressions From The Tag Source
 
-When a regression's root cause is a version difference, `git diff` the source at both release tags (the `~/development/pi/pi` and `~/development/pi-mono` clones have them) before writing the diagnosis.
+When a regression's root cause is a version difference, `git diff` the source at both release tags (the `~/development/pi/pi` clone has them) before writing the diagnosis.
 Eyeball greps that "look identical" and the installed dev copy both mislead (Refs #40).
 
 ## Related Files
@@ -448,5 +442,5 @@ Eyeball greps that "look identical" and the installed dev copy both mislead (Ref
 7. `.pi/agents/`
 8. `.fallowrc.json`
 9. Workflow parity source: `~/development/pi/pi-packages/`
-10. Upstream reference clone: `~/development/pi-mono`
+10. Upstream reference clone: `~/development/pi/pi`
 11. Example reference project: `~/development/opencode-anthropic-auth`

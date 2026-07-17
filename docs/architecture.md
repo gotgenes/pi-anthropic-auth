@@ -4,10 +4,8 @@ This document explains how `pi-anthropic-auth` applies Anthropic Claude Pro/Max 
 
 ## Overview
 
-The extension re-registers Pi's built-in `anthropic` provider with two things:
-
-1. an `oauth` override that reuses Pi's native Anthropic login and hardens token refresh, and
-2. a thin `streamSimple` transport wrapper that shapes outgoing OAuth requests.
+The extension re-registers Pi's built-in `anthropic` provider with a thin `streamSimple` transport wrapper that shapes outgoing OAuth requests.
+Login and refresh are delegated to Pi's built-in `anthropicOAuth` (the extension omits `oauth`, and `composeModelProvider` falls back to the built-in auth).
 
 The wrapper is the single shaping point.
 It delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` step, so it does not reimplement Pi's Anthropic transport.
@@ -85,15 +83,14 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 - Non-Anthropic providers (different `api`, so the token gate short-circuits to pass-through).
 - Plain Anthropic API-key requests (no `sk-ant-oat` token).
 - Pi's built-in Anthropic model list (no `models` are registered).
-- Pi's native `/login anthropic` flow (handled by the `oauth` override).
+- Pi's native `/login anthropic` flow (handled by Pi's built-in `anthropicOAuth`).
 
 ## Related files
 
-- `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the OAuth override, `streamSimple` wrapper, and the `/anthropic-auth:status` diagnostics command.
+- `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the `streamSimple` wrapper and the `/anthropic-auth:status` diagnostics command.
 - `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
-- `src/anthropic-oauth.ts` — OAuth login override and refresh fallback.
 - `src/diagnostics.ts` — `ExtensionDiagnostics` value object, `formatDiagnosticsReport`, and `createStatusCommandHandler`; surfaced by the `/anthropic-auth:status` command registered in `src/index.ts`.
