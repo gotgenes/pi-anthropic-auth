@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.0.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v1.0.0...v2.0.0) (2026-07-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Pi 0.80.0 through 0.80.7 hosts are no longer supported; upgrade to @earendil-works/pi-coding-agent@0.80.8 or later.  Dropping the oauth override also removes the mergeRefreshedCredentials refresh-token guard that preserved a rotated refresh_token when the refresh response omitted one; Pi's built-in anthropicOAuth now owns login and refresh, and recovery from a dropped rotation token is a manual /login anthropic.
+
+### Bug Fixes
+
+* require @earendil-works/pi-ai and pi-coding-agent &gt;=0.80.8 ([6e84d5d](https://github.com/gotgenes/pi-anthropic-auth/commit/6e84d5d5f5cfea1fae3266302b2844f2ffcac4e0))
+* restore /login on Pi 0.80.8 by dropping the removed-API oauth override ([9624771](https://github.com/gotgenes/pi-anthropic-auth/commit/9624771dc2987ec18229a23f71667dce5221d9c5))
+
+
+### Documentation
+
+* caveat upstream oauth-override note after Issue [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) ([0178c8c](https://github.com/gotgenes/pi-anthropic-auth/commit/0178c8c789310c6651f2bb3be5392fcc9d4d487e))
+* document the registerProvider merge migration hazard for [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) ([8f5618b](https://github.com/gotgenes/pi-anthropic-auth/commit/8f5618bb25bd02c5459c4697da7d5fefce4d28f2))
+* drop OAuth override references after delegating login/refresh to Pi ([8f12fc2](https://github.com/gotgenes/pi-anthropic-auth/commit/8f12fc21da9650481c296eb683cdb5c965d9d260))
+* plan re-enabling pi-anthropic-auth on Pi 0.80.8+ ([#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43)) ([07df94d](https://github.com/gotgenes/pi-anthropic-auth/commit/07df94d564243b1eab50de4758ba1f4c295af55c))
+* **retro:** add build stage notes for issue [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) ([cf8fee1](https://github.com/gotgenes/pi-anthropic-auth/commit/cf8fee11ad90abc35f276e5fae45918317d67b4f))
+* **retro:** add planning stage notes for issue [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) ([cb3c506](https://github.com/gotgenes/pi-anthropic-auth/commit/cb3c506c459784ea1f63a2548250bd78d3cb0da6))
+* **retro:** add retro notes for issue [#40](https://github.com/gotgenes/pi-anthropic-auth/issues/40) ([b4dd58b](https://github.com/gotgenes/pi-anthropic-auth/commit/b4dd58bc19bd4aa1ccd4ead8af7b68f2f64e2284))
+
 ## [1.0.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v0.7.0...v1.0.0) (2026-06-29)
 
 
