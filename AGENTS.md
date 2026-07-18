@@ -422,6 +422,7 @@ Pi's `ModelRuntime.registerProvider` (0.80.8+) overlays each registration's *def
 Omitting a field does not clear a value a prior registration set.
 A stale installed copy that registers `oauth` keeps it in the merged config even after a fixed copy re-registers without `oauth`, so `/login` still runs the stale override (Issue #43).
 When a local `-e`/`"../"` copy and an installed `packages[]` copy both load, isolate to one copy before validating a registration change.
+A breaking release ships as a major bump, so a stale installed copy pinned `^oldmajor` is not upgraded by `pi update` (it stays within the caret range); cross the major with `pi install npm:<pkg>@latest`, which rewrites the pin (Issue #43 shipped as `2.0.0`; a stale `^1.0.0` install kept clobbering refresh with the removed-API `oauth` override until re-installed).
 
 ### Model ID Alias Drift
 
