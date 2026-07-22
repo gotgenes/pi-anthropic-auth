@@ -61,7 +61,7 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
  * too far from what Anthropic expects, OAuth requests may be rejected or
  * counted incorrectly.
  */
-export const CLAUDE_CODE_VERSION = "2.1.169";
+export const CLAUDE_CODE_VERSION = "2.1.206";
 
 /** Salt used in the billing header suffix hash. */
 export const BILLING_HEADER_SALT = "59cf53e54c78";
