@@ -106,12 +106,17 @@ The upstream issue should therefore be authored in the operator's own voice, gro
 
 ## Near-term decision
 
-The upstream change is not in hand, so this repo keeps shaping at the registry transport for now and only hardens how it obtains the built-in delegate.
-Near-term, switch `src/host-transport.ts` from `import.meta.resolve` (plus filesystem resolution) to the bare-root `@earendil-works/pi-ai` import, reading the built-in transport off the compat surface the loader aliases and virtualizes in both modes.
+**Status: implemented.**
+The upstream seam ask ([pi#6089]) was auto-closed by pi's new-contributor bot and will not be actioned, but pi independently shipped expanded custom-provider support that resolves this gap in practice: the extension loader aliases (Node) and virtualizes (Bun) the `@earendil-works/pi-ai/compat` subpath in both modes, and pi ships `custom-provider-gitlab-duo` as an official example that delegates to `anthropicMessagesApi().streamSimple` through that same subpath.
+The #35 seam concern is therefore resolved in practice on pi >=0.80.8; the residual watch is the eventual `compat` removal, when `anthropicMessagesApi()` relocates off the compat entrypoint.
+
+This repo keeps shaping at the registry transport and only hardens how it obtains the built-in delegate.
+`src/host-transport.ts` was switched from `import.meta.resolve` (plus filesystem resolution) to an explicit `@earendil-works/pi-ai/compat` subpath import, preferring the non-deprecated `anthropicMessagesApi().streamSimple` factory and falling back to the deprecated `streamSimpleAnthropic` alias for older hosts.
+The `/compat` subpath is used rather than the bare root — the loader aliases both to the same compat entrypoint, but `/compat` names the surface actually depended on and matches pi's own example.
 This fixes Issue [#31] across Node installs and the Bun-compiled binary for the current pi generation.
 
-This is explicitly non-durable: it depends on the compat surface, which `compat.ts` says is deleted with the ModelManager migration, so the switch must carry a visible compat-removal-cliff TODO pointing at this record and the upstream brief.
-Implementation is deferred to a separate follow-up issue; this record only commits the direction.
+This still depends on the compat surface, which `compat.ts` says is deleted with the ModelManager migration, so `src/host-transport.ts` carries a compat-removal watch pointing at this record and the upstream brief.
+Landed in commit `fdced2f` (this repo).
 
 Alternatives considered and rejected for the near term:
 
@@ -119,8 +124,9 @@ Alternatives considered and rejected for the near term:
    Rejected: it bypasses the host indirection exactly as `import.meta.resolve` does and still breaks in the Bun-binary mode, which has no on-disk `node_modules` to walk.
 2. Holding the status quo (`import.meta.resolve` plus the dual-layout fallback from Issue [#33]).
    Rejected: it leaves Issue [#31] unfixed for `pi install` and Bun-binary users, which is the live breakage.
-3. Jumping straight to a forward subpath import.
-   Rejected for now: it is not loader-safe until upstream aliases or virtualizes the `/api/*` subpath, so it cannot ship before the upstream change lands.
+3. Jumping straight to a forward `/api/*` subpath import (for example `@earendil-works/pi-ai/api/anthropic-messages.lazy`).
+   Rejected: it is not loader-safe — upstream aliases and virtualizes the `/compat` subpath (and `/providers/all`) but not the per-API `/api/*` subpaths, so a bare import of them still fails in Bun-binary mode.
+   The forward `anthropicMessagesApi()` factory is instead reached through the aliased `/compat` entrypoint, which re-exports it.
 
 ## Cross-references
 
