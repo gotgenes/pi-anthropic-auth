@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.0...v2.0.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* bump reported Claude Code version to 2.1.206 ([4c4578a](https://github.com/gotgenes/pi-anthropic-auth/commit/4c4578ac71ce0583ff6fb76d467eb0d93c136111))
+* unregister anthropic before re-registering to clear stale merged oauth ([9074632](https://github.com/gotgenes/pi-anthropic-auth/commit/907463215adec503e4fd0b5de6028ea2752105a8))
+
+
+### Documentation
+
+* mark [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) seam decision record as implemented via /compat ([864e961](https://github.com/gotgenes/pi-anthropic-auth/commit/864e961f11c97a3911a6d42453897a5b29c835df))
+* note cross-major upgrade for stale installs after [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) v2.0.0 ([571f6da](https://github.com/gotgenes/pi-anthropic-auth/commit/571f6dada27c60b18373a5795638d3ba1796022c))
+* record /compat realignment and defensive unregister; mark [#35](https://github.com/gotgenes/pi-anthropic-auth/issues/35) resolved in practice ([bcfe3f6](https://github.com/gotgenes/pi-anthropic-auth/commit/bcfe3f6d450b47f9c63a0dd83d51c0953fabdcb4))
+* **retro:** add retro notes for issue [#43](https://github.com/gotgenes/pi-anthropic-auth/issues/43) ([46073d1](https://github.com/gotgenes/pi-anthropic-auth/commit/46073d17a733e0363ba72faae730d87231f3eef9))
+
 ## [2.0.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v1.0.0...v2.0.0) (2026-07-17)
 
 
