@@ -46,6 +46,7 @@ If the command is not found, the extension is not loaded — check for a Docker 
 
 Two copies can load at once — a local `-e`/`"../"` source copy and an installed npm copy from a `settings.json` `packages[]` entry (repo and global settings both contribute).
 Pi's `registerProvider` merges their `anthropic` configs, so a stale installed copy can reintroduce a broken `oauth` even when the fixed copy is loaded (Issue #43).
+`src/index.ts` calls `pi.unregisterProvider("anthropic")` before re-registering as partial hardening, but during initial load the loader only drops *pending* registrations, so it only helps when the stale copy loaded *before* ours — isolation is still required to validate.
 Before validating a provider/OAuth change, isolate to the fixed copy (remove the global `packages[]` entry, or `--no-extensions -e <local>`).
 Test `/login` interactively; a green `pi -p` prompt exercises requests, not the login path.
 

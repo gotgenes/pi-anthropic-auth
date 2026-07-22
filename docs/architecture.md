@@ -44,11 +44,13 @@ flowchart TD
     G --> AN["Anthropic /v1/messages"]
 ```
 
-The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport (`streamSimpleAnthropic`), resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
+The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport, resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
 Resolving it directly avoids infinite recursion: the registry's `anthropic-messages` entry is our own wrapper, so reading the delegate from the registry would loop.
-On pi >=0.80.0 the host loader aliases (Node) / virtualizes (Bun) the bare `@earendil-works/pi-ai` specifier to its bundled compat entrypoint (`dist/compat.js`), which re-exports `streamSimpleAnthropic` as a deprecated alias of `anthropicMessagesApi().streamSimple`.
-A bare-root import is required because `import.meta.resolve` and subpath imports bypass that host indirection: jiti consults its `alias`/`virtualModules` maps on the import path but not on the `resolve` path, so the former `import.meta.resolve("@earendil-works/pi-ai")` plus derived `dist/...` file import fell through to filesystem resolution from the extension's own directory and failed when pi-ai was absent from it — the `pi install` and Bun-binary cases (Issue #31).
-The `compat`-removal cliff that will eventually break `streamSimpleAnthropic` is tracked in Issue #35.
+The resolver imports `@earendil-works/pi-ai/compat` — the subpath pi's own `custom-provider-gitlab-duo` example delegates through — and prefers the non-deprecated `anthropicMessagesApi().streamSimple` factory, falling back to the deprecated `streamSimpleAnthropic` alias for older hosts.
+On pi >=0.80.8 the host loader aliases (Node) / virtualizes (Bun) both the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to its bundled compat entrypoint (`dist/compat.js`); the subpath names the surface we actually depend on.
+A loader-aliased specifier is required because `import.meta.resolve` and non-aliased subpath imports bypass that host indirection: jiti consults its `alias`/`virtualModules` maps on the import path but not on the `resolve` path, so the former `import.meta.resolve("@earendil-works/pi-ai")` plus derived `dist/...` file import fell through to filesystem resolution from the extension's own directory and failed when pi-ai was absent from it — the `pi install` and Bun-binary cases (Issue #31).
+The #35 seam concern is resolved in practice: the loader aliases `/compat` in both modes and pi ships this delegation pattern as an official example.
+The residual watch is the eventual `compat` removal, at which point `anthropicMessagesApi()` relocates off the compat entrypoint (Issue #35).
 
 ## OAuth gating
 
@@ -88,7 +90,7 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 ## Related files
 
 - `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the `streamSimple` wrapper and the `/anthropic-auth:status` diagnostics command.
-- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
+- `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, preferring the `anthropicMessagesApi()` factory (Issue #28, Issue #31, Issue #35); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.

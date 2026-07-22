@@ -91,7 +91,7 @@ Important upstream behavior confirmed from `~/development/pi/pi`:
 Current source layout:
 
 1. `src/index.ts`: extension registration (transport wrapper + `/anthropic-auth:status` command)
-2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via a bare-root `@earendil-works/pi-ai` import through Pi's loader indirection (Issue #28, Issue #31)
+2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, preferring the `anthropicMessagesApi()` factory over the deprecated `streamSimpleAnthropic` alias (Issue #28, Issue #31, Issue #35)
 3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
 4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
@@ -413,14 +413,18 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
 The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
-The resolver imports the bare `@earendil-works/pi-ai` specifier, which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x), which re-exports `streamSimpleAnthropic`.
+The resolver imports the `@earendil-works/pi-ai/compat` subpath — the path pi's own `custom-provider-gitlab-duo` example delegates through — which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
+It prefers the non-deprecated `anthropicMessagesApi().streamSimple` factory and falls back to the deprecated `streamSimpleAnthropic` alias for older hosts.
 The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).
+The #35 seam concern is resolved in practice on pi >=0.80.8 (the loader aliases `/compat` in both modes and pi ships this delegation pattern as an official example); the residual watch is the eventual `compat` removal, when `anthropicMessagesApi()` relocates off the compat entrypoint.
 
 ### `registerProvider` Merges, It Does Not Replace
 
 Pi's `ModelRuntime.registerProvider` (0.80.8+) overlays each registration's *defined* values on the previous one and preserves keys left `undefined`.
 Omitting a field does not clear a value a prior registration set.
 A stale installed copy that registers `oauth` keeps it in the merged config even after a fixed copy re-registers without `oauth`, so `/login` still runs the stale override (Issue #43).
+The merge is an intentional upstream contract (the `ModelRuntime.registerProvider` source states it "merges defined values over the previous registration and preserves undefined ones, matching the legacy ModelRegistry contract"), so it will not be "fixed" upstream.
+As partial hardening, `src/index.ts` calls `pi.unregisterProvider("anthropic")` before re-registering, restoring the built-in provider first so a stale merged `oauth` is cleared — but during the initial load phase the loader only drops *pending* registrations, so this only helps when the stale copy loaded *before* ours; running a single up-to-date copy remains the actual fix.
 When a local `-e`/`"../"` copy and an installed `packages[]` copy both load, isolate to one copy before validating a registration change.
 A breaking release ships as a major bump, so a stale installed copy pinned `^oldmajor` is not upgraded by `pi update` (it stays within the caret range); cross the major with `pi install npm:<pkg>@latest`, which rewrites the pin (Issue #43 shipped as `2.0.0`; a stale `^1.0.0` install kept clobbering refresh with the removed-API `oauth` override until re-installed).
 
@@ -432,7 +436,7 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 ### Verify Each Loader Mode
 
 When asserting that behavior holds across loader modes — Node `alias` vs Bun `virtualModules` — verify each one independently; do not extrapolate from the installed host.
-The minimum supported host is pi >=0.80.8; both loader modes alias the bare `@earendil-works/pi-ai` specifier to `dist/compat.js` on that generation.
+The minimum supported host is pi >=0.80.8; both loader modes alias the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to `dist/compat.js` on that generation, and both expose `unregisterProvider` on the extension API.
 
 ### Diagnose Version Regressions From The Tag Source
 
