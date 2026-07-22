@@ -107,10 +107,18 @@ type CapturedCommand = {
 function createFakePi(): {
   pi: ExtensionAPI;
   commands: Map<string, CapturedCommand>;
+  calls: string[];
 } {
   const commands = new Map<string, CapturedCommand>();
+  // Ordered log of provider lifecycle calls so tests can assert that the
+  // defensive `unregisterProvider` runs before `registerProvider`.
+  const calls: string[] = [];
   const pi: ExtensionAPI = {
+    unregisterProvider(name: string): void {
+      calls.push(`unregister:${name}`);
+    },
     registerProvider(name: string, config: ProviderConfig): void {
+      calls.push(`register:${name}`);
       if (config.streamSimple) {
         const streamSimple = config.streamSimple;
         registerApiProvider(
@@ -130,7 +138,7 @@ function createFakePi(): {
       commands.set(name, options);
     },
   } as unknown as ExtensionAPI;
-  return { pi, commands };
+  return { pi, commands, calls };
 }
 
 function samplePayload() {
@@ -223,6 +231,22 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
       await delegateCallWasShaped(delegateCalls[1]),
       true,
       "second OAuth call must still be shaped — the lazy re-register must not displace our wrapper",
+    );
+  });
+
+  test("unregisters anthropic before re-registering, clearing a stale merged oauth (#43 hardening)", async () => {
+    onTestFinished(() => {
+      resetApiProviders();
+    });
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, calls } = createFakePi();
+    await registerExtension(pi);
+
+    assert.deepEqual(
+      calls,
+      ["unregister:anthropic", "register:anthropic"],
+      "unregisterProvider('anthropic') must run before registerProvider so a co-loaded stale copy's oauth cannot survive the merge",
     );
   });
 });

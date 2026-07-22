@@ -51,6 +51,21 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     transportResolved: true,
   };
 
+  // Defensively clear any prior `anthropic` registration before installing our
+  // wrapper.  Pi's `registerProvider` MERGES each registration's defined values
+  // over the previous one and preserves `undefined` keys (an intentional
+  // upstream contract), so it cannot clear a field by omission.  A stale
+  // co-loaded copy of this extension that registered an `oauth` override would
+  // otherwise survive our omission of `oauth` and keep clobbering login/refresh
+  // (Issue #43).  `unregisterProvider` restores the built-in `anthropic`
+  // provider first, so our re-registration starts from a clean slate.
+  //
+  // Caveat: during the initial load phase the loader's `unregisterProvider`
+  // only drops registrations that are already *pending*, so this hardens the
+  // case where the stale copy loaded *before* us; it is not a full guarantee if
+  // the stale copy loads afterward.  Running a single up-to-date copy remains
+  // the actual fix (see the Issue #43 migration guidance).
+  pi.unregisterProvider("anthropic");
   pi.registerProvider("anthropic", {
     api: "anthropic-messages",
     streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
