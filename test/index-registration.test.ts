@@ -42,7 +42,12 @@ const CONTEXT = { messages: [] } as unknown as Context;
  * declarations, which would otherwise leave the stub `undefined` when the
  * factory runs.
  */
-const { delegateCalls, streamSimpleAnthropicMock } = vi.hoisted(() => {
+const {
+  delegateCalls,
+  disableAnthropicExtraUsageWarningMock,
+  settingsManagerCreateMock,
+  streamSimpleAnthropicMock,
+} = vi.hoisted(() => {
   const delegateCalls: Array<{ options?: SimpleStreamOptions }> = [];
   const streamSimpleAnthropicMock: Mock<
     (
@@ -54,7 +59,14 @@ const { delegateCalls, streamSimpleAnthropicMock } = vi.hoisted(() => {
     delegateCalls.push({ options });
     return createAssistantMessageEventStream();
   });
-  return { delegateCalls, streamSimpleAnthropicMock };
+  const disableAnthropicExtraUsageWarningMock = vi.fn();
+  const settingsManagerCreateMock = vi.fn(() => ({}));
+  return {
+    delegateCalls,
+    disableAnthropicExtraUsageWarningMock,
+    settingsManagerCreateMock,
+    streamSimpleAnthropicMock,
+  };
 });
 
 vi.mock("#src/host-transport", () => ({
@@ -63,6 +75,14 @@ vi.mock("#src/host-transport", () => ({
     // satisfies it structurally (the registry only ever invokes it for
     // `anthropic-messages` models).
     Promise.resolve(streamSimpleAnthropicMock),
+}));
+
+vi.mock("#src/anthropic-extra-usage-warning", () => ({
+  disableAnthropicExtraUsageWarning: disableAnthropicExtraUsageWarningMock,
+}));
+
+vi.mock("@earendil-works/pi-coding-agent", () => ({
+  SettingsManager: { create: settingsManagerCreateMock },
 }));
 
 /**
@@ -188,6 +208,8 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
   beforeEach(() => {
     resetApiProviders();
     delegateCalls.length = 0;
+    disableAnthropicExtraUsageWarningMock.mockClear();
+    settingsManagerCreateMock.mockClear();
     streamSimpleAnthropicMock.mockClear();
 
     // Seed the registry with the lazy-stub, simulating a provider that
@@ -248,6 +270,8 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
       ["unregister:anthropic", "register:anthropic"],
       "unregisterProvider('anthropic') must run before registerProvider so a co-loaded stale copy's oauth cannot survive the merge",
     );
+    assert.equal(disableAnthropicExtraUsageWarningMock.mock.calls.length, 1);
+    assert.equal(settingsManagerCreateMock.mock.calls.length, 1);
   });
 });
 
@@ -255,6 +279,8 @@ describe("index registration: diagnostics command", () => {
   beforeEach(() => {
     resetApiProviders();
     delegateCalls.length = 0;
+    disableAnthropicExtraUsageWarningMock.mockClear();
+    settingsManagerCreateMock.mockClear();
     streamSimpleAnthropicMock.mockClear();
     registerApiProvider({
       api: "anthropic-messages",

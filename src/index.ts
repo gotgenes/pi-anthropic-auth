@@ -1,5 +1,10 @@
 import { fileURLToPath } from "node:url";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  type ExtensionAPI,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
+import { disableAnthropicExtraUsageWarning } from "./anthropic-extra-usage-warning";
+import { debugLog } from "./debug";
 import {
   createStatusCommandHandler,
   type ExtensionDiagnostics,
@@ -70,6 +75,17 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     api: "anthropic-messages",
     streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
   });
+
+  // Pi shows its generic OAuth extra-usage warning whenever Anthropic OAuth is
+  // active, including after this wrapper has registered. The warning is only a
+  // UI preference and does not control or alter Anthropic billing.
+  try {
+    disableAnthropicExtraUsageWarning(SettingsManager.create(process.cwd()));
+  } catch (error) {
+    debugLog("disable-anthropic-extra-usage-warning-failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   // The /anthropic-auth:status command surfaces the loaded version, module
   // path, and transport resolution result so users can confirm the extension

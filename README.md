@@ -39,6 +39,13 @@ pi -e npm:@gotgenes/pi-anthropic-auth
 2. Select a Claude Pro/Max model and start chatting. The extension handles compatibility transparently.
 3. API-key behavior is unaffected; the extension's changes apply only to OAuth sessions.
 
+### Anthropic extra-usage warning
+
+After the extension loads successfully, it sets Pi's global
+`warnings.anthropicExtraUsage` preference to `false`. This hides Pi's generic
+OAuth extra-usage warning on the next Pi startup; it does **not** change how
+Anthropic bills or classifies requests.
+
 ## Troubleshooting
 
 ### Verify the extension is loaded
