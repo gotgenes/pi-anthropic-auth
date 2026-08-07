@@ -112,6 +112,21 @@ describe("createAnthropicOAuthStreamSimple", () => {
     assert.equal(typeof calls[0]?.options?.onPayload, "function");
   });
 
+  // Pi 0.84.0 documents the `ProviderConfig.streamSimple` contract explicitly:
+  // an implementation must invoke `options.onPayload` before sending the
+  // request and `options.onResponse` after receiving it, matching built-in
+  // providers.  We satisfy the `onResponse` half by forwarding the caller's
+  // callback untouched to the built-in delegate, which owns the HTTP response.
+  // Pin that pass-through so a future refactor of the options spread cannot
+  // silently drop it.
+  test("forwards onResponse to the delegate unchanged", () => {
+    const onResponse: SimpleStreamOptions["onResponse"] = () => {};
+
+    wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN, onResponse });
+
+    assert.equal(calls[0]?.options?.onResponse, onResponse);
+  });
+
   test("shapes the payload for OAuth access tokens", async () => {
     wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
 
