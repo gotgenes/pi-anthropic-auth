@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.1...v2.0.2) (2026-08-07)
+
+
+### Documentation
+
+* record pi 0.84.0 three-mode extension loader ([ceb1d12](https://github.com/gotgenes/pi-anthropic-auth/commit/ceb1d126077b69f69b9c8e1534fdb1dfa5631c12))
+
+
+### Miscellaneous Chores
+
+* bump pi devDeps to 0.84.0 ([7ff6752](https://github.com/gotgenes/pi-anthropic-auth/commit/7ff6752586d35182ac3b8c83a23dcf4cc1b2d929))
+* migrate biome config for biome 2.5.x ([e70806c](https://github.com/gotgenes/pi-anthropic-auth/commit/e70806c4d3e799a83f04dc96982cf47abfad1855))
+
 ## [2.0.1](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.0...v2.0.1) (2026-07-22)
 
 
