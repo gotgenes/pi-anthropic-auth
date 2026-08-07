@@ -83,7 +83,8 @@ Important upstream behavior confirmed from `~/development/pi/pi`:
 
 1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models (still an available upstream capability, but this extension intentionally omits `oauth` since Issue #43 and delegates login/refresh to the built-in `anthropicOAuth`)
 2. Omitting `models` preserves Pi's built-in Anthropic model list
-3. `registerProvider({ api, streamSimple })` routes through pi-ai's singleton API registry (`registerApiProvider`), so the wrapper intercepts every `anthropic-messages` call path, including `completeSimple` compaction and `agentLoop` background work
+3. `registerProvider({ api, streamSimple })` no longer bridges into pi-ai's api registry: pi 0.80.8 dropped that call in the `ModelRuntime` rewrite.
+   `provider-composer` applies the wrapper on `modelRuntime` requests instead, so background-agent coverage is unverified (Issue #46)
 4. `before_provider_request` only fires for the interactive agent loop, so it cannot reach auxiliary OAuth calls — this is why the wrapper replaced the former hook-based shaping
 
 ### Local Files
@@ -176,7 +177,7 @@ That override was dropped for Pi 0.80.8 compatibility (Issue #43); login and ref
 A second gap surfaced from Issue #18: `before_provider_request` is threaded only into the interactive agent loop's `streamFn`.
 Auxiliary Anthropic OAuth calls bypass it — built-in compaction/summarization issues `completeSimple` without `onPayload`, and third-party background agents (for example pi-observational-memory's observer, reflector, and dropper running via `agentLoop`) use pi-ai's bare `streamSimple`.
 Those requests reached Anthropic with no billing header and were rejected as third-party app usage.
-The transport wrapper closes this gap on our side by shaping at the registry transport rather than the hook.
+The transport wrapper closes this gap for calls that resolve their transport through `provider-composer`; whether `agentLoop` background agents still bypass it on pi >=0.80.8 is contested (Issue #46).
 
 ## Development
 
@@ -399,7 +400,8 @@ Provider-specific logic cannot be reliably gated in `before_agent_start`.
 ### `before_provider_request` Only Covers the Interactive Loop
 
 Pi threads its `before_provider_request` hook (`onPayload`) into the main agent loop's `streamFn` only.
-Built-in compaction (`completeSimple`) and third-party background agents (`agentLoop` with the default `streamSimple`) issue Anthropic requests through the same singleton API-registry transport but without that hook.
+Built-in compaction (`completeSimple`) issues Anthropic requests through the same composed provider transport but without that hook.
+Third-party background agents calling pi-ai's bare `streamSimple` may not reach our wrapper at all on pi >=0.80.8 (Issue #46).
 Any shaping that must apply to every OAuth request belongs in the transport wrapper, not in `before_provider_request`.
 
 ### Avoid Over-Porting From OpenCode
@@ -450,6 +452,13 @@ The minimum supported host is pi >=0.80.8; every mode maps both the bare `@earen
 
 When a regression's root cause is a version difference, `git diff` the source at both release tags (the `~/development/pi/pi` clone has them) before writing the diagnosis.
 Eyeball greps that "look identical" and the installed dev copy both mislead (Refs #40).
+When that diff contradicts a claim in `AGENTS.md` or `docs/`, check `gh issue list` before moving on — the contradiction is often an already-filed issue (Issue #46).
+
+### Fresh Upstream Releases Trip The Lockfile Age Gate
+
+`pnpm add`ing a package published <24 h ago writes a `minimumReleaseAgeExclude` entry but still fails the next install's lockfile audit.
+Clear it with `pnpm clean --lockfile && pnpm install`.
+That full re-resolution also pulls every other devDep forward within its caret range — run `pnpm run lint` before assuming the bump is clean (biome 2.4→2.5 forced a config migration in v2.0.2).
 
 ## Related Files
 

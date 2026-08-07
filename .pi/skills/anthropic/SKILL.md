@@ -34,7 +34,8 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
 - Assistant message ordering must be normalized when Pi serializes `[tool_use..., text]` for Anthropic.
 - Pi's default system prompt can act as an Anthropic fingerprint and trigger disguised rejection errors.
-- Shaping runs in a thin `streamSimple` transport wrapper (delegating to Pi's built-in Anthropic transport, resolved from the installed pi-ai layout), so it applies to every OAuth call path — main loop, `completeSimple` compaction, and `agentLoop` background agents — gated on the `sk-ant-oat` token.
+- Shaping runs in a thin `streamSimple` transport wrapper (delegating to Pi's built-in Anthropic transport, resolved from the installed pi-ai layout), gated on the `sk-ant-oat` token.
+- The wrapper covers the main loop and `completeSimple` compaction; whether `agentLoop` background agents reach it on pi >=0.80.8 is contested (Issue #46).
 
 ## Fast Debugging Workflow
 
@@ -102,7 +103,7 @@ All request shaping runs in the transport wrapper (`src/oauth-transport.ts`), wh
 - system prompt de-fingerprinting (anchor-based removal of the Pi identity, custom-tool filler, and Pi documentation paragraphs; preserves tool snippets, guidelines, and appended content)
 
 Gate on the `sk-ant-oat` access-token prefix (`options.apiKey`), the same signal Pi uses internally.
-This covers every OAuth call path, including compaction and background agents.
+This covers the main loop and compaction; background-agent coverage is contested (Issue #46).
 
 ### Why not `before_provider_request` or `before_agent_start`
 

@@ -24,6 +24,8 @@ Mirror what CI runs (`.github/workflows/ci.yml` runs these on every push and PR)
 If any fails, fix the issues and commit before pushing.
 Optionally run `pnpm fallow:dead-code` for dead-code hygiene — it is not a CI gate here, so do not block the push on pre-existing fallow findings.
 
+If this session did not run `/tdd-plan` or `/build-plan`, dispatch the `pre-completion-reviewer` subagent before pushing — ad-hoc work otherwise reaches a tagged release with no fresh-context review.
+
 ## 3. Push
 
 - Determine the current branch (`git branch --show-current`).
