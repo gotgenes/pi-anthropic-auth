@@ -435,8 +435,16 @@ In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and re
 
 ### Verify Each Loader Mode
 
-When asserting that behavior holds across loader modes — Node `alias` vs Bun `virtualModules` — verify each one independently; do not extrapolate from the installed host.
-The minimum supported host is pi >=0.80.8; both loader modes alias the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to `dist/compat.js` on that generation, and both expose `unregisterProvider` on the extension API.
+When asserting that behavior holds across loader modes, verify each one independently; do not extrapolate from the installed host.
+
+As of pi 0.84.0 the loader picks among three modes:
+
+1. Bun binary: `virtualModules` against modules embedded in the executable, with `tryNative: false`
+2. TypeScript source (pi run from its own `.ts` sources): `virtualModules` plus `tsconfigPaths`
+3. Built Node: the `alias` map resolved to `dist/...` entrypoints
+
+Pi 0.84.0 added mode 2; before it, source runs took the `alias` path.
+The minimum supported host is pi >=0.80.8; every mode maps both the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to pi's own pi-ai compat entrypoint (`dist/compat.js`), and all expose `unregisterProvider` on the extension API.
 
 ### Diagnose Version Regressions From The Tag Source
 
