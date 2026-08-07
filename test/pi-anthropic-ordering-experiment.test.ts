@@ -8,6 +8,23 @@ import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
 
 const TEST_MODEL = "claude-haiku-4-5";
 
+/**
+ * Reads the `type` of each content block on a message, asserting the message
+ * exists first.
+ *
+ * Indexing into a filtered array yields `T | undefined`, so reading `.content`
+ * off it directly is an unsafe optional chain.  Asserting presence here keeps
+ * the call sites terse and turns an out-of-range index into a clear failure.
+ */
+function contentBlockTypes(
+  message: { content: unknown } | undefined,
+): string[] {
+  assert.ok(message, "expected a message at this index");
+  return (message.content as Array<{ type: string }>).map(
+    (block) => block.type,
+  );
+}
+
 function createMockSseResponse(): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream({
@@ -221,18 +238,11 @@ test("experiment: current hook reshaping splits assistant tool_use blocks from t
   );
 
   assert.equal(assistantMessages.length, 2);
-  assert.deepEqual(
-    (assistantMessages[0]?.content as Array<{ type: string }>).map(
-      (block) => block.type,
-    ),
-    ["text"],
-  );
-  assert.deepEqual(
-    (assistantMessages[1]?.content as Array<{ type: string }>).map(
-      (block) => block.type,
-    ),
-    ["tool_use", "tool_use"],
-  );
+  assert.deepEqual(contentBlockTypes(assistantMessages[0]), ["text"]);
+  assert.deepEqual(contentBlockTypes(assistantMessages[1]), [
+    "tool_use",
+    "tool_use",
+  ]);
 });
 
 test("experiment: current hook reshaping leaves already-valid assistant ordering unchanged", () => {
@@ -284,10 +294,9 @@ test("experiment: current hook reshaping leaves already-valid assistant ordering
   );
 
   assert.equal(assistantMessages.length, 1);
-  assert.deepEqual(
-    (assistantMessages[0]?.content as Array<{ type: string }>).map(
-      (block) => block.type,
-    ),
-    ["text", "tool_use", "tool_use"],
-  );
+  assert.deepEqual(contentBlockTypes(assistantMessages[0]), [
+    "text",
+    "tool_use",
+    "tool_use",
+  ]);
 });
