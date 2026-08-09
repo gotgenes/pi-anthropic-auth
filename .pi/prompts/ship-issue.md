@@ -62,11 +62,10 @@ Optionally run `pnpm fallow:dead-code` for dead-code hygiene — it is not a CI 
 
 ## 4b. Check for a stacked release
 
-First check the unreleased range for a releasing commit: `git log --oneline <last-tag>..HEAD`.
-If every commit is a non-releasing type (`refactor:`/`docs:`/`style:`/`chore:`/`test:` — no `feat`/`fix`/`!`/`BREAKING CHANGE`), release-please will cut nothing now; the work auto-batches until a `feat`/`fix` lands.
-Say so in the final report and skip the batch-vs-release question.
+Every Conventional Commit type cuts a release in this repo — `release-please-config.json` declares `changelog-sections` for `docs`, `chore`, `test`, and `refactor` too, so a docs-only range still produces a patch bump (`v2.0.2`, `v2.0.3`).
+Do not predict whether release-please will cut anything; `release_pr_find` in step 6 answers it.
 
-Then apply the decision recorded in the early "Release coordination" section.
+Apply the decision recorded in the early "Release coordination" section.
 If that decision was to defer/batch: stop here — the push and CI are done; leave the issue open and skip steps 5–6.
 Note the deferral in the final report.
 Otherwise continue.

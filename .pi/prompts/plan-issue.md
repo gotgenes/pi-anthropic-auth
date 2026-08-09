@@ -124,6 +124,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
 - **Module-Level Changes** — file-by-file list of what's added, changed, or removed.
   When a step removes or renames an export, grep all `src/` and `test/` files — plus `AGENTS.md` and `.pi/skills/anthropic/SKILL.md`, which document package internals — for every removed symbol before finalizing the file list.
   When a step reworks the documented behavior of a mechanism rather than removing a symbol (e.g. a patch description, an architecture note, or wording like "prepends" → "includes"), also grep `AGENTS.md` and `.pi/skills/anthropic/SKILL.md` for the mechanism name — reworded prose carries no removed symbol to match.
+  When Design Overview names more than one stale claim, grep once per claim using that claim's own vocabulary — distinct claims rarely share keywords.
+  A "routes through the API registry" grep does not match "the registry entry is our own wrapper, so reading it would loop."
   When a step removes a call to a private (non-exported) function, grep the file for other callers — if the removed call was the sole call site, list the function for removal in the same step.
   When the change adds, removes, or moves a module, check `docs/architecture.md` for layout listings, complexity tables, health metrics, or domain diagrams that reference the affected files and list them as doc updates.
   When a step corrects a literal value that appears in prose (a path, default, or identifier in sample output, log snippets, or ADR code comments), grep the whole `docs/` tree for the old value — not a hand-picked file subset; stale sample logs and decision-record comments do not surface in a `src/`/`test/` grep.
