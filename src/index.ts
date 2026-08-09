@@ -10,7 +10,8 @@ import { createAnthropicOAuthStreamSimple } from "./oauth-transport";
 export default async function (pi: ExtensionAPI): Promise<void> {
   // Re-register the built-in `anthropic` provider with a thin transport
   // wrapper (`streamSimple`) that applies Claude Code OAuth request shaping
-  // on every Anthropic call path.
+  // to every Anthropic request that reaches `provider-composer` (see the
+  // coverage note below).
   //
   // Omitting `oauth` (and `models`) delegates login and refresh to Pi's
   // built-in `anthropicOAuth` and preserves Pi's built-in Anthropic model

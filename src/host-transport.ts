@@ -37,9 +37,11 @@ type AnthropicMessagesApi = () => { streamSimple?: unknown };
  * delegates through — and falls back to the deprecated `streamSimpleAnthropic`
  * legacy alias for older hosts that predate the factory on the compat
  * entrypoint.
- * We read the delegate directly off the namespace rather than from the API
- * registry to avoid infinite recursion: the registry entry for
- * `anthropic-messages` is our own wrapper, so reading from it would loop.
+ * We read the delegate directly off the namespace rather than from the api
+ * registry: this extension does not register there on pi >=0.80.8, so reading
+ * from it would bind the delegate to whatever another extension registered
+ * last.  On pi <=0.80.7 it would also have recursed, because
+ * `registerProvider` bridged our own wrapper into that slot (Issue #46).
  *
  * @param namespace - the imported pi-ai module namespace.
  * @returns the built-in Anthropic streaming transport.

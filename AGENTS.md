@@ -75,7 +75,8 @@ It uses one Pi extension seam:
 
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, message ordering, system prompt shaping).
-The delegate is resolved at runtime rather than read from the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
+The delegate is resolved at runtime rather than read from the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own `custom-provider-gitlab-duo` example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last.
+On pi <=0.80.7 it would also have recursed, because `registerProvider` bridged our wrapper into that slot.
 On pi >=0.80.8, the pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.80.8` peer floor.
 Shaping is gated on the `sk-ant-oat` OAuth access-token prefix, the same signal Pi's built-in provider uses internally.
 
@@ -93,7 +94,7 @@ Current source layout:
 
 1. `src/index.ts`: extension registration (transport wrapper + `/anthropic-auth:status` command)
 2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, preferring the `anthropicMessagesApi()` factory over the deprecated `streamSimpleAnthropic` alias (Issue #28, Issue #31, Issue #35)
-3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path
+3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path reaching `provider-composer` (Issue #46)
 4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
 6. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
@@ -418,7 +419,7 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
 The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
-The delegate is resolved at runtime rather than read out of the registry to avoid infinite recursion: the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop.
+The delegate is resolved at runtime rather than read out of the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last (on pi <=0.80.7 it would also have recursed, since the bridge put our wrapper in that slot).
 The resolver imports the `@earendil-works/pi-ai/compat` subpath — the path pi's own `custom-provider-gitlab-duo` example delegates through — which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
 It prefers the non-deprecated `anthropicMessagesApi().streamSimple` factory and falls back to the deprecated `streamSimpleAnthropic` alias for older hosts.
 The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).

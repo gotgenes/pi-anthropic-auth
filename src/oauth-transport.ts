@@ -104,10 +104,10 @@ export function createAnthropicOAuthStreamSimple(
       return shapeAnthropicOAuthPayload(upstream);
     };
 
-    // The registry only invokes this transport for `anthropic-messages`
-    // models (its `wrapStreamSimple` validates `model.api` before delegating),
-    // so the wide `Model<Api>` is guaranteed to be `Model<"anthropic-messages">`
-    // at runtime — safe to narrow for the delegate call.
+    // `provider-composer` only invokes this transport when
+    // `model.api === extension.api`, so the wide `Model<Api>` is guaranteed to
+    // be `Model<"anthropic-messages">` at runtime — safe to narrow for the
+    // delegate call.
     return delegate(model as Model<"anthropic-messages">, context, {
       ...options,
       onPayload,
