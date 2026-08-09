@@ -18,7 +18,7 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
 
 /**
- * The transport-level `streamSimple` handler shape Pi's API registry uses.
+ * The `streamSimple` handler shape Pi's `ProviderConfig` accepts.
  *
  * It matches `ApiStreamSimpleFunction` from `@earendil-works/pi-ai` and is
  * intentionally wider than a single concrete model type because Pi registers
@@ -49,19 +49,24 @@ export function isAnthropicOAuthToken(
  * shaping runs on **every** Anthropic call path, not only the main agent loop.
  *
  * Pi only threads its `before_provider_request` hook into the interactive agent
- * loop.  Auxiliary calls — built-in compaction/summarization (`completeSimple`)
- * and third-party background agents (e.g. pi-observational-memory's observer /
- * reflector / dropper running via `agentLoop`) — issue requests through the
- * same singleton API-registry transport but without that hook.  Those OAuth
- * requests then reach Anthropic with no Claude Code billing header and are
- * classified as third-party app usage, producing the misleading "extra usage"
- * HTTP 400.
+ * loop.  Built-in compaction/summarization reuses `agent.streamFunction`, so it
+ * reaches this wrapper through `modelRuntime` but carries no hook-supplied
+ * `onPayload`.  Without our shaping those OAuth requests reach Anthropic with
+ * no Claude Code billing header and are classified as third-party app usage,
+ * producing the misleading "extra usage" HTTP 400.
  *
  * By injecting our shaping as an `onPayload` on the underlying transport, every
- * Anthropic OAuth request is shaped regardless of which Pi code path issued it.
+ * Anthropic OAuth request that reaches `provider-composer` is shaped regardless
+ * of which Pi code path issued it.
  * The wrapper composes (does not replace) any caller-provided `onPayload`, so
  * other extensions' `before_provider_request` handlers continue to run on the
  * main loop, and our shaping is applied last — closest to the wire.
+ *
+ * Requests that dispatch through pi-ai's own `compat.streamSimple` — third-party
+ * background agents running via `agentLoop` on `setDefaultStreamFn` — never
+ * reach this wrapper on pi >=0.80.8 and remain unshaped (Issue #46).
+ * `docs/architecture.md` records why that gap is not closed here and how
+ * background-agent authors can opt into coverage.
  *
  * Gating is strictly OAuth-only: when the request is not an Anthropic OAuth
  * token, the payload passes through untouched, preserving Pi's normal
@@ -69,12 +74,14 @@ export function isAnthropicOAuthToken(
  *
  * @param delegate Pi's built-in Anthropic `streamSimple` transport, resolved
  *   at runtime by `resolveBuiltinAnthropicStreamSimple` (see
- *   `src/host-transport.ts`).  Resolving it directly (rather than reading it
- *   out of the API registry) avoids infinite recursion: the registry entry for
- *   `anthropic-messages` is this wrapper, so delegating to the registry would
- *   loop.  On pi >=0.80.0, the floor also precludes the older 0.79.x
- *   lazy-registration clobber that would have displaced this wrapper on the
- *   second turn (Issue #28, fixed by the >=0.80.0 peer floor in Issue #40).
+ *   `src/host-transport.ts`).  It is resolved directly rather than read out of
+ *   the api registry: `anthropicMessagesApi()` is the non-deprecated handle
+ *   pi's own `custom-provider-gitlab-duo` example uses, and reading from a
+ *   registry this extension does not participate in would bind the delegate to
+ *   whatever another extension registered there last.  On pi <=0.80.7 it would
+ *   also have recursed, because `registerProvider` bridged this wrapper into
+ *   that slot.  The related 0.79.x lazy-registration clobber is precluded by
+ *   the >=0.80.8 peer floor (Issue #28, Issue #40).
  */
 export function createAnthropicOAuthStreamSimple(
   delegate: AnthropicStreamSimpleDelegate,

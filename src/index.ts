@@ -23,18 +23,32 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // The transport wrapper replaces our previous `before_provider_request`
   // handler: that hook only fires for the interactive agent loop, so auxiliary
   // OAuth requests (built-in compaction, third-party background agents)
-  // bypassed it and failed with Anthropic "extra usage" 400s.  Registering
-  // `streamSimple` routes through Pi's singleton API registry, so the same
-  // shaping now covers the main loop, `completeSimple` compaction, and
-  // `agentLoop` background work.
+  // bypassed it and failed with Anthropic "extra usage" 400s.
   //
-  // The delegate is the built-in `streamSimpleAnthropic` resolved at runtime
-  // (see `resolveBuiltinAnthropicStreamSimple`) rather than read out of the
-  // registry, to avoid infinite recursion: the registry entry for
-  // `anthropic-messages` is this wrapper, so delegating to the registry would
-  // loop.  On pi >=0.80.0, the floor also precludes the older 0.79.x
-  // lazy-registration clobber that would have displaced this wrapper on the
-  // second turn (Issue #28, fixed by the >=0.80.0 peer floor in Issue #40).
+  // `registerProvider` stores this config in Pi's own `extensionProviders`
+  // map, and `provider-composer`'s `streamWith` applies it to requests that
+  // arrive through `modelRuntime`.  That covers the interactive loop and
+  // compaction, which reuses `agent.streamFunction`.  It does NOT cover
+  // callers that dispatch through pi-ai's own `compat.streamSimple` —
+  // `agentLoop` background agents relying on `setDefaultStreamFn`, and
+  // extensions calling `compat.streamSimple` directly.  Up to pi 0.80.7,
+  // `ModelRegistry.applyProviderConfig` bridged us into pi-ai's api registry
+  // and those calls were covered too; the 0.80.8 `ModelRuntime` rewrite
+  // dropped the bridge (Issue #46).  We deliberately do not re-add it: the
+  // registry is keyed by api, not provider, so an override would divert all
+  // ten `anthropic-messages` providers off their built-in branch and break
+  // `cloudflare-ai-gateway`.  See `docs/architecture.md` for the full record
+  // and the workaround for background-agent authors.
+  //
+  // The delegate is the built-in Anthropic transport resolved at runtime (see
+  // `resolveBuiltinAnthropicStreamSimple`) rather than read out of the api
+  // registry: `anthropicMessagesApi()` is the direct, non-deprecated handle
+  // pi's own `custom-provider-gitlab-duo` example uses, and reading from a
+  // registry we do not participate in would bind the delegate to whatever
+  // another extension registered there last.  On pi <=0.80.7 it would also
+  // have recursed, since the bridge put this wrapper in that slot.  The
+  // related 0.79.x lazy-registration clobber is precluded by the >=0.80.8
+  // peer floor (Issue #28, Issue #40).
   //
   // The factory is `async` because resolving the host transport performs a
   // dynamic import; Pi's `ExtensionFactory` permits a `Promise<void>` return,
