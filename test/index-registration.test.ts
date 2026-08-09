@@ -66,22 +66,33 @@ vi.mock("#src/host-transport", () => ({
 }));
 
 /**
- * Simulates the pi-ai 0.79.8 lazy-stub registry entry for `anthropic-messages`.
+ * Counts how many times the seeded api-registry entry was invoked.
  *
- * On first call it re-registers the bare built-in transport (the stubbed
- * `streamSimpleAnthropic`), mirroring `anthropic.ts`'s `register()` overwrite,
- * then forwards the call (with its `options`) to that bare built-in — exactly
- * what `createLazySimpleStream`'s `loadAndRegisterProvider` does.
+ * The wrapper must never consult the api registry, so every test that seeds
+ * the hostile stub expects this to stay at zero.
+ */
+let registryStubCalls = 0;
+
+/**
+ * A deliberately hostile pi-ai api-registry entry for `anthropic-messages`.
  *
- * This is the clobber path the fix must survive: if `src/index.ts` delegated to
- * this stub instead of the directly-resolved transport, the first call would
- * overwrite our wrapper and the second call would bypass our shaping.
+ * It mimics the pi-ai 0.79.8 lazy stub: on first call it re-registers the bare
+ * built-in transport (the stubbed `streamSimpleAnthropic`), mirroring
+ * `anthropic.ts`'s `register()` overwrite, then forwards the call to that bare
+ * built-in — exactly what `createLazySimpleStream`'s `loadAndRegisterProvider`
+ * does.
+ *
+ * Seeding it pins the invariant behind Issue #28: the wrapper resolves its
+ * delegate from `#src/host-transport`, never from the api registry, so nothing
+ * living in the registry can displace our shaping.  Reaching this stub at all
+ * means the wrapper consulted the registry.
  */
 function lazyStubStreamSimple(
   model: Model<Api>,
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+  registryStubCalls += 1;
   registerApiProvider({
     api: "anthropic-messages",
     stream: streamSimpleAnthropicMock,
@@ -96,10 +107,19 @@ type CapturedCommand = {
 };
 
 /**
- * Mirrors `ModelRegistry.applyProviderConfig`'s `streamSimple` branch: when an
- * extension registers a `streamSimple`, both `stream` and `streamSimple` are
- * routed through it via `registerApiProvider` with a `provider:<name>` source
- * id.
+ * Mirrors how pi >=0.80.8 actually applies an extension's provider config.
+ *
+ * `registerProvider` only stores the config in pi's own `extensionProviders`
+ * map; `provider-composer.ts`'s `streamWith` then applies it when a request
+ * arrives through `modelRuntime`, via
+ * `if (extension?.streamSimple && model.api === extension.api)`.
+ * The returned `dispatch` models exactly that lane.
+ *
+ * Up to pi 0.80.7, `ModelRegistry.applyProviderConfig` additionally bridged the
+ * config into pi-ai's api registry through `registerApiProvider`.  The
+ * `ModelRuntime` rewrite in 0.80.8 dropped that call, so an extension's
+ * `streamSimple` no longer reaches pi-ai's own dispatch at all (Issue #46).
+ * This fake therefore leaves the api registry untouched, as the real host does.
  *
  * Also captures `registerCommand` calls so tests can assert on and invoke
  * registered commands without needing the full Pi runtime.
@@ -108,28 +128,25 @@ function createFakePi(): {
   pi: ExtensionAPI;
   commands: Map<string, CapturedCommand>;
   calls: string[];
+  dispatch: (
+    model: Model<Api>,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ) => AssistantMessageEventStream;
 } {
   const commands = new Map<string, CapturedCommand>();
   // Ordered log of provider lifecycle calls so tests can assert that the
   // defensive `unregisterProvider` runs before `registerProvider`.
   const calls: string[] = [];
+  let registered: ProviderConfig | undefined;
   const pi: ExtensionAPI = {
     unregisterProvider(name: string): void {
       calls.push(`unregister:${name}`);
+      registered = undefined;
     },
     registerProvider(name: string, config: ProviderConfig): void {
       calls.push(`register:${name}`);
-      if (config.streamSimple) {
-        const streamSimple = config.streamSimple;
-        registerApiProvider(
-          {
-            api: config.api ?? "anthropic-messages",
-            stream: (m, c, o) => streamSimple(m, c, o as SimpleStreamOptions),
-            streamSimple,
-          },
-          `provider:${name}`,
-        );
-      }
+      registered = config;
     },
     registerCommand(
       name: string,
@@ -138,7 +155,21 @@ function createFakePi(): {
       commands.set(name, options);
     },
   } as unknown as ExtensionAPI;
-  return { pi, commands, calls };
+
+  const dispatch = (
+    model: Model<Api>,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ): AssistantMessageEventStream => {
+    if (!registered?.streamSimple || model.api !== registered.api) {
+      throw new Error(
+        `no extension streamSimple registered for api "${model.api}"`,
+      );
+    }
+    return registered.streamSimple(model, context, options);
+  };
+
+  return { pi, commands, calls, dispatch };
 }
 
 function samplePayload() {
@@ -179,15 +210,16 @@ async function delegateCallWasShaped(call: {
   );
 }
 
-// This describe block simulates the pi-ai 0.79.8 lazy re-registration clobber
-// as a regression guard: the lazyStubStreamSimple replaces the registry entry
-// on first call (mirroring how 0.79.x's `register()` side-effect clobbered our
-// wrapper).  With the floor at >=0.80.0 this scenario no longer occurs in
-// production, but the test still ensures our wrapper survives any re-registration.
-describe("index registration: wrapper survives a re-register clobber (#28 regression guard)", () => {
+// These tests exercise the one lane the wrapper sits on: `modelRuntime` ->
+// `provider-composer.streamWith` -> our registered `streamSimple`.  A hostile
+// api-registry entry is seeded throughout so the Issue #28 invariant stays
+// pinned: the delegate comes from `#src/host-transport`, never from the
+// registry, so nothing living there can displace our shaping.
+describe("index registration: wrapper shapes every request on the provider-composer lane (#28 regression guard)", () => {
   beforeEach(() => {
     resetApiProviders();
     delegateCalls.length = 0;
+    registryStubCalls = 0;
     streamSimpleAnthropicMock.mockClear();
 
     // Seed the registry with the lazy-stub, simulating a provider that
@@ -199,28 +231,32 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
     });
   });
 
-  test("every OAuth call resolves our wrapper and is shaped across multiple calls", async () => {
+  test("every OAuth call is shaped, and the api registry is never consulted", async () => {
     onTestFinished(() => {
       // Restore real built-ins so the singleton registry is clean for later tests.
       resetApiProviders();
     });
 
     const { default: registerExtension } = await import("#src/index");
-    const { pi } = createFakePi();
+    const { pi, dispatch } = createFakePi();
     await registerExtension(pi);
 
-    // Simulate two Anthropic OAuth calls (e.g. compaction via completeSimple,
-    // which issues requests with no caller-provided onPayload).
+    // Simulate two Anthropic OAuth calls on the covered lane (e.g. an
+    // interactive turn, then compaction, which reuses `agent.streamFunction`
+    // and issues requests with no caller-provided onPayload).
     for (let i = 0; i < 2; i += 1) {
-      const provider = getApiProvider("anthropic-messages");
-      assert.ok(provider, "anthropic-messages transport must be registered");
-      provider.streamSimple(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+      dispatch(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
     }
 
     assert.equal(
       delegateCalls.length,
       2,
       "both calls must reach the built-in transport delegate",
+    );
+    assert.equal(
+      registryStubCalls,
+      0,
+      "the wrapper must resolve its delegate from #src/host-transport, never from the api registry",
     );
     assert.equal(
       await delegateCallWasShaped(delegateCalls[0]),
@@ -230,7 +266,7 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
     assert.equal(
       await delegateCallWasShaped(delegateCalls[1]),
       true,
-      "second OAuth call must still be shaped — the lazy re-register must not displace our wrapper",
+      "second OAuth call must still be shaped — a hostile registry entry must not displace our wrapper",
     );
   });
 
@@ -251,22 +287,50 @@ describe("index registration: wrapper survives a re-register clobber (#28 regres
   });
 });
 
-describe("index registration: diagnostics command", () => {
+// Registering an api-registry override would place this extension in the
+// dispatch path of every `anthropic-messages` provider — not just `anthropic` —
+// because the registry is keyed by api and `registerApiProvider` is a
+// `Map.set`.  That is the coverage boundary `docs/architecture.md` documents,
+// and this pins it (Issue #46).
+describe("index registration: the extension does not write to the pi-ai api registry (#46)", () => {
   beforeEach(() => {
     resetApiProviders();
     delegateCalls.length = 0;
+    registryStubCalls = 0;
     streamSimpleAnthropicMock.mockClear();
-    registerApiProvider({
-      api: "anthropic-messages",
-      stream: lazyStubStreamSimple,
-      streamSimple: lazyStubStreamSimple,
-    });
   });
 
-  test("registers the anthropic-auth:status command", async () => {
+  test("leaves the built-in anthropic-messages registry entry untouched", async () => {
     onTestFinished(() => {
       resetApiProviders();
     });
+
+    const builtin = getApiProvider("anthropic-messages");
+    assert.ok(
+      builtin,
+      "pi-ai must register a built-in anthropic-messages transport",
+    );
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi } = createFakePi();
+    await registerExtension(pi);
+
+    assert.equal(
+      getApiProvider("anthropic-messages"),
+      builtin,
+      "registering an api-registry override would put this extension in the dispatch path of every anthropic-messages provider; see docs/architecture.md",
+    );
+  });
+});
+
+describe("index registration: diagnostics command", () => {
+  beforeEach(() => {
+    delegateCalls.length = 0;
+    registryStubCalls = 0;
+    streamSimpleAnthropicMock.mockClear();
+  });
+
+  test("registers the anthropic-auth:status command", async () => {
     const { default: registerExtension } = await import("#src/index");
     const { pi, commands } = createFakePi();
     await registerExtension(pi);
@@ -278,9 +342,6 @@ describe("index registration: diagnostics command", () => {
   });
 
   test("anthropic-auth:status handler report includes version, module path, and transport marker", async () => {
-    onTestFinished(() => {
-      resetApiProviders();
-    });
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());
 
