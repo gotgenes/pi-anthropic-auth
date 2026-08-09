@@ -49,4 +49,43 @@ Checked whether it could be reconstructed and found it cannot: `builtinModels` i
 2. Ran `gh issue view 49` before planning, following the `AGENTS.md` gotcha that Issue #49's own retro added — the same gotcha that exists because that session missed this connection.
 3. Scoped out re-filing the upstream ask; recorded it as an Open Question instead.
 
+## Stage: Implementation — Build (2026-08-08T22:40:00Z)
+
+### Session summary
+
+Executed all six plan steps: one test-harness rework and five documentation passes correcting the removed `registerApiProvider` bridge across `docs/architecture.md`, `src/index.ts`, `src/oauth-transport.ts`, `AGENTS.md`, `.pi/skills/anthropic/SKILL.md`, `README.md`, and both seam decision records.
+Added a pinning test that registering the extension must leave the built-in `anthropic-messages` api-registry entry untouched, and verified both it and the rescoped Issue #28 guard by mutation.
+A seventh commit cleared the pre-completion reviewer's WARN findings; the re-review returned PASS.
+
+### Observations
+
+#### Deviations from the plan
+
+1. One extra commit beyond the planned six.
+   The pre-completion reviewer found four additional stale passages the plan's file list had missed, and a broad grep during that fix surfaced a fifth in `src/host-transport.ts` that the reviewer had also missed.
+   All five were the same class of falsehood this issue exists to remove, so they were fixed rather than deferred.
+2. The plan's Module-Level Changes section under-enumerated `AGENTS.md`.
+   It listed four passages; the file actually carried six, because the stale "the registry entry for `anthropic-messages` is our own wrapper, so reading the delegate from it would loop" rationale appears in both § Extension Surface and the § Registering `streamSimple` gotcha.
+   The plan's own guidance to grep for reworded mechanisms rather than removed symbols was the right instinct but was applied to the coverage claim only, not to the recursion rationale.
+
+#### Verification
+
+1. Both new assertions were mutation-verified rather than assumed.
+   Adding a `registerApiProvider` call to `src/index.ts` failed the registry-untouched pin; switching the delegate to `getApiProvider("anthropic-messages").streamSimple` failed the Issue #28 guard's `registryStubCalls === 0` assertion.
+   Neither could be driven red-first, since the current source already satisfies both.
+2. The Mermaid rewrite was checked with `mmdc` and the rendered SVG was grepped to confirm the `stroke-dasharray` class actually applied to the uncovered lane, rather than assuming the `classDef` took effect.
+
+#### Decisions made during implementation
+
+1. Kept `docs/architecture.md` on its existing inline-link convention rather than introducing reference-style definitions for a subset of issues.
+   The file has no link definitions today, and mixing the two styles would be worse than either.
+2. Modelled the fake host's `dispatch` on `provider-composer.streamWith`'s extension branch only, omitting the `base` and api-registry fallbacks.
+   Including branches no test exercises would have been dead code in the harness; the uncovered lane is expressed instead by the separate registry-untouched pin.
+3. Left `docs/builtin-transport-seam-gap.md`'s description of `registerApiProvider`'s internals (`Map.set`, no decorator form, `wrapStreamSimple` validates only `model.api`) intact — it is a statement about pi-ai, which has not changed.
+
+#### Pre-completion review
+
+First dispatch: WARN — five stale passages, all non-blocking, all pre-dating the plan's file list.
+After the fix commit, re-review returned PASS with all six passages (including the one it originally missed) confirmed corrected, all deterministic gates green, and all three pinned invariants holding.
+
 [pi#6089]: https://github.com/earendil-works/pi/issues/6089
