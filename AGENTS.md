@@ -33,7 +33,7 @@ That means preserving:
 The current implementation does the following:
 
 1. Re-registers the built-in `anthropic` provider with a thin `streamSimple` transport wrapper (login and refresh are delegated to Pi's built-in `anthropicOAuth`)
-2. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path (main loop, compaction, and background agents)
+2. Wraps Pi's built-in Anthropic transport to shape OAuth requests on every call path that reaches `provider-composer` (main loop and compaction; not `agentLoop` background agents — see Issue #46)
 3. Prepends an Anthropic billing/content-consistency header block to `system[]`
 4. Sanitizes Pi's default preamble by anchor during the same shaping pass — removing the Pi identity, custom-tool filler, and Pi documentation paragraphs and replacing only the identity with a minimal neutral prompt — while preserving tool snippets, guidelines, and appended extension content
 5. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
@@ -84,7 +84,7 @@ Important upstream behavior confirmed from `~/development/pi/pi`:
 1. Re-registering `anthropic` with `oauth` overrides `/login anthropic` auth handling without replacing built-in models (still an available upstream capability, but this extension intentionally omits `oauth` since Issue #43 and delegates login/refresh to the built-in `anthropicOAuth`)
 2. Omitting `models` preserves Pi's built-in Anthropic model list
 3. `registerProvider({ api, streamSimple })` no longer bridges into pi-ai's api registry: pi 0.80.8 dropped that call in the `ModelRuntime` rewrite.
-   `provider-composer` applies the wrapper on `modelRuntime` requests instead, so background-agent coverage is unverified (Issue #46)
+   `provider-composer` applies the wrapper on `modelRuntime` requests instead, so callers that dispatch through pi-ai's own `compat.streamSimple` are confirmed uncovered (Issue #46)
 4. `before_provider_request` only fires for the interactive agent loop, so it cannot reach auxiliary OAuth calls — this is why the wrapper replaced the former hook-based shaping
 
 ### Local Files
@@ -177,7 +177,10 @@ That override was dropped for Pi 0.80.8 compatibility (Issue #43); login and ref
 A second gap surfaced from Issue #18: `before_provider_request` is threaded only into the interactive agent loop's `streamFn`.
 Auxiliary Anthropic OAuth calls bypass it — built-in compaction/summarization issues `completeSimple` without `onPayload`, and third-party background agents (for example pi-observational-memory's observer, reflector, and dropper running via `agentLoop`) use pi-ai's bare `streamSimple`.
 Those requests reached Anthropic with no billing header and were rejected as third-party app usage.
-The transport wrapper closes this gap for calls that resolve their transport through `provider-composer`; whether `agentLoop` background agents still bypass it on pi >=0.80.8 is contested (Issue #46).
+The transport wrapper closes this gap for calls that resolve their transport through `provider-composer` — the main loop and compaction, which reuses `agent.streamFunction`.
+Callers that dispatch through pi-ai's own `compat.streamSimple` are confirmed to bypass it on pi >=0.80.8 (Issue #46): `agentLoop` background agents relying on `setDefaultStreamFn`, and extensions calling `compat.streamSimple` directly.
+That gap is deliberately not closed here — the api registry is keyed by api rather than provider, so an override would divert all ten `anthropic-messages` providers off their built-in branch and break `cloudflare-ai-gateway`'s provider-layer placeholder substitution, which cannot be reconstructed from the public `compat` surface.
+See `docs/architecture.md` for the full record and the `agent.streamFunction` workaround for background-agent authors.
 
 ## Development
 
@@ -401,8 +404,9 @@ Provider-specific logic cannot be reliably gated in `before_agent_start`.
 
 Pi threads its `before_provider_request` hook (`onPayload`) into the main agent loop's `streamFn` only.
 Built-in compaction (`completeSimple`) issues Anthropic requests through the same composed provider transport but without that hook.
-Third-party background agents calling pi-ai's bare `streamSimple` may not reach our wrapper at all on pi >=0.80.8 (Issue #46).
-Any shaping that must apply to every OAuth request belongs in the transport wrapper, not in `before_provider_request`.
+Third-party background agents calling pi-ai's bare `streamSimple` do not reach our wrapper at all on pi >=0.80.8, and cannot be covered from this extension (Issue #46).
+Any shaping that must apply to every OAuth request `provider-composer` sees belongs in the transport wrapper, not in `before_provider_request`.
+`test/index-registration.test.ts` pins the boundary: registering the extension must leave the built-in `anthropic-messages` api-registry entry untouched.
 
 ### Avoid Over-Porting From OpenCode
 

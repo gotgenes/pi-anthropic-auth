@@ -18,8 +18,9 @@ It keeps everything you'd expect — the built-in `anthropic` provider, the full
 
 Requests to non-Anthropic providers and plain API-key Anthropic requests pass through completely untouched — the extension only activates when it detects an Anthropic OAuth access token (`sk-ant-oat`).
 
-Shaping runs in a thin transport wrapper around Pi's own Anthropic transport, so it applies to every OAuth call path — the interactive loop, compaction, and any background-agent work — not just the main turn.
-See [docs/architecture.md](docs/architecture.md) for how this works.
+Shaping runs in a thin transport wrapper around Pi's own Anthropic transport, so it applies to interactive turns and to compaction — not just the main turn.
+Background agents that run their own agent loop are a known exception on Pi 0.80.8 and later.
+See [docs/architecture.md](docs/architecture.md) for how this works, and for the workaround if you write such an extension.
 
 ## Install
 
