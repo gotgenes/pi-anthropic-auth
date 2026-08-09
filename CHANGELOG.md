@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.2...v2.0.3) (2026-08-09)
+
+
+### Documentation
+
+* correct api-registry routing claims in source comments ([2579111](https://github.com/gotgenes/pi-anthropic-auth/commit/2579111af75a5f72694fe21b113cff716517e02f)), closes [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)
+* correct the provider dispatch model and record the background-agent gap ([120c5a8](https://github.com/gotgenes/pi-anthropic-auth/commit/120c5a8dd9578918ed36ec07adcf5cafffe8c2e4)), closes [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)
+* plan correcting the api-registry routing claim and documenting the background-agent coverage gap ([#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)) ([d8ce4ba](https://github.com/gotgenes/pi-anthropic-auth/commit/d8ce4baf8b04874043c4c8f3db177992ef6a4d2a))
+* replace contested background-agent coverage with the confirmed finding ([86ee497](https://github.com/gotgenes/pi-anthropic-auth/commit/86ee49716332ee2de9551dd56ffa650052d5bcfe)), closes [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)
+* **retro:** add build stage notes for issue [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46) ([995c83d](https://github.com/gotgenes/pi-anthropic-auth/commit/995c83d2254fff6ab6dc99232c38dc53da3f597c))
+* **retro:** add planning stage notes for issue [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46) ([78a5aee](https://github.com/gotgenes/pi-anthropic-auth/commit/78a5aee3d5c20cf05d18ebf580a832cc90a90462))
+* **retro:** add retro notes for issue [#49](https://github.com/gotgenes/pi-anthropic-auth/issues/49) ([161a0ae](https://github.com/gotgenes/pi-anthropic-auth/commit/161a0ae7fe29dce3bc555181bd09d8e2d4061c07))
+* scope the seam decision records to transport acquisition ([fd36cbd](https://github.com/gotgenes/pi-anthropic-auth/commit/fd36cbd8ac9f5b5e04a7b63379f14707c3054eca)), closes [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)
+* sweep the remaining stale recursion and coverage claims ([e5d7d5c](https://github.com/gotgenes/pi-anthropic-auth/commit/e5d7d5cc4010881136b2a004d8e477668e908f81)), closes [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46)
+
+
+### Miscellaneous Chores
+
+* use claude-opus-5 in plan-issue and retro prompt templates ([b7e2803](https://github.com/gotgenes/pi-anthropic-auth/commit/b7e280341a41f7e5f13a8fc2667ab69b9e58b180))
+
 ## [2.0.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.1...v2.0.2) (2026-08-07)
 
 
