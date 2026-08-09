@@ -23,29 +23,53 @@ Auxiliary Anthropic OAuth calls bypass it:
 Those requests reached Anthropic carrying an OAuth token but no Claude Code billing header.
 Anthropic then classified them as third-party app usage and returned the misleading `You're out of extra usage.` HTTP 400 reported in Issue #18 with `pi-fork` and `pi-observational-memory`.
 
+The transport wrapper closed the compaction half of that gap and, on pi <=0.80.7, the background-agent half as well.
+pi 0.80.8 reopened the background-agent half; see "The remaining gap: pi-ai compat dispatch" below.
+
 ## The seam: a `streamSimple` transport wrapper
 
-Pi's `registerProvider({ api, streamSimple })` routes through pi-ai's singleton API registry (`registerApiProvider`).
-Every Anthropic request resolves its transport from that registry via `getApiProvider("anthropic-messages")`, regardless of which code path issued it.
+Pi's `registerProvider({ api, streamSimple })` stores the config in pi's own `extensionProviders` map.
+`provider-composer.ts`'s `streamWith` then applies it whenever a request arrives through `modelRuntime`:
 
-Registering a `streamSimple` wrapper therefore intercepts all of them in-process:
+```ts
+if (extension?.streamSimple && model.api === extension.api) {
+  return extension.streamSimple(model, context, options as SimpleStreamOptions);
+}
+```
+
+Both the interactive loop and compaction dispatch through `modelRuntime`, so both reach the wrapper.
+`sdk.ts`'s `createAgentSession` supplies `streamFn: (model, context, options) => modelRuntime.streamSimple(...)`, and `agent-session.ts` reuses that same `agent.streamFunction` at both compaction call sites.
+
+Callers that dispatch through pi-ai's own `compat.streamSimple` do not reach the wrapper at all:
 
 ```mermaid
 flowchart TD
-    A["Main agent loop"] --> R
-    B["Compaction (completeSimple)"] --> R
-    C["Background agents (agentLoop)"] --> R
-    R["pi-ai API registry (anthropic-messages)"] --> W["streamSimple wrapper"]
+    A["Interactive turn"] --> MR["modelRuntime.streamSimple"]
+    B["Compaction (agent.streamFunction)"] --> MR
+    MR --> PC["provider-composer.streamWith"]
+    PC --> W["streamSimple wrapper (this extension)"]
     W --> D{"sk-ant-oat token?"}
     D -->|"yes"| S["Inject onPayload shaping"]
     D -->|"no"| P["Pass through unchanged"]
-    S --> G["built-in Anthropic streamSimple delegate"]
+    S --> G["built-in anthropicMessagesApi().streamSimple"]
     P --> G
     G --> AN["Anthropic /v1/messages"]
+
+    C["Background agents (agentLoop default streamFn)"] --> CD["pi-ai compat.streamSimple"]
+    X["Extensions calling compat.streamSimple directly"] --> CD
+    CD --> R["pi-ai api registry (built-in anthropic-messages)"]
+    R --> G
+
+    classDef gap stroke-dasharray: 5 4
+    class C,X,CD,R gap
 ```
 
+The dashed lane is unshaped: it reaches the same built-in transport, but without the billing header.
+
 The wrapper delegates to Pi's built-in Anthropic `streamSimple` transport, resolved at runtime by `src/host-transport.ts` rather than read out of the API registry.
-Resolving it directly avoids infinite recursion: the registry's `anthropic-messages` entry is our own wrapper, so reading the delegate from the registry would loop.
+`anthropicMessagesApi()` is the direct, non-deprecated handle pi's own `custom-provider-gitlab-duo` example delegates through, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last.
+On pi <=0.80.7 the rationale was stronger still: `registerProvider` wrote our wrapper into that registry, so reading the delegate back out of it would have recursed.
+The related Issue #28 lazy-registration clobber is precluded by the `>=0.80.8` peer floor.
 The resolver imports `@earendil-works/pi-ai/compat` — the subpath pi's own `custom-provider-gitlab-duo` example delegates through — and prefers the non-deprecated `anthropicMessagesApi().streamSimple` factory, falling back to the deprecated `streamSimpleAnthropic` alias for older hosts.
 On pi >=0.80.8 the host loader aliases (Node) / virtualizes (Bun) both the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to its bundled compat entrypoint (`dist/compat.js`); the subpath names the surface we actually depend on.
 A loader-aliased specifier is required because `import.meta.resolve` and non-aliased subpath imports bypass that host indirection: jiti consults its `alias`/`virtualModules` maps on the import path but not on the `resolve` path, so the former `import.meta.resolve("@earendil-works/pi-ai")` plus derived `dist/...` file import fell through to filesystem resolution from the extension's own directory and failed when pi-ai was absent from it — the `pi install` and Bun-binary cases (Issue #31).
@@ -75,10 +99,76 @@ On the main loop, Pi still passes its own `onPayload` (which fires other extensi
 
 | Call path | Issued by | Reaches `before_provider_request` | Reaches the wrapper |
 | --- | --- | --- | --- |
-| Interactive turn | agent loop `streamFn` | yes | yes |
-| Compaction / summarization | `completeSimple` | no | yes |
-| Background agents | `agentLoop` default `streamSimple` | no | yes |
-| Fork children | a separate `pi` process | per-process | yes (if the child loads this extension) |
+| Interactive turn | agent loop `streamFn`, into `modelRuntime` | yes | yes |
+| Compaction / summarization | `agent.streamFunction`, into `modelRuntime` | no | yes |
+| Background agents | `agentLoop` default `streamFn`, into `compat.streamSimple` | no | no |
+| Direct `compat.streamSimple` callers | a third-party extension | no | no |
+| Fork children | a separate `pi` process | per-process | for that process's own `modelRuntime` traffic |
+
+## The remaining gap: pi-ai compat dispatch
+
+pi's SDK still hands pi-ai's `compat.streamSimple` to callers that supply no stream function of their own:
+
+```ts
+// packages/coding-agent/src/core/sdk.ts
+// Preserve the pre-0.81 fallback for extensions that construct Agent instances
+// or invoke low-level agent loops without supplying streamFn.
+setDefaultStreamFn(streamSimple);
+```
+
+That default resolves the transport from pi-ai's api registry, which still holds the built-in Anthropic transport.
+Up to pi 0.80.7, `ModelRegistry.applyProviderConfig` bridged an extension's `streamSimple` into that registry via `registerApiProvider`, so those calls reached the wrapper too.
+pi 0.80.8 replaced `ModelRegistry` with `ModelRuntime` and dropped the bridge; no file in `pi-coding-agent`'s `dist/` has called `registerApiProvider` since.
+Because 0.80.8 is this package's peer floor, the bridge is absent on every host version this extension supports.
+
+An Anthropic OAuth request on that lane carries no Claude Code billing header and comes back as `You're out of extra usage.` — a billing message for what is really a coverage gap.
+
+### Why this extension does not close it
+
+The obvious fix is to call `registerApiProvider` ourselves.
+It would work mechanically: `compat`'s built-in fast path is guarded by an identity check against the registry, so any override makes the check fail and dispatch falls through to us.
+
+It is not done because the registry is keyed by **api**, not by provider, and `registerApiProvider` is a `Map.set`.
+There is one `anthropic-messages` slot, shared by ten built-in providers: `anthropic`, `cloudflare-ai-gateway`, `fireworks`, `github-copilot`, `kimi-coding`, `minimax`, `minimax-cn`, `opencode`, `opencode-go`, and `vercel-ai-gateway`.
+Registering an override unconditionally diverts all ten off the built-in provider branch on the compat lane:
+
+| Case | Built-in branch calls | An override would call | Delta |
+| --- | --- | --- | --- |
+| `anthropic` with `sk-ant-oat` | `anthropicMessagesApi()` | shaped, then `anthropicMessagesApi()` | the intended fix |
+| `anthropic` with an API key | `anthropicMessagesApi()` | gate fails, then `anthropicMessagesApi()` | none |
+| the eight bare-api providers | `anthropicMessagesApi()` | gate fails, then `anthropicMessagesApi()` | none |
+| `cloudflare-ai-gateway` | `cloudflareStreams(anthropicMessagesApi())` | `anthropicMessagesApi()` | broken |
+
+The middle two rows are exact rather than approximate: `createProvider`'s dispatch resolves to the same bare `anthropicMessagesApi()` streams, and `compat` applies `withEnvApiKey` identically in both branches.
+
+The last row is a real regression inflicted on an unrelated provider.
+`cloudflareStreams` substitutes `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` into `model.baseUrl`; skipping it sends requests to a literal-placeholder URL.
+That wrapping lives at the **provider** layer, which an api-registry entry structurally cannot see, and it cannot be reconstructed from the public surface — `builtinModels` is not exported from `@earendil-works/pi-ai/compat`, and `getProviders()` returns provider id strings rather than `Provider` objects.
+
+This extension exists to interface with an Anthropic subscription.
+Anthropic API-key traffic and every other provider must be unaffected by it, and a global api-registry write cannot honor that: it is exact for nine of ten providers and unfixably wrong for the tenth.
+So the gap is documented rather than closed.
+
+`test/index-registration.test.ts` pins this boundary — registering the extension must leave the built-in `anthropic-messages` registry entry identical.
+
+Upstream relief is not pending either.
+[pi#6089](https://github.com/earendil-works/pi/issues/6089), which asked for a provider-bound payload transform applied at pi-ai's dispatch layer, was auto-closed as not planned and never reopened.
+
+### Workaround for background-agent authors
+
+Extensions that run their own agents are not stuck.
+`Agent` exposes a public `streamFunction`, and `agentLoop` accepts one.
+Passing the host agent's `streamFunction` routes through `modelRuntime` and therefore through the wrapper:
+
+```ts
+// Covered: modelRuntime -> provider-composer -> the wrapper.
+await agentLoop(context, config, signal, emit, hostAgent.streamFunction);
+
+// Uncovered: falls back to getDefaultStreamFn(), which is compat.streamSimple.
+await agentLoop(context, config, signal, emit);
+```
+
+Upstream draws the same distinction: `agent-session.ts` branches on `this.agent.streamFunction === streamSimple` to detect the uncovered default when it resolves summarization auth.
 
 ## What stays untouched
 
