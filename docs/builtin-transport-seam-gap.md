@@ -40,6 +40,10 @@ Compaction (`completeSimple`) and third-party background agents (`agentLoop`) ne
 
 To reach those paths we drop down to the one layer they all share — the pi-ai api-registry transport — and register a `streamSimple` that force-injects our `onPayload`, delegating the rest to pi's built-in transport.
 Needing to obtain that built-in transport to delegate to is what creates the entire loader/`compat` resolution problem.
+
+That description holds for pi <=0.80.7 only.
+pi 0.80.8's `ModelRuntime` rewrite dropped `ModelRegistry.applyProviderConfig`'s `registerApiProvider` bridge, so an extension's `streamSimple` no longer lands in the api registry at all — `provider-composer` applies it to `modelRuntime` requests instead.
+The compaction half of Issue [#18] stays closed, because compaction reuses `agent.streamFunction`; the foreign-`agentLoop` half reopened (Issue [#46]).
 The resolution fragility (Issue [#31], Issue [#32], Issue [#33]) and the `compat` removal cliff are second-order consequences of choosing "wrap the registry transport" as the delivery mechanism for our `onPayload`.
 They are not inherent to what the user needs.
 
@@ -53,6 +57,10 @@ Third-party background agents call pi-ai's `agentLoop` directly, below the exten
 We confirmed (Decide gate, this issue) that covering those foreign background-agent call paths is a real requirement.
 Given that, the api-registry transport is the only chokepoint visible to the main loop, compaction, and foreign `agentLoop` callers alike.
 That is the structural reason we register there rather than in a hook — and any durable fix must live at the pi-ai registry/dispatch layer, not in coding-agent.
+
+That chokepoint claim is still true of pi-ai's dispatch, but as of pi 0.80.8 it is no longer where our registration lands, and we have since declined to write there ourselves.
+The registry is keyed by api rather than provider, so an override would divert all ten `anthropic-messages` providers off their built-in branch and break `cloudflare-ai-gateway`'s provider-layer placeholder substitution — unreconstructible from the public `compat` surface, since `builtinModels` is not exported from it.
+See `docs/architecture.md` for the decision record (Issue [#46]).
 
 ## Why the registry can't be decorated today
 
@@ -106,9 +114,14 @@ The upstream issue should therefore be authored in the operator's own voice, gro
 
 ## Near-term decision
 
-**Status: implemented.**
-The upstream seam ask ([pi#6089]) was auto-closed by pi's new-contributor bot and will not be actioned, but pi independently shipped expanded custom-provider support that resolves this gap in practice: the extension loader aliases (Node) and virtualizes (Bun) the `@earendil-works/pi-ai/compat` subpath in both modes, and pi ships `custom-provider-gitlab-duo` as an official example that delegates to `anthropicMessagesApi().streamSimple` through that same subpath.
+**Status: transport acquisition implemented; all-paths coverage not implemented.**
+
+The acquisition half is done.
+The upstream seam ask ([pi#6089]) was auto-closed by pi's new-contributor bot and will not be actioned, but pi independently shipped expanded custom-provider support that resolves the acquisition problem in practice: the extension loader aliases (Node) and virtualizes (Bun) the `@earendil-works/pi-ai/compat` subpath in every mode, and pi ships `custom-provider-gitlab-duo` as an official example that delegates to `anthropicMessagesApi().streamSimple` through that same subpath.
 The #35 seam concern is therefore resolved in practice on pi >=0.80.8; the residual watch is the eventual `compat` removal, when `anthropicMessagesApi()` relocates off the compat entrypoint.
+
+The coverage half is not, and will not be from this side.
+pi 0.80.8 removed the api-registry bridge, so foreign `agentLoop` callers are once again unshaped, and the only lever that would reach them is api-scoped rather than provider-scoped (Issue [#46]).
 
 This repo keeps shaping at the registry transport and only hardens how it obtains the built-in delegate.
 `src/host-transport.ts` was switched from `import.meta.resolve` (plus filesystem resolution) to an explicit `@earendil-works/pi-ai/compat` subpath import, preferring the non-deprecated `anthropicMessagesApi().streamSimple` factory and falling back to the deprecated `streamSimpleAnthropic` alias for older hosts.
@@ -138,6 +151,7 @@ Alternatives considered and rejected for the near term:
 6. [pi#4980] — the withdrawn upstream compaction-bypass precedent our ask supersedes.
 7. [pi#3262] — the landed upstream precedent that the `streamSimple`-wrapping use case is accepted.
 8. [pi#6089] — the upstream feature request this direction was filed as.
+9. Issue [#46] — pi 0.80.8's removal of the api-registry bridge, which reopened the foreign-`agentLoop` half of the gap, and the decision not to close it from this extension.
 
 [#18]: https://github.com/gotgenes/pi-anthropic-auth/issues/18
 [pi#3262]: https://github.com/earendil-works/pi/issues/3262
@@ -148,5 +162,6 @@ Alternatives considered and rejected for the near term:
 [pi#5061]: https://github.com/earendil-works/pi/issues/5061
 [#28]: https://github.com/gotgenes/pi-anthropic-auth/issues/28
 [#31]: https://github.com/gotgenes/pi-anthropic-auth/issues/31
+[#46]: https://github.com/gotgenes/pi-anthropic-auth/issues/46
 [#32]: https://github.com/gotgenes/pi-anthropic-auth/issues/32
 [#33]: https://github.com/gotgenes/pi-anthropic-auth/issues/33

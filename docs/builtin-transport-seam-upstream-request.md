@@ -13,7 +13,14 @@ This brief was used to author [pi#6089], filed 2026-06-25.
 The operator wrote the issue by hand in their own voice (the brief is source material, not the posted text).
 The filed issue leads with the provider-bound `onPayload` transform as the preferred ask and composable registration (`registerApiProvider` returning the previous provider, or taking a decorator) as the fallback, matching the ranking below.
 A follow-up comment cross-links the prior art ([pi#4980] superset, [pi#3262] precedent, plus [pi#3987], [pi#5061], [pi#4038]).
-The issue was auto-closed by the project's new-contributor bot and awaits the maintainers' daily review of auto-closed issues; track reopen/`lgtm` status there.
+
+The issue was auto-closed by the project's new-contributor bot and was never reopened.
+Its terminal state is closed as not planned, so no upstream relief is pending.
+
+One premise in this brief has since changed, and it strengthens the ask rather than retiring it.
+The brief assumes our `registerProvider({ api, streamSimple })` reaches pi-ai's dispatch through the api registry.
+pi 0.80.8's `ModelRuntime` rewrite dropped that bridge, so the extension's transport now only sees requests routed through `modelRuntime` — the main loop and compaction.
+Foreign `agentLoop` callers, the harder half the ask was written for, are no longer reachable at all, and the api-registry workaround is ruled out because it is api-scoped rather than provider-scoped (Issue [#46]).
 
 ## The ask, in one sentence
 
@@ -105,6 +112,7 @@ These are questions the operator may want pi maintainers to answer, framed as ge
 
 [pi#3262]: https://github.com/earendil-works/pi/issues/3262
 [pi#6089]: https://github.com/earendil-works/pi/issues/6089
+[#46]: https://github.com/gotgenes/pi-anthropic-auth/issues/46
 [pi#3987]: https://github.com/earendil-works/pi/issues/3987
 [pi#4038]: https://github.com/earendil-works/pi/issues/4038
 [pi#4980]: https://github.com/earendil-works/pi/issues/4980
