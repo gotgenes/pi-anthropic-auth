@@ -56,12 +56,15 @@ function assertPreambleReplaced(shaped: string): void {
 // full output of upstream `buildSystemPrompt` line-for-line: the complete
 // multi-line "Pi documentation" block, the "In addition to the tools above"
 // filler, an appended extension note, the <project_context> block, and the
-// date/cwd footer.  It pins the anchor-driven sanitizer against the real
-// preamble shape so anchor drift (upstream rewording) is caught here.
+// cwd footer.  It pins the anchor-driven sanitizer against the real preamble
+// shape so anchor drift (upstream rewording) is caught here.
 //
 // Source: ~/development/pi/pi/packages/coding-agent/src/core/system-prompt.ts
-// (verified at commit 20da9bc1, matching @earendil-works/pi-coding-agent@0.79.1).
-// Re-verify and update this fixture when Pi bumps the preamble.
+// (verified at commit 3dd4623ee, the file's tip as of pi v0.84.2).
+// Re-verify and update this fixture when Pi bumps the preamble.  Pi dropped
+// the `Current date:` footer line in v0.80.7 (f4e9ca746), below this package's
+// >=0.80.8 peer floor, so it is absent here; the synthetic footers in the other
+// cases still pin footer preservation independently of what Pi emits today.
 // ---------------------------------------------------------------------------
 const PI_UPSTREAM_SYSTEM_PROMPT = [
   "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
@@ -88,7 +91,7 @@ const PI_UPSTREAM_SYSTEM_PROMPT = [
   "- Additional docs: /home/user/.pi/agent/docs",
   "- Examples: /home/user/.pi/agent/examples (extensions, custom tools, SDK)",
   "- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory",
-  "- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md)",
+  "- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)",
   "- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing",
   "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
   "",
@@ -105,7 +108,6 @@ const PI_UPSTREAM_SYSTEM_PROMPT = [
   "",
   "</project_context>",
   "",
-  "Current date: 2026-06-18",
   "Current working directory: /tmp/project",
 ].join("\n");
 
@@ -326,7 +328,6 @@ test("pins the removed/retained split against the verbatim upstream prompt", () 
   assert.match(shaped, /- Some critical project instruction\./);
   assert.match(shaped, /<project_context>/);
   assert.match(shaped, /Preserve built-in Anthropic behavior by default\./);
-  assert.match(shaped, /Current date: 2026-06-18/);
   assert.match(shaped, /Current working directory: \/tmp\/project/);
 });
 
