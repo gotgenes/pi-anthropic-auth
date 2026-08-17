@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { onTestFinished, test, vi } from "vitest";
 
 import {
   PARAGRAPH_REMOVAL_ANCHORS,
   PI_DEFAULT_PROMPT_PREFIX,
   PI_DEFAULT_PROMPT_TERMINATOR,
 } from "#src/constants";
+import {
+  _resetShapingWarnings,
+  shapeAnthropicOAuthSystemPrompt,
+} from "#src/system-prompt-shaping";
 // `buildSystemPrompt` is not listed in pi's `exports` map, which declares only
 // `.`, `./rpc-entry`, and `./client`.  The bare subpath specifier is therefore
 // rejected by Node (ERR_PACKAGE_PATH_NOT_EXPORTED) and by vite's resolver
@@ -112,4 +116,52 @@ test("every PARAGRAPH_REMOVAL_ANCHORS entry still matches a paragraph", () => {
         "survive into shaped OAuth requests. Re-verify the anchor.",
     );
   }
+});
+
+test("shaping the installed pi's prompt takes the terminator path", () => {
+  // The latch is module-global, so a warning tripped earlier in this file would
+  // suppress the one this test is watching for.
+  _resetShapingWarnings();
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  onTestFinished(() => {
+    warnSpy.mockRestore();
+    _resetShapingWarnings();
+  });
+
+  const shaped = shapeAnthropicOAuthSystemPrompt(buildUpstreamPrompt());
+
+  assert.equal(
+    warnSpy.mock.calls.length,
+    0,
+    "shaping the prompt the installed pi builds degraded to the sanitize-fallback path. " +
+      "This is the mid-session stderr warning, caught at build time instead.",
+  );
+
+  // Replaced: the Pi identity paragraph.
+  assert.match(shaped, /^You are an expert coding assistant\./);
+  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+
+  // Removed: the custom-tool filler and the whole Pi documentation block.
+  assert.doesNotMatch(shaped, /In addition to the tools above/);
+  assert.doesNotMatch(shaped, /Pi documentation \(read only/);
+
+  // Retained: tool snippets and the extension-contributed guideline.
+  assert.match(shaped, /- read: Read file contents/);
+  assert.match(shaped, /- bash: Execute shell commands/);
+  assert.ok(
+    shaped.includes(`- ${EXTRA_GUIDELINE}`),
+    "extension-contributed guidelines must survive shaping",
+  );
+
+  // Retained: everything pi appends after the preamble (Issue #10, Issue #47).
+  assert.ok(
+    shaped.includes(APPENDED_NOTE),
+    "--append-system-prompt content must survive shaping",
+  );
+  assert.match(shaped, /<project_context>/);
+  assert.ok(
+    shaped.includes(PROJECT_INSTRUCTION),
+    "project context files must survive shaping",
+  );
+  assert.match(shaped, /\nCurrent working directory: \/tmp\/project$/);
 });
