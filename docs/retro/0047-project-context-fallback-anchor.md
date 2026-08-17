@@ -51,6 +51,32 @@ The operator asked whether the pi peer floor should rise, so the session detoure
   `pickAnthropicStreamSimple`'s `streamSimpleAnthropic` branch documents itself as support for "older hosts that predate the factory on the compat entrypoint," but the factory predates the current floor, so no such supported host exists.
   Dead at any floor `>=0.80.0`, independent of this decision.
 
+## Stage: Implementation — TDD (2026-08-17T20:05:00Z)
+
+### Session summary
+
+Implemented the anchor-sanitize fallback across five commits, completing all six planned TDD steps (two were folded into one commit).
+The degraded path now preserves everything pi appends after the preamble instead of discarding it, and both shaping branches route through one extracted `shapePreambleSpan` helper.
+Tests went from 54 to 56 (the shaping suite from 15 to 17 cases); `check`, `lint`, and `fallow:dead-code` are green.
+
+### Observations
+
+- Deviation: plan steps 1 and 2 were folded into commit `819144b`.
+  Step 1 prescribed a test-only commit that is red by construction — the test it adds cannot pass until the step 2 fix lands — so committing it alone would have poisoned `git bisect`.
+  The template's own cycle is red→green→commit per step, which the plan's split contradicted.
+  Noted in the commit body; the reviewer accepted it and confirmed the `fix:` type is right since the fix is the dominant semantic.
+- The Tidy-First assessor returned **no preparatory commits**, and its reasoning was worth reading rather than skimming: it explicitly considered pre-extracting `shapePreambleSpan` and rejected it, because step 2 only touches the fallback branch, so pre-extraction would relocate the refactor without shrinking anything — and would force an awkward choice about whether to use the old or new debug field names.
+  Fix-then-extract was the tighter order.
+- The step 3 test passed the moment it was written.
+  Per the `testing` skill that is either an invariant pin or a broken probe; it is the former.
+  Confirmed it is not vacuous by contrast rather than by assertion: the primary-path test `does not sanitize extension content outside the Pi preamble span` asserts the *same* probe string survives, so both directions are pinned by live tests.
+- The fixture refresh was verified by diffing the fixture's documentation block against `../pi`'s source at `3dd4623ee`, not by eyeballing.
+  It matches verbatim, 8/8 lines — the only initial diff was the closing backtick of the upstream template literal.
+- Pre-completion reviewer: **PASS**.
+- Reviewer warnings: one WARN on naming — `shapePreambleSpan` says "preamble" but in the fallback path `spanEnd` is `systemPrompt.length`, so the span is the whole prompt.
+  The reviewer called it non-blocking (the JSDoc `@param mode` and both call sites make the boundary concrete) and it was left as-is rather than churned after a PASS.
+  Worth revisiting if the fallback path ever grows.
+
 [#9]: https://github.com/gotgenes/pi-anthropic-auth/issues/9
 [#10]: https://github.com/gotgenes/pi-anthropic-auth/issues/10
 [#52]: https://github.com/gotgenes/pi-anthropic-auth/issues/52
