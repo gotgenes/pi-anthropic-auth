@@ -130,48 +130,44 @@ export function shapeAnthropicOAuthSystemPrompt(systemPrompt: string): string {
     prefixIdx,
   );
   if (terminatorIdx !== -1) {
-    const terminatorEnd = terminatorIdx + PI_DEFAULT_PROMPT_TERMINATOR.length;
-    const preamble = systemPrompt.slice(prefixIdx, terminatorEnd);
-    const report = sanitizeSystemTextWithReport(preamble);
-    const shapedPreamble = report.text
-      ? `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}\n\n${report.text}`
-      : MINIMAL_ANTHROPIC_OAUTH_PROMPT;
-
-    if (shouldLogPromptDebug(report)) {
-      debugLog("system-prompt-shaping", {
-        mode: "terminator",
-        originalLength: systemPrompt.length,
-        preambleLength: preamble.length,
-        sanitizedPreambleLength: report.text.length,
-        removedParagraphCount: report.removedParagraphs.length,
-        removedAnchors: report.removedParagraphs.map((entry) => entry.anchor),
-        removedParagraphPreviews: report.removedParagraphs.map(
-          (entry) => entry.preview,
-        ),
-        replacementMatches: report.replacementMatches,
-      });
-    }
-
-    return (
-      systemPrompt.slice(0, prefixIdx) +
-      shapedPreamble +
-      systemPrompt.slice(terminatorEnd)
-    );
+    const spanEnd = terminatorIdx + PI_DEFAULT_PROMPT_TERMINATOR.length;
+    return shapePreambleSpan(systemPrompt, prefixIdx, spanEnd, "terminator");
   }
 
   warnTerminatorMissingOnce();
+  return shapePreambleSpan(
+    systemPrompt,
+    prefixIdx,
+    systemPrompt.length,
+    "sanitize-fallback",
+  );
+}
 
-  const remainder = systemPrompt.slice(prefixIdx);
-  const report = sanitizeSystemTextWithReport(remainder);
-  const shapedRemainder = report.text
+/**
+ * Replace the span `[prefixIdx, spanEnd)` with the minimal neutral prompt
+ * followed by the sanitized span, leaving the text on either side untouched.
+ *
+ * @param mode - which boundary the caller resolved `spanEnd` from, recorded in
+ *   the debug log: the matched preamble terminator, or the end of the prompt
+ *   when that terminator drifted.
+ */
+function shapePreambleSpan(
+  systemPrompt: string,
+  prefixIdx: number,
+  spanEnd: number,
+  mode: "terminator" | "sanitize-fallback",
+): string {
+  const span = systemPrompt.slice(prefixIdx, spanEnd);
+  const report = sanitizeSystemTextWithReport(span);
+  const shapedSpan = report.text
     ? `${MINIMAL_ANTHROPIC_OAUTH_PROMPT}\n\n${report.text}`
     : MINIMAL_ANTHROPIC_OAUTH_PROMPT;
 
   if (shouldLogPromptDebug(report)) {
     debugLog("system-prompt-shaping", {
-      mode: "sanitize-fallback",
+      mode,
       originalLength: systemPrompt.length,
-      spanLength: remainder.length,
+      spanLength: span.length,
       sanitizedSpanLength: report.text.length,
       removedParagraphCount: report.removedParagraphs.length,
       removedAnchors: report.removedParagraphs.map((entry) => entry.anchor),
@@ -182,7 +178,9 @@ export function shapeAnthropicOAuthSystemPrompt(systemPrompt: string): string {
     });
   }
 
-  return systemPrompt.slice(0, prefixIdx) + shapedRemainder;
+  return (
+    systemPrompt.slice(0, prefixIdx) + shapedSpan + systemPrompt.slice(spanEnd)
+  );
 }
 
 type TextBlock = {
