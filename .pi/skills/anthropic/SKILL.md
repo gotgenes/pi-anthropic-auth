@@ -87,9 +87,10 @@ This workflow has already been used successfully in this repo to validate:
 
 ### 3. Render real before/after shaping (ground truth, not a hand fixture)
 
-To check what shaping does to a real prompt, import upstream `buildSystemPrompt` from `@earendil-works/pi-coding-agent/dist/core/system-prompt.js`, build a realistic prompt, and pipe it through `shapeAnthropicOAuthSystemPrompt` to see the exact removed/retained split.
+To check what shaping does to a real prompt, import upstream `buildSystemPrompt` from `./node_modules/@earendil-works/pi-coding-agent/dist/core/system-prompt.js`, build a realistic prompt, and pipe it through `shapeAnthropicOAuthSystemPrompt` to see the exact removed/retained split.
+Use a filesystem path, not the bare `@earendil-works/pi-coding-agent/dist/...` specifier — that subpath is absent from the package's `exports` map, so Node rejects it with `ERR_PACKAGE_PATH_NOT_EXPORTED` and vite's resolver rejects it too.
 Write the script in the repo root, not `/tmp` — relative `./node_modules` and `./src` imports resolve against the script's directory (Refs #10).
-This is a debug-only technique; tests still build fixtures inline (see Testing Guidance in `AGENTS.md`).
+The same technique is used by one test, `test/upstream-prompt-drift.test.ts`, to check the preamble anchors against the installed Pi (Issue #52); everywhere else tests still build fixtures inline (see Testing Guidance in `AGENTS.md`).
 
 ## Implementation Guidance
 
@@ -134,6 +135,7 @@ Do not "fix" that by calling `registerApiProvider` — the registry is keyed by 
 - `src/system-prompt-shaping.ts`
 - `test/pi-anthropic-ordering-experiment.test.ts`
 - `test/system-prompt-shaping.test.ts`
+- `test/upstream-prompt-drift.test.ts`
 
 ## Decision Rule
 

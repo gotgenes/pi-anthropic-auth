@@ -370,6 +370,8 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 1. Test files are named `*.test.ts` and are collocated under `test/` (not next to source).
 2. Tests use `node:assert/strict` for assertions and `vitest`'s `test` (and `onTestFinished` for per-test cleanup) for the runner. Existing files are the reference style — keep new tests consistent.
 3. Keep tests focused on compatibility helpers rather than broad end-to-end behavior. Mock `globalThis.fetch` for OAuth flows; build payload fixtures inline rather than depending on Pi internals.
+   `test/upstream-prompt-drift.test.ts` is the one sanctioned exception: it imports Pi's own `buildSystemPrompt` because depending on the internal *is* what it verifies (Issue #52).
+   Do not treat it as precedent for other suites.
 4. When asserting on shaped system prompts, prefer regex matches that pin specific markers (`/^You are an expert coding assistant\./`, `/<project_context>/`) over deep-equal on full prompt strings, so tests survive harmless reformatting upstream.
    Pin markers Pi actually emits: Pi replaced the `# Project Context` heading with `<project_context>` tags in v0.75.0, and an assertion on the old heading can only pass against a fixture that invented it (Issue #47).
 
@@ -381,6 +383,7 @@ Current suites map roughly to:
 2. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, and the structural messages-payload guard.
 3. `test/system-prompt-shaping.test.ts` — anchor-based paragraph removal, tool-snippet and guideline preservation, appended-content preservation, the verbatim upstream-prompt fixture, and degraded-mode fallbacks.
 4. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use serialization behavior.
+5. `test/upstream-prompt-drift.test.ts` — the preamble anchors in `src/constants.ts` checked against the installed Pi's own `buildSystemPrompt` output, plus a pin that shaping still resolves the span from the terminator rather than the degraded fallback.
 
 Priority areas for new tests:
 
