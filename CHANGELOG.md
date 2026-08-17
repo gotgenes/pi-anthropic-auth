@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.4...v2.0.5) (2026-08-17)
+
+
+### Documentation
+
+* plan build-time verification of pi preamble anchors ([#52](https://github.com/gotgenes/pi-anthropic-auth/issues/52)) ([b0823c6](https://github.com/gotgenes/pi-anthropic-auth/commit/b0823c65fc0d8c3b431c4b543b5b68c59a8bccac))
+* record the sanctioned upstream-internals test exception ([a94c593](https://github.com/gotgenes/pi-anthropic-auth/commit/a94c5932c237132a9548dfdea5897e232b686bf2)), closes [#52](https://github.com/gotgenes/pi-anthropic-auth/issues/52)
+* **retro:** add planning stage notes for issue [#52](https://github.com/gotgenes/pi-anthropic-auth/issues/52) ([9af75b2](https://github.com/gotgenes/pi-anthropic-auth/commit/9af75b24251aa303e6f5a651f192096a8fe473fe))
+* **retro:** add retro notes for issue [#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47) ([27c0cee](https://github.com/gotgenes/pi-anthropic-auth/commit/27c0cee3653ababc63ab336dd79551fbc2b3d0c8))
+* **retro:** add TDD stage notes for issue [#52](https://github.com/gotgenes/pi-anthropic-auth/issues/52) ([5bcf864](https://github.com/gotgenes/pi-anthropic-auth/commit/5bcf864d6395c6f4dabe16569d9bd2a33df86d65))
+
 ## [2.0.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.3...v2.0.4) (2026-08-17)
 
 
