@@ -109,6 +109,52 @@ const PI_UPSTREAM_SYSTEM_PROMPT = [
   "Current working directory: /tmp/project",
 ].join("\n");
 
+// ---------------------------------------------------------------------------
+// Drifted-terminator fixture
+//
+// Stands in for a future upstream edit to the preamble's final bullet, which
+// is the anchor `PI_DEFAULT_PROMPT_TERMINATOR` pins.  Everything pi appends
+// after the preamble is present in the order `buildSystemPrompt` emits it:
+// the `--append-system-prompt` section, <project_context>, the skills block,
+// and the cwd footer.  Shaping must keep all four (Issue #47).
+// ---------------------------------------------------------------------------
+const DRIFTED_TERMINATOR_PROMPT = [
+  "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
+  "",
+  "Available tools:",
+  "- read: Read file contents",
+  "- my_ext_tool: Extension-registered tool snippet",
+  "",
+  "In addition to the tools above, you may have access to other custom tools depending on the project.",
+  "",
+  "Guidelines:",
+  "- Be concise in your responses",
+  "- Always check the frobnicator before deploying",
+  "",
+  "Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):",
+  "- Main documentation: /home/user/.pi/agent/README.md",
+  "- Read pi .md files in full and follow links to related docs (tui.md covers the TUI API)",
+  "",
+  "## Custom Note (from another extension)",
+  "- Some critical project instruction.",
+  "",
+  "<project_context>",
+  "",
+  "Project-specific instructions and guidelines:",
+  "",
+  '<project_instructions path="/tmp/project/AGENTS.md">',
+  "Preserve built-in Anthropic behavior by default.",
+  "</project_instructions>",
+  "",
+  "</project_context>",
+  "",
+  "<available_skills>",
+  "- deploy: how to ship this project",
+  "</available_skills>",
+  "",
+  "Current working directory: /tmp/project",
+].join("\n");
+
 // ===== sanitizeSystemText =====
 
 test("sanitizeSystemText removes paragraphs with Pi identity anchor", () => {
@@ -380,7 +426,50 @@ test("does not sanitize extension content outside the Pi preamble span", () => {
   );
 });
 
-test("falls back to '# Project Context' anchor when terminator is missing and warns once", () => {
+test("preserves everything pi appended when the terminator drifts (issue #47)", () => {
+  _resetShapingWarnings();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  try {
+    const shaped = shapeAnthropicOAuthSystemPrompt(DRIFTED_TERMINATOR_PROMPT);
+
+    assertPreambleReplaced(shaped);
+
+    // Retained: the appendSystemPrompt section, which sits between the
+    // preamble and <project_context>.
+    assert.match(shaped, /## Custom Note \(from another extension\)/);
+    assert.match(shaped, /- Some critical project instruction\./);
+
+    // Retained: the project context files.
+    assert.match(shaped, /<project_context>/);
+    assert.match(shaped, /Preserve built-in Anthropic behavior by default\./);
+
+    // Retained: the skills block.
+    assert.match(shaped, /<available_skills>/);
+    assert.match(shaped, /- deploy: how to ship this project/);
+
+    // Retained: the footer.
+    assert.match(shaped, /Current working directory: \/tmp\/project/);
+
+    // Retained: extension-contributed tool snippets and guidelines.
+    assert.match(shaped, /my_ext_tool: Extension-registered tool snippet/);
+    assert.match(shaped, /Always check the frobnicator before deploying/);
+
+    // Removed: the Pi-specific paragraphs the anchors name.
+    assert.doesNotMatch(shaped, /In addition to the tools above/);
+    assert.doesNotMatch(
+      shaped,
+      /Pi documentation \(read only when the user asks about pi itself/,
+    );
+    assert.doesNotMatch(shaped, /Main documentation:/);
+  } finally {
+    console.warn = originalWarn;
+    _resetShapingWarnings();
+  }
+});
+
+test("warns once when the preamble terminator is missing", () => {
   _resetShapingWarnings();
   const originalWarn = console.warn;
   const warnings: string[] = [];
@@ -414,7 +503,7 @@ test("falls back to '# Project Context' anchor when terminator is missing and wa
   }
 });
 
-test("falls back to minimal-only when terminator and Project Context are both missing", () => {
+test("preserves anchorless trailing content when the terminator is missing", () => {
   _resetShapingWarnings();
   const originalWarn = console.warn;
   console.warn = () => {};
@@ -428,9 +517,9 @@ test("falls back to minimal-only when terminator and Project Context are both mi
 
     const shaped = shapeAnthropicOAuthSystemPrompt(reworded);
 
-    assert.match(shaped, /^You are an expert coding assistant\./);
-    assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+    assertPreambleReplaced(shaped);
     assert.doesNotMatch(shaped, /Reworded preamble/);
+    assert.match(shaped, /Trailing content with no known anchors\./);
   } finally {
     console.warn = originalWarn;
     _resetShapingWarnings();
