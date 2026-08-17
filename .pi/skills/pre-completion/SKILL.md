@@ -21,6 +21,9 @@ BASE=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=
 git diff --name-only $BASE..HEAD
 ```
 
+When the last tag predates unrelated already-landed work (this repo batches releases — `refactor:`/`test:`/`build:` commits don't tag), `$BASE..HEAD` over-scopes to sibling issues' shipped files.
+Scope to the issue's own commits instead — anchor on the plan commit (`docs: plan … (#N)`): `git diff --name-only <plan-commit>^..HEAD`.
+
 Note:
 
 - The list of modified files.
@@ -38,8 +41,8 @@ Dispatch the `pre-completion-reviewer` subagent via the `subagent` tool:
 Example prompt to pass:
 
 ```text
-Review issue #236.
-Plan file: docs/plans/0236-pre-completion-reviewer.md
+Review issue #46.
+Plan file: docs/plans/0046-background-agent-coverage-gap.md
 Modified files since last tag:
   .pi/agents/pre-completion-reviewer.md
   .pi/skills/pre-completion/SKILL.md
@@ -65,6 +68,8 @@ Include the one-line verdict in the stage notes ("Pre-completion reviewer: PASS"
 Proceed to "Summarize."
 Include the verdict and WARN findings in the stage notes under a "Reviewer warnings" line.
 The user can decide whether to address warnings before running `/ship-issue`.
+
+When a WARN names stale references to a deleted symbol or module, grep the flagged file (and its sibling docs) exhaustively for every instance of that symbol before fixing — fixing only the named instances invites a second WARN round.
 
 ### Overall: FAIL
 

@@ -45,6 +45,7 @@ Before executing the TDD cycle, load skills relevant to the change:
 - Load the `anthropic` skill for package-specific architecture, OAuth compatibility lessons, priorities, and testing context.
 - Load the `code-design` skill for design principles, TypeScript conventions, and structural heuristics.
 - Load the `testing` skill for Vitest mock patterns and TDD planning rules.
+- Load the `tidy-first` skill — you will use it after the green baseline to dispatch the Tidy-First assessor before implementing.
 - Load the `pre-completion` skill — you will use it after the final TDD step to dispatch the quality reviewer.
 
 ## Verify green baseline
@@ -54,10 +55,18 @@ Before writing any code, confirm the starting state is clean:
 1. `pnpm run check` — must pass.
 2. `pnpm run lint` **from the repo root** — must pass.
 3. `pnpm test` — must pass.
+4. `pnpm fallow:dead-code` — must pass.
+   CI gates it on every `main` push, so a finding at the end is only actionable if you know whether the baseline was clean.
 
 If a check fails on an issue your change will not touch (e.g. a pre-existing lint warning in an unrelated doc), fix it as a separate cleanup commit (`docs:`, `style:`, or `fix:` as appropriate) to establish a green baseline, then proceed.
 If the failure is non-trivial, or you cannot quickly establish why it is failing, stop and report to the user.
 Do not start TDD cycles from a broken baseline.
+
+## Tidy First
+
+With the baseline green and the plan's target files known, follow the `tidy-first` skill: dispatch the `tidy-first-assessor` subagent over the files the change will touch, then land its **Recommended** preparatory refactorings as separate `refactor:`/`test:` commits **before** the first Red→Green cycle — make the change easy, then make the easy change.
+The assessment runs in a subagent so the many-files read does not consume this session's context.
+Skip when the plan touches no `src/`/`test/` files (the skill's applicability gate).
 
 ## Execute the TDD cycle
 
@@ -101,7 +110,9 @@ If a plan's quantitative target (LOC, clone count, complexity) does not fall out
 4. Run the fallow dead-code gate **from the repo root**: `pnpm fallow:dead-code`.
    If it exits non-zero, load the `fallow` skill and fix the findings — prefer declaring a real contract (`implements`) or removing dead exports over suppressing; suppress only verified false positives.
    Commit fixes as part of the most recent feat commit (amend) if not yet pushed; otherwise as a `fix:` commit.
-5. Check for unstaged lockfile changes: `git diff --name-only pnpm-lock.yaml`.
+   If the plan names a quantitative target (a complexity/CRAP score, a clone count, a refactoring-target drop-off), load the `fallow` skill to find the right verification subcommand — confirm a file left the targets list with `pnpm fallow health --targets --format json` (an empty `targets` array), not by grepping the human-readable output.
+5. Check for unstaged lockfile changes: `git diff --name-only pnpm-lock.yaml pnpm-workspace.yaml`.
+   `pnpm install` can touch `pnpm-workspace.yaml` too (a `minimumReleaseAgeExclude` entry when a dependency is bumped to a freshly-published version).
    If modified, stage and commit it as part of the most recent feat commit (amend if not yet pushed) or as a separate `fix:` commit.
 6. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
    If a listed file was not touched, update it now or note the deviation.
@@ -109,7 +120,9 @@ If a plan's quantitative target (LOC, clone count, complexity) does not fall out
    If the issue completes a numbered roadmap step, prefix `✅` on both the step heading and its Mermaid diagram node — a `Landed:` detail line is not a substitute for the `✅`.
    Flip the phase status row only when every step in the phase is done.
 8. Commit doc updates as `docs: <summary>`.
-9. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+9. Preview the changelog: `git log --format='%s' <plan-commit>..HEAD | grep -E '^(feat|fix)'`.
+   Every surviving line must name a user-observable outcome — a line describing an internal seam means that commit should have been `refactor:`; retype it now, while nothing is pushed.
+10. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review
 

@@ -15,6 +15,25 @@ Bash is for read-only commands only: `pnpm run check`, `pnpm run lint`, `pnpm te
 Do NOT modify files, run auto-fixers, or commit anything.
 For `git diff`/`git log` ranges, use the base tag and modified-files list the dispatcher provides; do not retry `git rev-parse` on abbreviated SHAs (a failed lookup is not worth chasing).
 
+## Search scope
+
+Every command must stay inside the repository working directory.
+Never pass an absolute path outside it as a search root — `find /`, `grep -r /`, `ls /usr`, or any walk of `~` or `/` is out of bounds, even though those commands are read-only.
+Read-only is not the same as in-scope: a filesystem-wide walk crosses every mounted volume, is slow enough to stall the review, and trips the external-directory permission gate for a file that is almost always already in the repo.
+
+When a targeted search returns no output, the pattern is wrong far more often than the file is missing.
+Fix the pattern before widening the root, in this order:
+
+1. Re-check the glob's depth — `dir/*.ext` matches one level only.
+   Use `-r` on the directory (`grep -rn "sym" dir/`) when the file may be nested.
+2. Re-check the filename assumption — `ls` the directory and look.
+3. Only then widen, and never past the repo root.
+
+To confirm an SDK or dependency API, read the installed types under `node_modules/.pnpm/<pkg>@<version>/` and pin the version to the one this package depends on.
+A store can hold several versions of the same package, so an unpinned match may come from a copy the code never loads.
+
+If you genuinely cannot answer a question within the repo, report it as an open question in your findings rather than escalating the search.
+
 ## Input
 
 The dispatching agent provides:
@@ -93,7 +112,10 @@ Check in both directions:
   Are existing skills that describe what you changed still accurate?
   When the change renames a symbol (tool name, export, config key), grep `.pi/skills/` and `.pi/prompts/` for the old name.
 - Prompt templates (`.pi/prompts/`) — if agent infrastructure changed, are stale references updated?
+- Source and test **comments** — when the change removes a module, export, or type, grep `src/` and `test/` for its name.
+  A deleted symbol survives in comments and docstrings that no compiler checks.
 - READMEs — check the root `README.md` and any other `README.md` files that describe affected modules.
+  When a change removes or renames a slash command or user-facing feature, grep `README.md` for the command/feature name — a README documents commands, not module filenames, so a module-name match misses it.
 - Architecture docs (`docs/architecture.md`) — if module structure changed, are layout listings or diagrams updated?
 - Roadmap status (`docs/architecture.md`) — if the issue completes a numbered step, do **both** the step heading and its Mermaid diagram node carry `✅` (a `Landed:` line alone is not enough)?
   The phase status row flips only when every step is done — verify it against the actual step count.
@@ -108,18 +130,22 @@ Report staleness as **WARN** (non-blocking).
 
 ### 2d. Code design review
 
-**Applicability:** any `src/` files appear in the modified-files list.
-Skip if no `src/` files were changed.
+**Applicability:** any `src/` or `test/` files appear in the modified-files list.
+Skip if neither was changed.
 
-Load the `code-design` skill by reading `.pi/skills/code-design/SKILL.md`.
-
-Review changed `src/` files for:
+For changed `src/` files, load the `code-design` skill (`.pi/skills/code-design/SKILL.md`) and review for:
 
 - SRP violations — functions or modules doing more than one thing.
 - ISP violations — functions accepting wide interfaces but reading only a few fields.
 - Law of Demeter violations — chained access like `a.b.c.d()` where the caller reaches through collaborators.
 - Output arguments — functions that write back into a received parameter.
 - Naming — names that describe implementation rather than intent.
+
+For changed `test/` files, load the `testing` skill (`.pi/skills/testing/SKILL.md`) and spot-check for convention drift:
+
+- mock fields typed `Mock<Sig>`, not `ReturnType<typeof vi.fn<…>>`
+- module-scope `vi.fn()` stubs reset in `beforeEach`
+- mock-call assertions via `toHaveBeenCalledWith`, not `mock.calls[0]![0]`
 
 Report findings as **WARN** (non-blocking suggestions).
 
@@ -169,10 +195,19 @@ Read the earlier completed steps for the modified surface and extract their `Out
 For each, confirm the current change still upholds it — preferably via a test that pins it, otherwise by reading the code.
 Report a regressed invariant as **FAIL**; an invariant that holds but is pinned only by prose (no test) as **WARN**.
 
+### 2i. Planned follow-up issues
+
+**Applicability:** a plan file was provided and it names work deferred to a follow-up issue (in Design Overview, Non-Goals, Open Questions, or a Decomposition subsection).
+Skip if no plan was provided or it names no follow-up.
+
+`/plan-issue` files these during planning and records each issue number in the plan.
+For each follow-up the plan names, confirm the plan (or its retro) records a GitHub issue number for it.
+Report a named follow-up with no recorded issue number as **WARN** — it should have been filed during planning.
+
 ## Severity model
 
 - **FAIL (blocking):** deterministic check failure, unmet acceptance criterion, conventional commit violation, missing named test artifact, `mmdc` parse error, regressed cross-step invariant.
-- **WARN (non-blocking):** documentation staleness, code design suggestions, Mermaid renderer pitfalls, `mmdc` unavailable, cross-step invariant pinned only by prose.
+- **WARN (non-blocking):** documentation staleness, code design suggestions, Mermaid renderer pitfalls, `mmdc` unavailable, cross-step invariant pinned only by prose, a planned follow-up with no recorded issue number.
 - **PASS:** section verified with no issues.
 - **SKIP:** section not applicable — state the reason.
 
@@ -210,11 +245,13 @@ Reverse: PASS — no condensation needed
 Forward: WARN — AGENTS.md "Multi-session lifecycle" section does not mention the new reviewer step
 
 ### Code design review
-PASS — no structural concerns in changed src/ files
+PASS — no structural concerns in changed src/ or test/ files
 — or —
 WARN — src/foo.ts:42: function readConfig accepts a wide Options bag but reads only 2 of 8 fields
 — or —
-SKIP — no src/ files in modified-files list
+WARN — test/foo.test.ts:18: mock field typed ReturnType<typeof vi.fn<…>>; use Mock<Sig>
+— or —
+SKIP — no src/ or test/ files in modified-files list
 
 ### Test artifacts
 PASS — all 3 named test files exist on disk
@@ -243,6 +280,13 @@ WARN — invariant "<text>" holds but is pinned only by prose, not a test
 FAIL — invariant "<text>" from <step> regressed
 — or —
 SKIP — no phased roadmap, or no modified src/ file was a prior step's target
+
+### Planned follow-up issues
+PASS — all named follow-ups have recorded issue numbers
+— or —
+WARN — plan names a "<X>" follow-up but records no issue number (file it before ship)
+— or —
+SKIP — no plan, or plan names no follow-up
 
 ### Overall
 PASS — ready for /ship-issue

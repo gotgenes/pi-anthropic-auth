@@ -117,10 +117,11 @@ Shared workflow skills (synced from `pi-packages`, adapted to this single packag
 3. `improvement-discovery`: smell taxonomy and prioritization for improvement rounds
 4. `testing`: vitest mock patterns, assertion strategy, TDD planning rules
 5. `pre-completion`: pre-completion protocol that dispatches the `pre-completion-reviewer` subagent
-6. `fallow`: dead-code, duplication, and complexity analysis via the `fallow` CLI
-7. `markdown-conventions`: rumdl-enforced markdown rules
-8. `mermaid`: Mermaid authoring and verification
-9. `pi-extension-lifecycle`: Pi turn/tool execution and extension event lifecycle
+6. `tidy-first`: preparatory-refactor protocol that dispatches the `tidy-first-assessor` subagent
+7. `fallow`: dead-code, duplication, and complexity analysis via the `fallow` CLI
+8. `markdown-conventions`: rumdl-enforced markdown rules
+9. `mermaid`: Mermaid authoring and verification
+10. `pi-extension-lifecycle`: Pi turn/tool execution and extension event lifecycle
 
 ### Project Prompts
 
@@ -135,13 +136,16 @@ Reusable slash-command flows live in `.pi/prompts/` (synced from `pi-packages`, 
 7. `retro`: review a session for workflow improvements and persist retro notes
 8. `retro-note`: persist a quick retro observation to `docs/retro/`
 
-The fallow-discovery prompts (`plan-improvements`, `finish-phase`) from `pi-packages` are intentionally not ported.
+The fallow-discovery prompts (`plan-improvements`, `finish-phase`) and the worktree flows (`land-worktree`, `ship-worktree`, `triage-backlog`) from `pi-packages` are intentionally not ported.
 
 ### Project Agents
 
 Custom subagents live in `.pi/agents/`:
 
 1. `pre-completion-reviewer`: fresh-context quality reviewer run before `/ship-issue`
+2. `tidy-first-assessor`: fresh-context preparatory-refactor scout run at the start of `/tdd-plan` and `/build-plan`
+
+The `craftsmanship-scout` agent from `pi-packages` is intentionally not ported — its only consumer is the unported `/plan-improvements` prompt.
 
 The `ship-*` and CI/issue steps in the prompts use the `@gotgenes/pi-github-tools` extension, declared in `.pi/settings.json`.
 

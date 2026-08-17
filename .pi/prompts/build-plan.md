@@ -48,6 +48,7 @@ Before executing the plan, load skills relevant to the change:
 - Load the `anthropic` skill for package-specific architecture, OAuth compatibility lessons, priorities, and testing context.
 - Load the `code-design` skill if the plan touches code.
 - Load the `markdown-conventions` skill if the plan touches markdown or docs.
+- Load the `tidy-first` skill if the plan creates or modifies `src/`/`test/` files — you will use it after the green baseline to dispatch the Tidy-First assessor before implementing (a docs-only or config-only plan skips it).
 - Load the `pre-completion` skill — you will use it after the final step to dispatch the quality reviewer.
 
 ## Verify green baseline
@@ -59,6 +60,11 @@ Before making any changes, confirm the starting state is clean:
 
 If any check fails, stop and report to the user.
 Do not start from a broken baseline.
+
+## Tidy First (code-touching plans only)
+
+If the plan creates or modifies `src/`/`test/` files, follow the `tidy-first` skill: dispatch the `tidy-first-assessor` subagent over the target files and land its **Recommended** preparatory refactorings as separate `refactor:`/`test:` commits before the change.
+Most `/build-plan` work is docs-only or config-only and skips this per the skill's applicability gate — note the skip and proceed.
 
 ## Execute the plan steps
 
@@ -86,6 +92,9 @@ Do not bundle unrelated steps into one commit.
 
 If a step uncovers a problem the plan didn't anticipate, fix it as part of the same commit and note the deviation in the commit body.
 If the deviation is large, stop and ask.
+
+Before a decision record narrows or replaces a published contract (an event payload, a wire format, a service method), list that contract's current fields and their stability guarantees.
+A field the record never mentions is a field an implementer drops.
 
 ## After the last step
 

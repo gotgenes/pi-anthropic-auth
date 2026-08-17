@@ -118,7 +118,7 @@ Source: `@earendil-works/pi-agent-core` `agent.js`; `@earendil-works/pi-coding-a
 - On **normal** completion `finishRun()` discards the controller **without** aborting it — so the `abort` event fires only on a real interrupt, never at turn/run end.
 - The same per-run signal is passed to every `tool.execute(toolCallId, params, signal, …)` and exposed to handlers via `ctx.signal` (undefined when idle).
 
-Implication: to react to a user interrupt, latch `ctx.signal` (e.g. at `turn_start`) and listen for its `abort` event — it will not false-fire on normal completion. (Refs #403.)
+Implication: to react to a user interrupt, latch `ctx.signal` (e.g. at `turn_start`) and listen for its `abort` event — it will not false-fire on normal completion.
 
 ## Message delivery via `pi.sendMessage()`
 

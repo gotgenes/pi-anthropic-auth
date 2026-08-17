@@ -47,12 +47,12 @@ This repo is a single package, so release-please opens a single repo-wide releas
 1. Use `release_pr_find` to locate an open release-please PR.
 2. If none is found (timeout), skip to step 6.
 3. If one exists, use `release_pr_merge` with the PR number.
+   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
    - Note: release-please PRs typically have **no CI runs** because PRs created by the default `GITHUB_TOKEN` do not trigger workflows.
      This is expected; do not block on it.
-   - If `release_pr_merge` returns an error (not mergeable), stop and report — let the user decide.
-   - Exception: if it fails with `merge_state: UNSTABLE`, check `gh pr view <N> --json statusCheckRollup`.
-     An empty rollup means no checks ran — the `GITHUB_TOKEN` case above; merge with `gh pr merge <N> --rebase` so the release lands as a linear commit, then `git pull --ff-only`.
-     Stop and report only when the PR is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check).
+   - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
+     A `reason: no checks reported (statusCheckRollup is empty)` or `merge_state: UNSTABLE` refusal is the expected `GITHUB_TOKEN` case: confirm with `gh pr view <N> --json statusCheckRollup` (an empty rollup means no checks ran), then merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
+   - Any other reason, a `timeout:` result, or a genuinely blocked PR (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check) means stop and report — let the user decide.
 4. Use `release_watch` to wait for the release tag to land on HEAD.
 
 ## 6. Final report

@@ -45,6 +45,8 @@ git add <retro-file>
 git commit -m "docs(retro): add retro note for issue #N"
 ```
 
+If the branch tracks an upstream and was in sync before this note, `git push` — otherwise the commit strands behind a workflow that already pushed.
+
 Briefly confirm what was recorded (file path and timestamp).
 Then immediately resume the prior workflow — look at the conversation history to determine what was happening before this interruption and continue that work directly.
 Do not recommend a command or await further user input.

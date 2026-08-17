@@ -82,8 +82,8 @@ Skip a lens entirely when it finds nothing notable.
 
 1. **Model-performance correlation** — for each subagent dispatch (if any), note which model ran and what task it performed.
    Flag quality mismatches: a reasoning-weak model on judgment-heavy work (architecture decisions, code review), or a high-cost model on purely mechanical work (formatting, simple grep).
-   If the `read_session` or `read_parent_session` tools are available, use them to inspect model assignments: interleave `model_change` with `message` entries and attribute each turn to the model label it carries.
-   A `model_change` with no assistant turn under it never ran — reading `model_change` alone over-counts transient selections.
+   If the `read_session`, `read_parent_session`, or `read_session_file` tools are available, use them to inspect model assignments: attribute each turn to the inline `[provider/model]` label an **unfiltered** `read_session` call renders on it.
+   A `types: ["model_change"]`-filtered call bypasses that suppression and renders phantom switches that never ran a turn.
 2. **Escalation-delay tracking** — for each `rabbit-hole` friction point, count how many consecutive tool calls the agent spent on the same error or approach before resolving or changing strategy.
    Flag sequences longer than 5 consecutive tool calls on the same error as "should have dispatched an Explore or Plan subagent" or "should have asked the user."
 3. **Unused-tool detection** — for each `rabbit-hole` or `missing-context` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
@@ -190,6 +190,14 @@ Do not split this into multiple sections; one coherent list per retro.
 
 If the user suggests further refinements after the commit, implement them, append to the same `### Changes made` section, and commit again.
 Every change made during the retro must be recorded before the session ends.
+
+## Step 10 — Recommend the next issue
+
+After the retro is committed, surface the next issue to work on so the operator can start it directly.
+Derive it from the shipped issue's roadmap: read the plan's dependency diagram or `docs/architecture.md` for the step this issue unblocks (e.g. "unblocks #M", the next incomplete numbered step).
+If a successor exists, recommend `/plan-issue #M` (name the step).
+Re-check state with `gh` — this ship may have already closed the successor.
+If the roadmap queues nothing, say so explicitly.
 
 ## Rules
 

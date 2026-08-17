@@ -20,12 +20,18 @@ Rules below are named by their markdownlint `MDxxx` IDs because `rumdl` implemen
 - Use one sentence per line (unbroken) for better diffs.
   Each sentence occupies exactly one line; never wrap a sentence across lines or place two sentences on the same line.
   This applies to all prose, including list-item continuations.
+- `rumdl`'s `MD057` can report an existing relative link as missing when its sentence runs long; split the sentence per the rule above rather than hunting the path.
 - Author and append markdown with the `Write`/`Edit` tools, not shell heredocs (`cat <<EOF`) — heredocs don't interpolate `\uXXXX` escapes and make one-sentence-per-line slips easy, both of which trip the markdown linter.
 
 ### Code fences
 
 - Always specify a language on fenced code blocks (e.g., ` ```typescript `, ` ```bash `, ` ```jsonc `, ` ```text `); use `text` for plain output.
 - When embedding markdown that itself contains fenced code blocks, use a 4-backtick outer fence (` ````markdown `).
+
+### Inserting a new section
+
+Before inserting a new `##`/`###` section into an existing document, read the parent section end to end.
+An insertion point that reads correctly at the seam can reparent what follows it — a shared example block, a trailing summary sentence — under the new heading.
 
 ### Lists, headings, and emphasis
 
@@ -41,9 +47,12 @@ Rules below are named by their markdownlint `MDxxx` IDs because `rumdl` implemen
 ### Issue references
 
 - When an issue number would begin a line outside a fenced code block, prefix it with `Issue` (e.g. `Issue #42`) to prevent `#N` from being misread as a Markdown heading.
-- In long-lived docs (`docs/architecture/`, `docs/plans/`), reference GitHub issues with reference-style links — `[#42]` in the body, `[#42]: https://github.com/gotgenes/pi-anthropic-auth/issues/42` at the end of the file.
+- In long-lived docs (`docs/architecture.md`, `docs/plans/`), reference GitHub issues with reference-style links — `[#42]` in the body, `[#42]: https://github.com/gotgenes/pi-anthropic-auth/issues/42` at the end of the file.
   Bare `#42` auto-links on GitHub but not in other renderers.
   Every `[#N]:` definition must have a matching `[#N]` reference in the body (markdownlint MD053 rejects unused definitions).
+  A `[#N]` wrapped in backticks is a code span, not a link reference — it does not count toward the matching-reference requirement, so the `[#N]:` definition still trips MD053.
+  Likewise, a `[#N]` inside a fenced code block (e.g. an `architecture.md` module-layout tree) is not a live reference — cite issues there as bare `#N` with no `[#N]:` definition (matching the block's existing entries), or MD053 rejects the orphaned definition.
+  Write `[#N]` as plain text, including inside other formatting (`**[#N] label:**`).
   Do not add a definition for the doc's own issue number — it lives in frontmatter, not as a body link.
   Link reference definitions are file-scoped: when appending a stage entry to a retro that already defines `[#N]:`, reference it without re-adding the definition — a duplicate trips MD053.
 

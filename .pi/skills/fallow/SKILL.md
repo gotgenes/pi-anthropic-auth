@@ -23,13 +23,13 @@ pnpm fallow:dupes          # duplicated code blocks
 
 ## JSON output for programmatic use
 
-Always use `--format json --quiet 2>/dev/null` and append `|| true`.
-Exit code 1 means "issues found" (normal), not a runtime error.
+Always invoke via `pnpm --silent fallow … --format json --quiet 2>/dev/null` and append `|| true`.
+The `--silent` is load-bearing: fallow exits 1 when issues are found (normal), and without `--silent` pnpm appends `[ELIFECYCLE] Command failed with exit code 1.` to **stdout** after the JSON — `json.load` then fails with "Extra data", and `2>/dev/null` does not strip it.
 Only exit code 2 is a real error.
 
 ```bash
-pnpm fallow dead-code --format json --quiet 2>/dev/null || true
-pnpm fallow health --score --targets --format json --quiet 2>/dev/null || true
+pnpm --silent fallow dead-code --format json --quiet 2>/dev/null || true
+pnpm --silent fallow health --score --targets --format json --quiet 2>/dev/null || true
 ```
 
 ## Useful flags
@@ -87,5 +87,6 @@ pnpm fallow dead-code        # verify
 6. Class-member liveness is keyed off `implements` clauses: a member reached only through a structural type the class does not explicitly `implements` reads as dead once the last `implements` is removed.
    Prefer re-declaring the genuine contract (`implements ThatInterface`) over a suppression.
    If the consumer is wired via an object-literal property (which fallow cannot trace), prefer moving the read into a traced closure body at the composition root (e.g. `getX: () => owner.member`) over a suppression; suppress only when neither is practical.
+   A test helper that returns the instance inside an object literal (`return { provider, live }`) hides its call sites the same way — return the instance directly and pass collaborators in as parameters.
 7. Duplication reports coordinates, not contents: when planning a dedup, read each clone group's exact line ranges before describing it.
    The same byte-run is often an act + assertion sequence (the test subject — do not collapse it) rather than a fixture literal that can be extracted.
