@@ -94,6 +94,8 @@ The comment should include:
 - The commit hash that lands the change ("Implemented in <sha> …").
   Get the full 40-char SHA from `git rev-parse <commit>` and paste it exactly — never hand-type or extend a short SHA from memory; a fabricated SHA does not auto-link.
   Write it as plain text — no backticks — so GitHub auto-links it to the commit.
+  Resolve every SHA the comment will cite with `git rev-parse` before drafting any of it.
+  If a tool argument is wrong while you are writing it, abort the call; never revise inside it.
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.
 - A note flagging any breaking change (matches `feat!:` commits).

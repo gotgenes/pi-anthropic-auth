@@ -74,6 +74,8 @@ Load this skill when writing, debugging, or planning tests.
   A near-miss probe (`void runRpcSession;` against a guard matching `runRpcSession(`) leaves the guard silent and looks like proof it is broken.
 - A new test that passes during the Red step is either an invariant pin or a broken probe — decide which before moving to Green.
   The broken case is a probe string that also appears elsewhere in the output: `toContain("x")` matched the unrelated fixture path `secret.txt` and passed pre-fix.
+  Prove a pin by mutation: change each value the assertion reads, one at a time, and confirm a distinct failure message.
+  Use one probe per assertion *clause*, not per input — five probes against `indexOf` left an adjacent `startsWith` clause unexercised (Refs #52).
 - An equivalence test (incremental vs. freshly built, cached vs. uncached) pins self-consistency, not correctness, when both sides run the code under test.
   Assert independently — a count, a golden row — anything the equivalence cannot see.
 

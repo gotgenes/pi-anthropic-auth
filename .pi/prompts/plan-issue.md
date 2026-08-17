@@ -168,6 +168,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   A later step must not regress an earlier step's outcome with a green suite.
   When an invariant is quantitative (a byte-identical prefix, a token budget, a cache or latency characteristic), measure the baseline and predict the post-change value at planning time.
   A prose argument that the change is "at the tail" or "negligible" is not evidence, and a test pinning adjacent content does not pin the number.
+  For a timing baseline take the median of three runs; a single sub-second sample is noise.
+  Counts (tests, call sites, clones) need one run.
   When the plan removes the mechanism an existing test's comment credits, spike the removal and run that test at planning time — that the test stays green is a measurement, not an argument.
 - **TDD Order** — numbered red→green→commit cycles.
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
