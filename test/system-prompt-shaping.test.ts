@@ -469,6 +469,52 @@ test("preserves everything pi appended when the terminator drifts (issue #47)", 
   }
 });
 
+test("sanitizes beyond the preamble span in fallback mode (issue #47)", () => {
+  _resetShapingWarnings();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  try {
+    const drifted = [
+      PI_PREAMBLE.replace(
+        "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
+        "- Read pi .md files in full and follow links to related docs (tui.md covers the TUI API)",
+      ),
+      "",
+      "## Custom Note",
+      "In addition to the tools above, this extension adds a downstream policy paragraph.",
+      "",
+      "## Unrelated Note",
+      "- Kept because it quotes no anchor.",
+      "",
+      "<project_context>",
+      "",
+      "Project guidance.",
+      "",
+      "</project_context>",
+    ].join("\n");
+
+    const shaped = shapeAnthropicOAuthSystemPrompt(drifted);
+
+    // Deliberate trade-off: with no terminator there is no trustworthy span
+    // end, so an anchor-quoting paragraph in appended content is dropped too
+    // -- along with the heading sharing its paragraph.  The primary path keeps
+    // both; see "does not sanitize extension content outside the Pi preamble
+    // span", which pins the same input with the terminator intact.
+    assert.doesNotMatch(shaped, /downstream policy paragraph/);
+    assert.doesNotMatch(shaped, /## Custom Note/);
+
+    // Only anchor-quoting paragraphs are affected; the rest is untouched.
+    assert.match(shaped, /## Unrelated Note/);
+    assert.match(shaped, /- Kept because it quotes no anchor\./);
+    assert.match(shaped, /<project_context>/);
+    assert.match(shaped, /Project guidance\./);
+  } finally {
+    console.warn = originalWarn;
+    _resetShapingWarnings();
+  }
+});
+
 test("warns once when the preamble terminator is missing", () => {
   _resetShapingWarnings();
   const originalWarn = console.warn;
