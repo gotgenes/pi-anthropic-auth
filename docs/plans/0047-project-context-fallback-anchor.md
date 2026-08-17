@@ -44,6 +44,10 @@ It alters output only on a path that is unreachable with an unmodified pi at the
    That preserves the most content but sends pi's identity fingerprint to Anthropic, which is what this extension exists to strip.
 4. Any change to `src/request-shaping.ts`, `src/oauth-transport.ts`, `src/host-transport.ts`, `src/index.ts`, or `src/diagnostics.ts`.
 5. Restructuring `test/system-prompt-shaping.test.ts` beyond the cases this change touches.
+6. Moving the peer floor.
+   It stays at `>=0.80.8`, which was reviewed during this planning session and confirmed functionally correct — `unregisterProvider` and pi-ai's `anthropicMessagesApi` both exist at that version.
+   The fixture refresh in step 5 is correct at that floor, since pi removed `Current date:` in v0.80.7.
+   Two findings from that review are tracked separately: [#53] (whether pi 0.81.0's `ModelRegistry.getProvider` reopens the compat-dispatch gap, which would supply a driver for raising the floor) and [#54] (the `streamSimpleAnthropic` fallback that the current floor already makes unreachable).
 
 ## Background
 
@@ -268,3 +272,5 @@ Steps 4 and 5 are independent of each other and of step 3; the order above keeps
 [#9]: https://github.com/gotgenes/pi-anthropic-auth/issues/9
 [#10]: https://github.com/gotgenes/pi-anthropic-auth/issues/10
 [#52]: https://github.com/gotgenes/pi-anthropic-auth/issues/52
+[#53]: https://github.com/gotgenes/pi-anthropic-auth/issues/53
+[#54]: https://github.com/gotgenes/pi-anthropic-auth/issues/54

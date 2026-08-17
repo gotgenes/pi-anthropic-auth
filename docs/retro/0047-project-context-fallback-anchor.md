@@ -32,6 +32,27 @@ Wrote `docs/plans/0047-project-context-fallback-anchor.md` with six TDD cycles a
 - Access to the upstream clone at `../pi` was decisive.
   The installed `dist` confirmed *that* the anchor was wrong; only the git history explained *when* and *why*, which is what turned the plan's framing from "the anchor was never checked" into "the anchor rotted at a known release."
 
+### Peer-floor review (same session)
+
+The operator asked whether the pi peer floor should rise, so the session detoured to answer it with evidence.
+
+- Decision: leave `>=0.80.8` alone, with no floor change and no CI change.
+  The floor is functionally correct at that version — `unregisterProvider` is in `extensions/types.ts` at v0.80.8, and pi-ai's `anthropicMessagesApi` reached the compat entrypoint in v0.80.0 (`ba93da9a9`).
+  Nothing in `0.80.8..0.84.2` breaks the extension; the changes in that range are llama.cpp, catalog-refresh, and auth-preflight work.
+- Rejected raising to `>=0.84.0` to match the only tested version.
+  It is breaking with no functional driver, and `AGENTS.md` records the concrete cost: `pi update` will not carry a stale install across a major, so users must run `pi install npm:...@latest` — the #43 experience.
+  The #40 precedent raised the floor because a version generation was actively broken; no comparable driver exists now.
+- Noted but not acted on: CI has a single `check` job on a frozen lockfile pinned to 0.84.0, so nothing ever exercises the floor version.
+  The floor is an assertion no build verifies.
+- Filed [#53].
+  pi v0.81.0 (`019e4ad68`) added `ModelRegistry.getProvider(provider): Provider | undefined`, which directly contradicts the blocker `docs/architecture.md` records for #46 — that `getProviders()` returns id strings rather than `Provider` objects, so `cloudflare-ai-gateway`'s provider-layer wrapping could not be reconstructed.
+  That is the one plausible functional driver for a future floor raise, so the issue frames it as an investigation with a stated kill criterion rather than a floor bump.
+- Filed [#54].
+  `pickAnthropicStreamSimple`'s `streamSimpleAnthropic` branch documents itself as support for "older hosts that predate the factory on the compat entrypoint," but the factory predates the current floor, so no such supported host exists.
+  Dead at any floor `>=0.80.0`, independent of this decision.
+
 [#9]: https://github.com/gotgenes/pi-anthropic-auth/issues/9
 [#10]: https://github.com/gotgenes/pi-anthropic-auth/issues/10
 [#52]: https://github.com/gotgenes/pi-anthropic-auth/issues/52
+[#53]: https://github.com/gotgenes/pi-anthropic-auth/issues/53
+[#54]: https://github.com/gotgenes/pi-anthropic-auth/issues/54
