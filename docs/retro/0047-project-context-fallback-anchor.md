@@ -77,6 +77,77 @@ Tests went from 54 to 56 (the shaping suite from 15 to 17 cases); `check`, `lint
   The reviewer called it non-blocking (the JSDoc `@param mode` and both call sites make the boundary concrete) and it was left as-is rather than churned after a PASS.
   Worth revisiting if the fallback path ever grows.
 
+## Stage: Final Retrospective (2026-08-17T20:30:00Z)
+
+### Session summary
+
+One continuous session took issue #47 from a third-party bug report through planning, a peer-floor detour, six TDD cycles, and a shipped release (`v2.0.4`).
+The dead `# Project Context` fallback anchor was replaced with whole-remainder anchor sanitization, and three follow-up issues ([#52], [#53], [#54]) were filed from findings the investigation turned up.
+Every stage gate passed on the first attempt: Tidy-First returned no preparatory work, the pre-completion reviewer returned PASS, and both CI runs were green.
+
+### Observations
+
+#### What went well
+
+- Digging upstream git history rather than stopping at the installed `dist` inverted the issue's framing.
+  `git log -S` located `e2fd651eb` (pi v0.75.0) as the commit that killed the anchor, and then showed `PI_DEFAULT_PROMPT_TERMINATOR` has been unchanged since v0.50.0.
+  That reframing — the *fallback* was the volatile anchor, not the primary — is what justified retiring the second anchor outright instead of replacing it with `<project_context>` as the issue proposed.
+- The refreshed fixture was verified by machine-diffing it against `../pi`'s source, not by reading it.
+  `AGENTS.md` already warns that eyeball greps mislead when diagnosing version regressions; applying that rule proactively to a *fixture* is a new use of it, and it produced a citable "8/8 lines verbatim" claim for the commit body.
+- The peer-floor question was answered by changing nothing.
+  Evidence showed the `>=0.80.8` floor functionally correct and no #40-style driver present, so the outcome was two filed issues rather than a speculative breaking bump.
+- Model routing matched task shape at every stage without intervention (see Diagnostic details).
+
+#### What caused friction (agent side)
+
+- `missing-context` — the plan's TDD step 1 prescribed a test-only commit that is red by construction: the test it adds cannot pass until step 2's source fix lands.
+  The template's own cycle is red→green→commit *per step*, which the split contradicted.
+  Caught at implementation time, not plan time.
+  Impact: no rework, but the plan was wrong as written and required a documented deviation in `819144b`'s commit body plus reviewer adjudication.
+  This is the one finding with a durable fix.
+- `wrong-abstraction` — the first `ask_user` on the fallback direction presented measured byte counts (162/464/580/753) but no rendered output, so the operator had to ask for elaboration before deciding.
+  The follow-up message showing actual before/after prompt text made the choice obvious immediately.
+  Impact: one extra round-trip; the metric described the difference without showing it.
+- `other` (tool-flag misuse) — `rg -rn 'Project Context|…'` parsed `-r n` as "replace matches with `n`", garbling every hit to `# n`.
+  Self-identified on the next turn.
+  Impact: one wasted tool call, no rework.
+- `other` (external) — GitHub's GraphQL API returned HTTP 503 four times while filing [#54], needing backoff retries.
+  Impact: roughly 90 s wall clock, no rework.
+
+#### What caused friction (user side)
+
+- The peer-floor question arrived as a separate prompt after the plan was already committed, which is why the floor analysis landed as an amendment commit (`f87fd09`) rather than inside the plan's Non-Goals in `b709007`.
+  Raising it during `/plan-issue` would have folded it into one commit.
+  Framed as sequencing, not substance — the question itself was well-timed, arriving before any implementation.
+- The elaboration request on the first `ask_user` was high-value operator input, not overhead.
+  It converted an abstract metric table into a concrete artifact comparison and is the reason the chosen option was obviously right rather than narrowly argued.
+
+### Diagnostic details
+
+1. **Model-performance correlation** — no mismatches found.
+   Planning, TDD, and this retro ran on `anthropic/claude-opus-5` (judgment-heavy: a four-way design comparison, the floor analysis, deviation adjudication).
+   The ship stage ran on `anthropic/claude-sonnet-5` — a mechanical checklist (push, CI watch, release merge) that it executed without error, including the non-obvious `merge_state: UNSTABLE` branch.
+   Both subagents are pinned to `anthropic/claude-sonnet-4-6` by frontmatter in `.pi/agents/`, and both produced substantive judgment: the Tidy-First assessor's rejection reasoning correctly identified that pre-extraction would force an awkward debug-field-naming choice, and the pre-completion reviewer surfaced a genuine naming WARN while correctly skipping four inapplicable lenses.
+2. **Escalation-delay tracking** — no sequence exceeded the 5-call threshold.
+   The longest same-error run was 4 consecutive calls against GitHub 503s, which is an external outage rather than a strategy failure.
+3. **Unused-tool detection** — no gaps.
+   `colgrep` went unused because every search was for an exact known symbol (`findProjectContextStart`, `preambleLength`, `# Project Context`), which the `colgrep` skill's own decision table assigns to grep.
+   `Explore` was correctly not dispatched: the `/plan-issue` prompt reserves it for root-cause hunts that do not reproduce, and this issue supplied a named file and a numbered source trace.
+   `web_search` was unnecessary with an authoritative upstream clone at `../pi`.
+4. **Feedback-loop gap analysis** — verification was incremental, not end-loaded.
+   `pnpm test` ran after every TDD step; `pnpm run check` ran at the step-4 refactor and the final gate.
+   One small gap: step 5 (fixture refresh) ran only `pnpm test` before committing, omitting `check` — zero risk for a test-only string change, and the final gate covered it.
+
+### Changes made
+
+1. `.pi/skills/testing/SKILL.md` — added a rule under § TDD planning rules → "Step sequencing and breakage": fold a step whose new test cannot pass until a later step into that later step.
+   The operator pushed back on the first draft, which framed committing on red as bad practice.
+   That framing was wrong — commit-on-red is a legitimate discipline (it makes "the test failed first" auditable, and pairing-handoff workflows rely on it), and the `git bisect` justification was weak besides, since bisect runs a chosen command and `git bisect skip` exists.
+   The real defect was narrower: `/tdd-plan` states its cycle as red→green→commit *per step*, so the plan prescribed a commit point the executor does not have.
+   The landed rule pins that convention conflict and takes no position on TDD philosophy.
+2. `AGENTS.md` — appended one sentence to § `ask_user` Tool Usage → "Context before, not inside": when options differ in what they produce, show the rendered before/after in the preceding message, not just measurements.
+   Landed inside the existing section rather than as a new `###` heading, per operator feedback that rendered artifacts belong in the message immediately preceding `ask_user` and must never bloat the widget's own content.
+
 [#9]: https://github.com/gotgenes/pi-anthropic-auth/issues/9
 [#10]: https://github.com/gotgenes/pi-anthropic-auth/issues/10
 [#52]: https://github.com/gotgenes/pi-anthropic-auth/issues/52

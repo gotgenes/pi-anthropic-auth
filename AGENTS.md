@@ -317,6 +317,7 @@ If the user selects `Need help` or `Something went wrong`, ask clarifying questi
 Output all explanatory context — plan summaries, analysis results, trade-off notes — as regular message text **before** invoking `ask_user`.
 The `question` parameter should be a concise prompt, almost never more than one sentence.
 Options should be short and outcome-oriented.
+When options differ in what they produce, include the rendered before/after — not just measurements of it — in that preceding message.
 
 ### One decision per call
 
