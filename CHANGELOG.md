@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.0.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.3...v2.0.4) (2026-08-17)
+
+
+### Bug Fixes
+
+* preserve appended prompt content when the preamble terminator drifts ([#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47)) ([819144b](https://github.com/gotgenes/pi-anthropic-auth/commit/819144b934566478bc15db6626481af63df07966))
+
+
+### Documentation
+
+* pin assertion-marker examples to markers Pi emits ([#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47)) ([183128d](https://github.com/gotgenes/pi-anthropic-auth/commit/183128d11a9b334aa901380dd3ed32faa87b1b5d))
+* plan anchor-sanitize fallback for preamble terminator drift ([#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47)) ([b709007](https://github.com/gotgenes/pi-anthropic-auth/commit/b709007d67d23aa259018ccee8b3a54cea999f81))
+* record the peer-floor decision for issue [#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47) planning ([f87fd09](https://github.com/gotgenes/pi-anthropic-auth/commit/f87fd098b2f8621062196cbb0beaf8b70c08313a))
+* refresh pi-packages workflow parity ([302a0b2](https://github.com/gotgenes/pi-anthropic-auth/commit/302a0b29097f31fb17336e0581019b000a1deb6f))
+* **retro:** add planning stage notes for issue [#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47) ([2f24ce1](https://github.com/gotgenes/pi-anthropic-auth/commit/2f24ce15baca9cbfdeca4d7fb2b72fda6e4fe360))
+* **retro:** add retro notes for issue [#46](https://github.com/gotgenes/pi-anthropic-auth/issues/46) ([6b28731](https://github.com/gotgenes/pi-anthropic-auth/commit/6b28731131e17e0f63a57020e3fd181858f87f65))
+* **retro:** add TDD stage notes for issue [#47](https://github.com/gotgenes/pi-anthropic-auth/issues/47) ([ca68283](https://github.com/gotgenes/pi-anthropic-auth/commit/ca682836f7b4a9f5e101e41e0395bae5987917d9))
+
 ## [2.0.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.2...v2.0.3) (2026-08-09)
 
 
