@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.6](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.5...v2.0.6) (2026-08-18)
+
+
+### Documentation
+
+* describe host-transport resolution as factory-or-throw ([#54](https://github.com/gotgenes/pi-anthropic-auth/issues/54)) ([0441356](https://github.com/gotgenes/pi-anthropic-auth/commit/04413569aa7cbbad2460084e8a81c2559267f45f))
+* plan removal of the unreachable streamSimpleAnthropic fallback ([#54](https://github.com/gotgenes/pi-anthropic-auth/issues/54)) ([3857c21](https://github.com/gotgenes/pi-anthropic-auth/commit/3857c21987c69194e0db5bbf8438cdfb3b8813da))
+* **retro:** add planning stage notes for issue [#54](https://github.com/gotgenes/pi-anthropic-auth/issues/54) ([eadb989](https://github.com/gotgenes/pi-anthropic-auth/commit/eadb9893f6c64fc385c6a73e0d8bfe6eb80c2944))
+* **retro:** add retro notes for issue [#52](https://github.com/gotgenes/pi-anthropic-auth/issues/52) ([90d67d5](https://github.com/gotgenes/pi-anthropic-auth/commit/90d67d5434b5a4c17b2a5db35b7a7b5bde360270))
+* **retro:** add TDD stage notes for issue [#54](https://github.com/gotgenes/pi-anthropic-auth/issues/54) ([08cbfeb](https://github.com/gotgenes/pi-anthropic-auth/commit/08cbfebd517a392e34e50553d5027c2176cb3823))
+
 ## [2.0.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.4...v2.0.5) (2026-08-17)
 
 
