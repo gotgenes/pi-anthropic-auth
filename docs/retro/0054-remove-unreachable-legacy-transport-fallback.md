@@ -28,3 +28,29 @@ The plan is three commits (source + tests, identifier renames, prose) plus a liv
 - Prose sweep found five live locations plus two that only *look* stale: the handle-comparison table rows in `docs/builtin-transport-seam-gap.md:79` and `docs/builtin-transport-seam-upstream-request.md:67` describe pi-ai's own exports, not this package's logic, and stay accurate.
   Listed them in Non-Goals so implementation does not "fix" them.
 - No follow-up issues filed — nothing the plan names is unowned.
+
+## Stage: Implementation — TDD (2026-08-18T01:30:00Z)
+
+### Session summary
+
+Executed all three planned steps plus both verification gates: the fallback branch and its tests, the two identifier renames, and the prose corrections across `AGENTS.md`, `docs/architecture.md`, and `docs/builtin-transport-seam-gap.md`.
+Tests went 60 → 59, exactly the predicted delta (three fallback cases out, one merged negative pin in).
+No deviations from the plan; `check`, `lint`, `fallow:dead-code`, and the live `pi -e` repro are all green.
+
+### Observations
+
+- Tidy-First assessor returned **no preparatory commits**, and its reasoning is worth keeping: the `pickAnthropicStreamSimple` / `resolveBuiltinAnthropicStreamSimple` split was itself the preparatory refactor, landed in an earlier issue, which is what made this branch deletion surgical.
+  It also flagged that the plan's own step order (behavior → mechanical rename → prose) already applies Tidy-First discipline.
+- The Red step produced **one** failure, not three.
+  "Throws when the factory is absent" and "throws when the factory yields no `streamSimple`" passed immediately, because their fixtures never carried the deprecated alias, so the old code already threw for them.
+  Per the `testing` skill's rule about tests that pass during Red, they were classified as invariant pins rather than broken probes and kept; the single red was the new negative pin, which is precisely the behavior change.
+- Proved the negative pin non-vacuous by mutation, one probe per assertion clause: reverting the branch produced `Missing expected exception` (clause 1), and re-widening the throw message to mention `streamSimpleAnthropic` produced `expected message not to offer the deprecated alias` (clause 2).
+  Both clauses are live.
+- The rename in step 2 tripped biome formatting — `builtinAnthropicStreamSimple` is long enough to push two lines past the width limit.
+  Auto-fixed with `biome check --write` before committing, so the rename commit stayed rename-only.
+- Neither behavior commit is `feat:`/`fix:`, so the changelog preview is empty by design.
+  Removing unreachable code has no user-observable outcome; `refactor:` is the honest type, and the changelog-preview check in the template is what confirmed it rather than assumed it.
+- Live `pi -e` repro round-tripped a real Anthropic OAuth request with tool use.
+  This is the only check that covers the Issue #31 loader invariant — vitest and `jiti` resolve specifiers differently — and it remains prose-pinned rather than test-pinned, which the reviewer flagged as a standing (already-documented) gap.
+- Pre-completion reviewer: **PASS**.
+  One WARN-level note inside Cross-step invariants: invariant 3 (the `/compat` import surviving all three loader modes) is verified only by the live repro and cannot be asserted by a unit test — the same gap the plan and `AGENTS.md` already acknowledge, not a new finding.
