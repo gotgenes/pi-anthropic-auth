@@ -32,11 +32,12 @@ type AnthropicMessagesApi = () => { streamSimple?: unknown };
 /**
  * Reads the built-in Anthropic `streamSimple` transport off a pi-ai namespace.
  *
- * Prefers the forward primitive `anthropicMessagesApi().streamSimple` — the
+ * Reads the forward primitive `anthropicMessagesApi().streamSimple` — the
  * non-deprecated public factory pi's own `custom-provider-gitlab-duo` example
- * delegates through — and falls back to the deprecated `streamSimpleAnthropic`
- * legacy alias for older hosts that predate the factory on the compat
- * entrypoint.
+ * delegates through — and nothing else.  The factory has shipped from the
+ * compat entrypoint since pi v0.80.0, below this package's `>=0.80.8` peer
+ * floor, so no supported host needs the deprecated `streamSimpleAnthropic`
+ * alias as a fallback (Issue #54).
  * We read the delegate directly off the namespace rather than from the api
  * registry: this extension does not register there on pi >=0.80.8, so reading
  * from it would bind the delegate to whatever another extension registered
@@ -45,9 +46,9 @@ type AnthropicMessagesApi = () => { streamSimple?: unknown };
  *
  * @param namespace - the imported pi-ai module namespace.
  * @returns the built-in Anthropic streaming transport.
- * @throws when neither `anthropicMessagesApi` nor `streamSimpleAnthropic`
- *   resolves to a usable transport (the `compat`-removal cliff tracked in
- *   Issue #35), surfaced loudly rather than silently mis-resolving.
+ * @throws when `anthropicMessagesApi` does not resolve to a usable transport
+ *   (the `compat`-removal cliff tracked in Issue #35), surfaced loudly rather
+ *   than silently mis-resolving.
  */
 export function pickAnthropicStreamSimple(
   namespace: PiAiNamespace,
@@ -60,15 +61,10 @@ export function pickAnthropicStreamSimple(
     }
   }
 
-  const legacy = namespace.streamSimpleAnthropic;
-  if (typeof legacy === "function") {
-    return legacy as AnthropicStreamSimpleDelegate;
-  }
-
   throw new Error(
     "Could not resolve the built-in Anthropic streamSimple transport: " +
-      "@earendil-works/pi-ai/compat exported neither a callable " +
-      "`anthropicMessagesApi` factory nor a `streamSimpleAnthropic` function.",
+      "@earendil-works/pi-ai/compat exported no callable " +
+      "`anthropicMessagesApi` factory returning a `streamSimple` function.",
   );
 }
 
@@ -82,8 +78,7 @@ export function pickAnthropicStreamSimple(
  * `custom-provider-gitlab-duo` example uses — rather than the bare root: the
  * loader aliases both to the same entrypoint, but `/compat` names the surface
  * we actually depend on.  The compat entrypoint re-exports the forward
- * `anthropicMessagesApi` factory and the deprecated `streamSimpleAnthropic`
- * alias.
+ * `anthropicMessagesApi` factory.
  *
  * The original approach — `import.meta.resolve("@earendil-works/pi-ai")` plus a
  * dynamic import of a derived `dist/...` file path — bypassed that host

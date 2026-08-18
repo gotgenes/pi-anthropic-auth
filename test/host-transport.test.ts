@@ -25,13 +25,9 @@ describe("pickAnthropicStreamSimple", () => {
     /* placeholder function used as a stand-in for the real streamSimple */
   }
 
-  test("prefers anthropicMessagesApi().streamSimple (the forward primitive)", () => {
-    function legacyTransport(): void {
-      /* deprecated alias that must not win when the factory is present */
-    }
+  test("returns anthropicMessagesApi().streamSimple", () => {
     const namespace: PiAiNamespace = {
       anthropicMessagesApi: () => ({ streamSimple: fakeTransport }),
-      streamSimpleAnthropic: legacyTransport,
     };
 
     const result = pickAnthropicStreamSimple(namespace);
@@ -39,26 +35,7 @@ describe("pickAnthropicStreamSimple", () => {
     assert.equal(result, fakeTransport);
   });
 
-  test("falls back to streamSimpleAnthropic when the factory is absent", () => {
-    const namespace: PiAiNamespace = { streamSimpleAnthropic: fakeTransport };
-
-    const result = pickAnthropicStreamSimple(namespace);
-
-    assert.equal(result, fakeTransport);
-  });
-
-  test("falls back to streamSimpleAnthropic when the factory yields no transport", () => {
-    const namespace: PiAiNamespace = {
-      anthropicMessagesApi: () => ({ streamSimple: undefined }),
-      streamSimpleAnthropic: fakeTransport,
-    };
-
-    const result = pickAnthropicStreamSimple(namespace);
-
-    assert.equal(result, fakeTransport);
-  });
-
-  test("throws a clear error when no usable transport is present", () => {
+  test("throws when the factory is absent", () => {
     const namespace: PiAiNamespace = { someOtherExport: fakeTransport };
 
     assert.throws(
@@ -66,18 +43,17 @@ describe("pickAnthropicStreamSimple", () => {
       (err: unknown) => {
         assert.ok(err instanceof Error);
         assert.ok(
-          err.message.includes("anthropicMessagesApi") &&
-            err.message.includes("streamSimpleAnthropic"),
-          `expected message to name both handles, got: ${err.message}`,
+          err.message.includes("anthropicMessagesApi"),
+          `expected message to name the factory, got: ${err.message}`,
         );
         return true;
       },
     );
   });
 
-  test("throws when streamSimpleAnthropic is present but not a function", () => {
+  test("throws when the factory yields no streamSimple", () => {
     const namespace: PiAiNamespace = {
-      streamSimpleAnthropic: "not a function",
+      anthropicMessagesApi: () => ({ streamSimple: undefined }),
     };
 
     assert.throws(
@@ -85,8 +61,33 @@ describe("pickAnthropicStreamSimple", () => {
       (err: unknown) => {
         assert.ok(err instanceof Error);
         assert.ok(
-          err.message.includes("streamSimpleAnthropic"),
-          `expected message to name the export, got: ${err.message}`,
+          err.message.includes("streamSimple"),
+          `expected message to name the expected export, got: ${err.message}`,
+        );
+        return true;
+      },
+    );
+  });
+
+  // Pins the Issue #54 decision: the deprecated `streamSimpleAnthropic` alias
+  // is deliberately no longer consulted.  `anthropicMessagesApi` has shipped
+  // from the compat entrypoint since pi v0.80.0, below the `>=0.80.8` peer
+  // floor, so a host offering only the alias cannot exist — and reinstating
+  // the fallback would silently bind the delegate to a deprecated handle.
+  test("throws when only the deprecated streamSimpleAnthropic alias is present", () => {
+    const namespace: PiAiNamespace = { streamSimpleAnthropic: fakeTransport };
+
+    assert.throws(
+      () => pickAnthropicStreamSimple(namespace),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.ok(
+          err.message.includes("anthropicMessagesApi"),
+          `expected message to name the factory, got: ${err.message}`,
+        );
+        assert.ok(
+          !err.message.includes("streamSimpleAnthropic"),
+          `expected message not to offer the deprecated alias, got: ${err.message}`,
         );
         return true;
       },
