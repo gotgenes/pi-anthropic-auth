@@ -58,7 +58,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   const pkg = (await import("../package.json", { with: { type: "json" } })) as {
     default: { version: string };
   };
-  const streamSimpleAnthropic = await resolveBuiltinAnthropicStreamSimple();
+  const builtinAnthropicStreamSimple =
+    await resolveBuiltinAnthropicStreamSimple();
 
   const diagnostics: ExtensionDiagnostics = {
     version: pkg.default.version,
@@ -83,7 +84,9 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   pi.unregisterProvider("anthropic");
   pi.registerProvider("anthropic", {
     api: "anthropic-messages",
-    streamSimple: createAnthropicOAuthStreamSimple(streamSimpleAnthropic),
+    streamSimple: createAnthropicOAuthStreamSimple(
+      builtinAnthropicStreamSimple,
+    ),
   });
 
   // The /anthropic-auth:status command surfaces the loaded version, module

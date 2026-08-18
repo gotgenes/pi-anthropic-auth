@@ -31,8 +31,8 @@ const MODEL = {
 const CONTEXT = { messages: [] } as unknown as Context;
 
 /**
- * Stubbed transport standing in for the bare built-in `streamSimpleAnthropic`
- * that the host resolver hands `src/index.ts`.
+ * Stubbed transport standing in for the bare built-in Anthropic transport that
+ * the host resolver hands `src/index.ts`.
  *
  * `src/index.ts` resolves the delegate via `#src/host-transport`, so mocking
  * that module's resolver is the seam that controls the delegate without
@@ -42,9 +42,9 @@ const CONTEXT = { messages: [] } as unknown as Context;
  * declarations, which would otherwise leave the stub `undefined` when the
  * factory runs.
  */
-const { delegateCalls, streamSimpleAnthropicMock } = vi.hoisted(() => {
+const { delegateCalls, builtinTransportMock } = vi.hoisted(() => {
   const delegateCalls: Array<{ options?: SimpleStreamOptions }> = [];
-  const streamSimpleAnthropicMock: Mock<
+  const builtinTransportMock: Mock<
     (
       model: Model<Api>,
       context: Context,
@@ -54,7 +54,7 @@ const { delegateCalls, streamSimpleAnthropicMock } = vi.hoisted(() => {
     delegateCalls.push({ options });
     return createAssistantMessageEventStream();
   });
-  return { delegateCalls, streamSimpleAnthropicMock };
+  return { delegateCalls, builtinTransportMock };
 });
 
 vi.mock("#src/host-transport", () => ({
@@ -62,7 +62,7 @@ vi.mock("#src/host-transport", () => ({
     // The resolver returns the narrow built-in transport type; the wide mock
     // satisfies it structurally (the registry only ever invokes it for
     // `anthropic-messages` models).
-    Promise.resolve(streamSimpleAnthropicMock),
+    Promise.resolve(builtinTransportMock),
 }));
 
 /**
@@ -77,7 +77,7 @@ let registryStubCalls = 0;
  * A deliberately hostile pi-ai api-registry entry for `anthropic-messages`.
  *
  * It mimics the pi-ai 0.79.8 lazy stub: on first call it re-registers the bare
- * built-in transport (the stubbed `streamSimpleAnthropic`), mirroring
+ * built-in transport (the stub above), mirroring
  * `anthropic.ts`'s `register()` overwrite, then forwards the call to that bare
  * built-in — exactly what `createLazySimpleStream`'s `loadAndRegisterProvider`
  * does.
@@ -95,10 +95,10 @@ function lazyStubStreamSimple(
   registryStubCalls += 1;
   registerApiProvider({
     api: "anthropic-messages",
-    stream: streamSimpleAnthropicMock,
-    streamSimple: streamSimpleAnthropicMock,
+    stream: builtinTransportMock,
+    streamSimple: builtinTransportMock,
   });
-  return streamSimpleAnthropicMock(model, context, options);
+  return builtinTransportMock(model, context, options);
 }
 
 type CapturedCommand = {
@@ -220,7 +220,7 @@ describe("index registration: wrapper shapes every request on the provider-compo
     resetApiProviders();
     delegateCalls.length = 0;
     registryStubCalls = 0;
-    streamSimpleAnthropicMock.mockClear();
+    builtinTransportMock.mockClear();
 
     // Seed the registry with the lazy-stub, simulating a provider that
     // re-registers itself on first call (the 0.79.x clobber pattern).
@@ -297,7 +297,7 @@ describe("index registration: the extension does not write to the pi-ai api regi
     resetApiProviders();
     delegateCalls.length = 0;
     registryStubCalls = 0;
-    streamSimpleAnthropicMock.mockClear();
+    builtinTransportMock.mockClear();
   });
 
   test("leaves the built-in anthropic-messages registry entry untouched", async () => {
@@ -327,7 +327,7 @@ describe("index registration: diagnostics command", () => {
   beforeEach(() => {
     delegateCalls.length = 0;
     registryStubCalls = 0;
-    streamSimpleAnthropicMock.mockClear();
+    builtinTransportMock.mockClear();
   });
 
   test("registers the anthropic-auth:status command", async () => {
