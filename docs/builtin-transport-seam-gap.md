@@ -124,7 +124,8 @@ The coverage half is not, and will not be from this side.
 pi 0.80.8 removed the api-registry bridge, so foreign `agentLoop` callers are once again unshaped, and the only lever that would reach them is api-scoped rather than provider-scoped (Issue [#46]).
 
 This repo keeps shaping at the registry transport and only hardens how it obtains the built-in delegate.
-`src/host-transport.ts` was switched from `import.meta.resolve` (plus filesystem resolution) to an explicit `@earendil-works/pi-ai/compat` subpath import, preferring the non-deprecated `anthropicMessagesApi().streamSimple` factory and falling back to the deprecated `streamSimpleAnthropic` alias for older hosts.
+`src/host-transport.ts` was switched from `import.meta.resolve` (plus filesystem resolution) to an explicit `@earendil-works/pi-ai/compat` subpath import, reading the non-deprecated `anthropicMessagesApi().streamSimple` factory.
+It originally also fell back to the deprecated `streamSimpleAnthropic` alias for older hosts; that branch was removed as unreachable at the `>=0.80.8` floor, since the factory has shipped from the compat entrypoint since pi v0.80.0 (Issue [#54]).
 The `/compat` subpath is used rather than the bare root — the loader aliases both to the same compat entrypoint, but `/compat` names the surface actually depended on and matches pi's own example.
 This fixes Issue [#31] across Node installs and the Bun-compiled binary for the current pi generation.
 
@@ -163,5 +164,6 @@ Alternatives considered and rejected for the near term:
 [#28]: https://github.com/gotgenes/pi-anthropic-auth/issues/28
 [#31]: https://github.com/gotgenes/pi-anthropic-auth/issues/31
 [#46]: https://github.com/gotgenes/pi-anthropic-auth/issues/46
+[#54]: https://github.com/gotgenes/pi-anthropic-auth/issues/54
 [#32]: https://github.com/gotgenes/pi-anthropic-auth/issues/32
 [#33]: https://github.com/gotgenes/pi-anthropic-auth/issues/33

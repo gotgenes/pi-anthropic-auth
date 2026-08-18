@@ -93,7 +93,7 @@ Important upstream behavior confirmed from `~/development/pi/pi`:
 Current source layout:
 
 1. `src/index.ts`: extension registration (transport wrapper + `/anthropic-auth:status` command)
-2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, preferring the `anthropicMessagesApi()` factory over the deprecated `streamSimpleAnthropic` alias (Issue #28, Issue #31, Issue #35)
+2. `src/host-transport.ts`: runtime resolution of Pi's built-in Anthropic transport via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, reading the `anthropicMessagesApi()` factory off the compat namespace (Issue #28, Issue #31, Issue #35, Issue #54)
 3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path reaching `provider-composer` (Issue #46)
 4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
@@ -430,7 +430,9 @@ The extension registers a `streamSimple` wrapper, because hooks proved insuffici
 The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last (on pi <=0.80.7 it would also have recursed, since the bridge put our wrapper in that slot).
 The resolver imports the `@earendil-works/pi-ai/compat` subpath — the path pi's own `custom-provider-gitlab-duo` example delegates through — which Pi's loader aliases (Node) / virtualizes (Bun) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
-It prefers the non-deprecated `anthropicMessagesApi().streamSimple` factory and falls back to the deprecated `streamSimpleAnthropic` alias for older hosts.
+It reads the non-deprecated `anthropicMessagesApi().streamSimple` factory and throws if that handle is absent.
+There is no fallback to the deprecated `streamSimpleAnthropic` alias: the factory has shipped from the compat entrypoint since pi v0.80.0, below the `>=0.80.8` peer floor, so the fallback was unreachable and was removed (Issue #54).
+The throw is what surfaces the compat-removal cliff loudly instead of mis-resolving.
 The earlier `import.meta.resolve("@earendil-works/pi-ai")` plus subpath-file import bypassed that indirection — jiti consults its alias map on the import path but not the `resolve` path — so it fell through to the extension's own directory and failed under `pi install` / the Bun binary (Issue #31).
 The #35 seam concern is resolved in practice on pi >=0.80.8 (the loader aliases `/compat` in both modes and pi ships this delegation pattern as an official example); the residual watch is the eventual `compat` removal, when `anthropicMessagesApi()` relocates off the compat entrypoint.
 
