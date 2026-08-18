@@ -120,6 +120,8 @@ A missing export throws `is not a function` at runtime but surfaces as `TS2305` 
   `/tdd-plan` commits after green within each step, so the split is unexecutable as written.
 - When a plan's own measurement shows the target behavior already works, name the one input that actually fails — or reclassify the step as `test:` (characterization) plus `refactor:`.
   A `feat:` step whose red comes up four-fifths green was mistyped at plan time.
+- When a plan rewrites existing tests around a behavior change, label each rewritten case **red** or **invariant pin** in the TDD Order.
+  A rewritten fixture whose expected outcome the current code already produces is a pin (Refs #54: four rewritten cases, one red).
 - When a TDD plan lists separate steps that share a type definition, changing that type in step N breaks steps N+1…N+k.
   Either fold them into one step or introduce the new type alongside the old one and migrate callers incrementally.
 - When a plan adds a parameter that flows through callback chains, the "Module-Level Changes" section must list every file in the chain.

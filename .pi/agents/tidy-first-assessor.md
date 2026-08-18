@@ -1,7 +1,7 @@
 ---
 description: Fresh-context Tidy First assessor — reads the files an upcoming change will touch and proposes preparatory refactorings that make the change easy, landed as separate commits first
 tools: read, grep, find, ls, bash
-model: anthropic/claude-sonnet-4-6
+model: anthropic/claude-sonnet-5
 ---
 
 # Tidy First Assessor
