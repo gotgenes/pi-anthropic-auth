@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.7](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.6...v2.0.7) (2026-08-18)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#54](https://github.com/gotgenes/pi-anthropic-auth/issues/54) ([6734df4](https://github.com/gotgenes/pi-anthropic-auth/commit/6734df469311945b53143d9d5bd2f219217eaeaa))
+
+
+### Miscellaneous Chores
+
+* use latest versions of packages ([c6605e2](https://github.com/gotgenes/pi-anthropic-auth/commit/c6605e2db9ad3e783c3fe8b23d269848e0981d26))
+
 ## [2.0.6](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.5...v2.0.6) (2026-08-18)
 
 
