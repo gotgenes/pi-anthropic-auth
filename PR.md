@@ -42,6 +42,12 @@ The implementation does not use Claude web cookies, browser sessions, DOM scrapi
 
 OAuth access and refresh tokens are never included in command output, logs, or persisted snapshots.
 
+## Requirements
+
+The Extra Usage tab shows credit and spend data only when Usage credits are enabled on the Anthropic account.
+When they are off, Anthropic does not return credit or spend fields and the tab displays no data.
+Users can enable Usage credits in the Anthropic Console under Settings → Plans & Billing → Usage credits.
+
 ## Compatibility and failure behavior
 
 The feature is additive and does not replace Pi's built-in Anthropic transport.
