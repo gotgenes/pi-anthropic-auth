@@ -6,6 +6,7 @@ import {
 } from "./diagnostics";
 import { resolveBuiltinAnthropicStreamSimple } from "./host-transport";
 import { createAnthropicOAuthStreamSimple } from "./oauth-transport";
+import { createUsageCommandHandler } from "./usage-command";
 
 export default async function (pi: ExtensionAPI): Promise<void> {
   // Re-register the built-in `anthropic` provider with a thin transport
@@ -96,5 +97,11 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     description:
       "Show pi-anthropic-auth diagnostics: version, loaded module path, and transport status.",
     handler: createStatusCommandHandler(diagnostics),
+  });
+
+  pi.registerCommand("anthropic-usage", {
+    description:
+      "Show Anthropic OAuth usage windows, account details, and extra usage credits.",
+    handler: createUsageCommandHandler(),
   });
 }

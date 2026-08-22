@@ -39,6 +39,25 @@ pi -e npm:@gotgenes/pi-anthropic-auth
 1. Run `/login anthropic` as usual — Pi's native Anthropic login flow is preserved.
 2. Select a Claude Pro/Max model and start chatting. The extension handles compatibility transparently.
 3. API-key behavior is unaffected; the extension's changes apply only to OAuth sessions.
+4. Run `/anthropic-usage` to view OAuth subscription windows, account metadata, and extra-usage credits.
+
+`/anthropic-usage` uses Pi's stored Anthropic OAuth credential and the Anthropic OAuth control-plane endpoints.
+It does not use Claude web cookies, browser sessions, or DOM scraping.
+The Usage view renders one bar for each quota window returned by Anthropic, so the number of bars can vary by account.
+The dashboard also includes Account and Extra Usage views.
+Reset timestamps render as compact local-time values with the timezone abbreviation.
+Opaque server-defined quotas are labeled as additional quotas; `0%` means Anthropic reported no usage for that quota.
+Credit amounts use Anthropic's returned `decimal_places` metadata, while spend values use their returned minor-unit exponent.
+Store-managed canceled subscriptions show Apple App Store or Google Play Store guidance.
+Usage snapshots are cached briefly to avoid aggressive polling, and failed refreshes are shown as stale data rather than zero usage.
+
+### Anthropic data source
+
+The Usage tab reads `GET https://api.anthropic.com/api/oauth/usage`.
+The Account tab enriches it with `GET https://api.anthropic.com/api/oauth/profile`.
+Both requests use Pi's stored Anthropic OAuth credential as a Bearer token and send `anthropic-beta: oauth-2025-04-20`.
+Quota windows come from legacy fields and `limits[]`; credit values use `extra_usage.decimal_places`; spend values use their returned minor-unit `exponent`.
+These are Anthropic OAuth control-plane endpoints, not the Messages API, Claude web cookies, or browser scraping, and they are undocumented endpoints that may change.
 
 ## Troubleshooting
 

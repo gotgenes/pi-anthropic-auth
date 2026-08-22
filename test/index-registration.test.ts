@@ -18,7 +18,6 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { Mock } from "vitest";
 import { beforeEach, describe, onTestFinished, test, vi } from "vitest";
-import type { StatusCommandContext } from "#src/diagnostics";
 
 const OAUTH_TOKEN = "sk-ant-oat01-example-access-token";
 
@@ -103,7 +102,7 @@ function lazyStubStreamSimple(
 
 type CapturedCommand = {
   description?: string;
-  handler: (args: string, ctx: StatusCommandContext) => Promise<void>;
+  handler: (args: string, ctx: unknown) => Promise<void>;
 };
 
 /**
@@ -338,6 +337,10 @@ describe("index registration: diagnostics command", () => {
     assert.ok(
       commands.has("anthropic-auth:status"),
       "anthropic-auth:status command must be registered",
+    );
+    assert.ok(
+      commands.has("anthropic-usage"),
+      "anthropic-usage command must be registered",
     );
   });
 

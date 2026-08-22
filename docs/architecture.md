@@ -10,6 +10,36 @@ Login and refresh are delegated to Pi's built-in `anthropicOAuth` (the extension
 The wrapper is the single shaping point.
 It delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` step, so it does not reimplement Pi's Anthropic transport.
 
+## OAuth usage control-plane path
+
+The `/anthropic-usage` command is a separate read-only control-plane path and does not modify the Messages API transport.
+
+The command resolves the Anthropic credential through `ctx.modelRegistry.getProviderAuth("anthropic")`, requires an `sk-ant-oat` OAuth token, and sends Bearer-authenticated requests to Anthropic's OAuth usage and profile endpoints.
+
+Usage responses are normalized into dynamic quota windows, extra-usage data, spend metadata, account identity, and freshness warnings.
+
+The Usage TUI renders one bar per returned quota window rather than assuming a fixed number of bars.
+
+Reset timestamps render as compact local-time values with the timezone abbreviation.
+
+Opaque server-defined quota keys are labeled as additional quotas; `0%` means Anthropic reported no usage for that quota.
+
+Extra-usage credit amounts use Anthropic's returned `decimal_places` metadata, and spend amounts use their returned minor-unit exponent.
+
+Store-managed canceled subscriptions include Apple App Store or Google Play Store guidance.
+
+The command caches successful snapshots for 60 seconds, shows the last successful snapshot as stale after refresh failures, and never displays OAuth credentials.
+
+The usage client intentionally does not use `src/host-transport.ts`, the pi-ai API registry, Claude web cookies, or browser-session endpoints.
+
+### Data provenance
+
+The Usage tab reads `GET https://api.anthropic.com/api/oauth/usage`.
+The Account tab enriches it with `GET https://api.anthropic.com/api/oauth/profile`.
+Both requests use Pi's stored Anthropic OAuth credential as a Bearer token and send `anthropic-beta: oauth-2025-04-20`.
+Quota windows come from legacy fields and `limits[]`; credit values use `extra_usage.decimal_places`; spend values use their returned minor-unit `exponent`.
+These are Anthropic OAuth control-plane endpoints, not the Messages API, and they are undocumented endpoints that may change.
+
 ## The problem: a hook-coverage gap
 
 Earlier versions shaped requests in a `before_provider_request` handler.
@@ -187,3 +217,7 @@ Upstream draws the same distinction: `agent-session.ts` branches on `this.agent.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/system-prompt-shaping.ts` — anchor-driven preamble sanitizer that preserves tool snippets, guidelines, and appended content.
 - `src/diagnostics.ts` — `ExtensionDiagnostics` value object, `formatDiagnosticsReport`, and `createStatusCommandHandler`; surfaced by the `/anthropic-auth:status` command registered in `src/index.ts`.
+- `src/usage-types.ts` — OAuth usage/profile normalization and dynamic quota-window models.
+- `src/usage-client.ts` — Bearer-authenticated OAuth usage and profile client.
+- `src/usage-cache.ts` — 60-second in-memory snapshot cache and stale fallback.
+- `src/usage-command.ts` — `/anthropic-usage` registration handler, headless report, and TUI dashboard.
