@@ -42,6 +42,23 @@ The implementation does not use Claude web cookies, browser sessions, DOM scrapi
 
 OAuth access and refresh tokens are never included in command output, logs, or persisted snapshots.
 
+## Undocumented endpoint risk
+
+Both endpoints are undocumented Anthropic OAuth control-plane endpoints. That means field shapes and availability can change without notice.
+
+The implementation is designed to tolerate that:
+
+- All response fields are optional. Missing or unrecognized fields are silently ignored, not treated as zero usage.
+- Unknown `limits[]` window types render with their raw label rather than failing.
+- `decimal_places` and minor-unit exponents are read from the response; the rendering scales with whatever Anthropic returns rather than hard-coding assumptions.
+- If the profile endpoint fails, the Usage tab still renders with a warning — enrichment is best-effort, not required.
+- If a token refresh fails mid-session, the last successful snapshot is shown as stale instead of clearing the display.
+- All HTTP error codes (401, 403, 429, 5xx) produce user-facing messages without crashing the command.
+
+This is the same defensive philosophy this repo applies to request shaping: patch the smallest proven surface and degrade gracefully rather than assuming stability.
+
+If Anthropic changes these endpoints in a breaking way, the command will fail with an explicit error message and the rest of the extension's behavior — provider override, OAuth shaping, `/anthropic-auth:status` — is completely unaffected.
+
 ## Requirements
 
 The Extra Usage tab shows credit and spend data only when Usage credits are enabled on the Anthropic account.
@@ -65,4 +82,3 @@ If a refresh fails after a successful fetch, the last successful snapshot remain
 - `pnpm run lint` passed.
 - LSP diagnostics passed with no findings.
 - Live Pi smoke test passed with local reset times, dynamic quota output, scaled credits, and store billing guidance.
-
