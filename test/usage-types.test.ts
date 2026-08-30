@@ -42,48 +42,65 @@ describe("normalizeUsageResponse", () => {
     ]);
   });
 
-  test("preserves generic quota entries and limits", () => {
+  test("prefers limits and hides opaque Nimbus quota data", () => {
     const result = normalizeUsageResponse({
+      five_hour: { utilization: 12, resets_at: "2026-08-22T20:00:00Z" },
       nimbus_quill: { utilization: 25, resets_at: null },
       limits: [
         {
-          kind: "weekly",
-          group: "Claude Code",
+          kind: "session",
+          group: "session",
           percent: 40,
-          severity: "warning",
-          resets_at: "2026-08-29T20:00:00Z",
-          scope: "routines",
+          resets_at: "2026-08-22T20:00:00Z",
           is_active: true,
         },
-        { percent: 0, resets_at: null, severity: "normal" },
+        {
+          kind: "weekly_scoped",
+          group: "weekly",
+          percent: 0,
+          resets_at: null,
+          scope: { model: { display_name: "Fable" }, surface: null },
+        },
       ],
     });
 
     assert.deepEqual(result.windows, [
       {
-        id: "nimbus_quill",
-        label: "Additional quota (Nimbus Quill)",
-        utilizationPercent: 25,
-        resetAt: null,
-        source: "nimbus_quill",
-      },
-      {
         id: "limits:0",
-        label: "Claude Code",
+        label: "5-hour session",
         utilizationPercent: 40,
-        resetAt: "2026-08-29T20:00:00Z",
+        resetAt: "2026-08-22T20:00:00Z",
         source: "limits",
-        scope: "routines",
-        severity: "warning",
         isActive: true,
       },
       {
         id: "limits:1",
-        label: "Additional quota (Limit 2)",
+        label: "Fable weekly",
         utilizationPercent: 0,
         resetAt: null,
         source: "limits",
-        severity: "normal",
+        model: "Fable",
+      },
+    ]);
+  });
+
+  test("uses legacy windows when limits are absent", () => {
+    const result = normalizeUsageResponse({
+      nimbus_quill: { utilization: 25, resets_at: null },
+      seven_day_sonnet: {
+        utilization: 56,
+        resets_at: "2026-08-29T20:00:00Z",
+      },
+    });
+
+    assert.deepEqual(result.windows, [
+      {
+        id: "seven_day_sonnet",
+        label: "Sonnet weekly",
+        utilizationPercent: 56,
+        resetAt: "2026-08-29T20:00:00Z",
+        source: "seven_day_sonnet",
+        model: "sonnet",
       },
     ]);
   });

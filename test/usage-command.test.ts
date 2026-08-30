@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
+import { UsageSnapshotCache } from "#src/usage-cache";
+import type { fetchAnthropicUsage } from "#src/usage-client";
 import {
   createUsageCommandHandler,
   createUsageDashboardComponent,
   formatUsageReport,
   type UsageCommandContext,
 } from "#src/usage-command";
-import { UsageSnapshotCache } from "#src/usage-cache";
 import type { UsageSnapshot } from "#src/usage-types";
-import { fetchAnthropicUsage } from "#src/usage-client";
 
 const TOKEN = "sk-ant-oat-test-token";
 const SNAPSHOT: UsageSnapshot = {
@@ -164,7 +164,7 @@ describe("createUsageDashboardComponent", () => {
     const usage = component.render(200).join("\n");
 
     assert.match(usage, /Additional quota \(Nimbus Quill\): 0%/);
-    assert.match(usage, /\u001b\[31mAdditional quota/);
+    assert.ok(usage.includes(`${String.fromCharCode(27)}[31mAdditional quota`));
     assert.match(usage, /0% means no reported usage/);
   });
 
@@ -190,8 +190,80 @@ describe("createUsageDashboardComponent", () => {
     );
     assert.match(
       component.render(200).join("\n"),
-      /\u001b\[31mNamed quota: 10%/,
+      new RegExp(`${String.fromCharCode(27)}\\[31mNamed quota: 10%`),
     );
+  });
+
+  test("omits the summary bar when extra usage is unavailable", () => {
+    const component = createUsageDashboardComponent(
+      {
+        ...SNAPSHOT,
+        windows: [],
+        extraUsage: {
+          enabled: false,
+          monthlyLimit: null,
+          usedCredits: null,
+          utilizationPercent: null,
+          currency: null,
+          decimalPlaces: null,
+          disabledReason: null,
+          userDisabled: null,
+          spendLimitReached: null,
+          creditsEverEnabled: null,
+        },
+      },
+      false,
+      undefined,
+      { requestRender: vi.fn() },
+      vi.fn(),
+    );
+
+    const usage = component.render(200).join("\n");
+    assert.match(usage, /No usage windows returned/);
+    assert.doesNotMatch(usage, /Extra usage:/);
+  });
+
+  test("omits duplicate spend details when Extra Usage has same amounts", () => {
+    const snapshot: UsageSnapshot = {
+      ...SNAPSHOT,
+      extraUsage: {
+        enabled: true,
+        monthlyLimit: 5000,
+        usedCredits: 496,
+        utilizationPercent: 9.9,
+        currency: "USD",
+        decimalPlaces: 2,
+        disabledReason: null,
+        userDisabled: false,
+        spendLimitReached: false,
+        creditsEverEnabled: true,
+      },
+      spend: {
+        usedMinor: 496,
+        limitMinor: 5000,
+        currency: "USD",
+        exponent: 2,
+        utilizationPercent: 10,
+        enabled: true,
+        disabledReason: null,
+        canPurchaseCredits: false,
+        canToggle: false,
+        disclaimer: null,
+      },
+    };
+    const component = createUsageDashboardComponent(
+      snapshot,
+      false,
+      undefined,
+      { requestRender: vi.fn() },
+      vi.fn(),
+    );
+
+    component.handleInput("3");
+    const extra = component.render(200).join("\\n");
+    assert.match(extra, /credits used: 4\.96 USD/);
+    assert.doesNotMatch(extra, /spend enabled:/);
+    assert.doesNotMatch(formatUsageReport(snapshot), /spend enabled:/);
   });
 
   test("renders dynamic windows, account fields, extra usage, and tab navigation", () => {
@@ -213,8 +285,9 @@ describe("createUsageDashboardComponent", () => {
     const usage = rendered.join("\n");
     assert.match(usage, /5-hour session/);
     assert.match(usage, /Sonnet weekly/);
+    assert.match(usage, /Extra usage: 25%/);
     assert.match(usage, /\[Usage\]/);
-    assert.match(usage, /\u001b\[36m/);
+    assert.ok(usage.includes(`${String.fromCharCode(27)}[36m`));
 
     component.handleInput("\t");
     const account = component.render(200).join("\n");

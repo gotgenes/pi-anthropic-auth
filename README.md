@@ -43,11 +43,15 @@ pi -e npm:@gotgenes/pi-anthropic-auth
 
 `/anthropic-usage` uses Pi's stored Anthropic OAuth credential and the Anthropic OAuth control-plane endpoints.
 It does not use Claude web cookies, browser sessions, or DOM scraping.
-The Usage view renders one bar for each quota window returned by Anthropic, so the number of bars can vary by account.
-The dashboard also includes Account and Extra Usage views.
+The Usage view renders one bar for each normalized quota window returned by Anthropic, so the number of bars can vary by account.
+When Anthropic returns a non-empty `limits[]` array, it takes precedence over legacy quota fields to avoid duplicate windows; legacy fields remain the fallback when `limits[]` is absent or empty.
+The dashboard includes Usage, Account, and Extra Usage views.
+The Usage view also shows an Extra Usage summary bar when Anthropic reports enabled extra usage with a utilization value.
 Reset timestamps render as compact local-time values with the timezone abbreviation.
-Opaque server-defined quotas are labeled as additional quotas; `0%` means Anthropic reported no usage for that quota.
+Unrecognized legacy quota objects are labeled as additional quotas; `0%` means Anthropic reported no usage for that quota.
+The opaque legacy `nimbus_quill` bucket is omitted instead of being shown as an unexplained quota.
 Credit amounts use Anthropic's returned `decimal_places` metadata, while spend values use their returned minor-unit exponent.
+When Spend duplicates Extra Usage after scaling, the duplicate detail is shown only once.
 Store-managed canceled subscriptions show Apple App Store or Google Play Store guidance.
 Usage snapshots are cached briefly to avoid aggressive polling, and failed refreshes are shown as stale data rather than zero usage.
 
@@ -56,8 +60,16 @@ Usage snapshots are cached briefly to avoid aggressive polling, and failed refre
 The Usage tab reads `GET https://api.anthropic.com/api/oauth/usage`.
 The Account tab enriches it with `GET https://api.anthropic.com/api/oauth/profile`.
 Both requests use Pi's stored Anthropic OAuth credential as a Bearer token and send `anthropic-beta: oauth-2025-04-20`.
-Quota windows come from legacy fields and `limits[]`; credit values use `extra_usage.decimal_places`; spend values use their returned minor-unit `exponent`.
+A non-empty `limits[]` array takes precedence over legacy quota fields; legacy fields are used when `limits[]` is absent or empty.
+Structured model and surface scope data from `limits[]` is used to label scoped windows, while unknown limit types receive fallback labels instead of breaking the report.
+Credit values use `extra_usage.decimal_places`; spend values use their returned minor-unit `exponent`.
 These are Anthropic OAuth control-plane endpoints, not the Messages API, Claude web cookies, or browser scraping, and they are undocumented endpoints that may change.
+
+### Extra Usage requirements
+
+The Extra Usage view displays credit and spend data only when Usage credits are enabled on the Anthropic account.
+When Usage credits are disabled, Anthropic does not return those fields and the view displays no data.
+Enable Usage credits in the Anthropic Console under Settings → Plans & Billing → Usage credits.
 
 ## Troubleshooting
 

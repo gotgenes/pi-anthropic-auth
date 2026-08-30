@@ -6,7 +6,7 @@
 
 ## Summary
 
-Pi users can now inspect Anthropic subscription usage, account metadata, and extra-usage credits directly through `/anthropic-usage`.
+Pi users can inspect Anthropic subscription usage, account metadata, and extra-usage credits directly through `/anthropic-usage`.
 
 The command uses Pi's existing Anthropic OAuth credential and leaves the existing provider override and `/anthropic-auth:status` behavior unchanged.
 
@@ -15,11 +15,16 @@ The command uses Pi's existing Anthropic OAuth credential and leaves the existin
 - Added `/anthropic-usage` command registration.
 - Added Bearer-authenticated clients for Anthropic's OAuth usage and profile endpoints.
 - Normalized legacy quota fields and newer `limits[]` entries into dynamic usage windows.
-- Rendered one quota bar for every window returned by Anthropic.
+- Prefer a non-empty `limits[]` response over legacy quota fields to prevent duplicate windows, with legacy fields used as a fallback when `limits[]` is absent or empty.
+- Read structured model and surface scope data from newer `limits[]` entries.
+- Render one quota bar for every normalized window returned by Anthropic.
+- Hide the opaque legacy `nimbus_quill` bucket instead of presenting it as an unexplained additional quota.
 - Added Usage, Account, and Extra Usage dashboard tabs.
+- Added an Extra Usage summary bar to the Usage tab when Anthropic reports usable extra-usage data.
+- Added duplicate suppression when Spend and Extra Usage report the same scaled amounts and compatible currencies.
 - Added Neuralwatt-style bright-blue horizontal rules at the top and bottom of the TUI.
 - Added local-time reset timestamps with timezone abbreviations.
-- Added red styling and explanatory notes for Anthropic-defined additional quotas.
+- Added red styling and explanatory notes for Anthropic-defined additional quotas that are still exposed.
 - Added server-severity-aware quota colors.
 - Added extra-usage credit scaling using `decimal_places`.
 - Added spend scaling using returned minor-unit exponents.
@@ -44,20 +49,22 @@ OAuth access and refresh tokens are never included in command output, logs, or p
 
 ## Undocumented endpoint risk
 
-Both endpoints are undocumented Anthropic OAuth control-plane endpoints. That means field shapes and availability can change without notice.
+Both endpoints are undocumented Anthropic OAuth control-plane endpoints.
+That means field shapes and availability can change without notice.
 
 The implementation is designed to tolerate that:
 
-- All response fields are optional. Missing or unrecognized fields are silently ignored, not treated as zero usage.
-- Unknown `limits[]` window types render with their raw label rather than failing.
-- `decimal_places` and minor-unit exponents are read from the response; the rendering scales with whatever Anthropic returns rather than hard-coding assumptions.
-- If the profile endpoint fails, the Usage tab still renders with a warning — enrichment is best-effort, not required.
+- All response fields are optional.
+- Missing or unrecognized fields are ignored rather than treated as zero usage.
+- Unknown `limits[]` window types render with a useful fallback label rather than failing.
+- `decimal_places` and minor-unit exponents are read from the response instead of hard-coded.
+- If the profile endpoint fails, usage data still renders with a warning because enrichment is best-effort.
 - If a token refresh fails mid-session, the last successful snapshot is shown as stale instead of clearing the display.
-- All HTTP error codes (401, 403, 429, 5xx) produce user-facing messages without crashing the command.
+- HTTP errors including 401, 403, 429, and 5xx responses produce user-facing messages without crashing the command.
 
-This is the same defensive philosophy this repo applies to request shaping: patch the smallest proven surface and degrade gracefully rather than assuming stability.
+This follows the same defensive philosophy used by the request-shaping layer: patch the smallest proven surface and degrade gracefully rather than assuming stability.
 
-If Anthropic changes these endpoints in a breaking way, the command will fail with an explicit error message and the rest of the extension's behavior — provider override, OAuth shaping, `/anthropic-auth:status` — is completely unaffected.
+If Anthropic changes these endpoints in a breaking way, the command will fail with an explicit error message while the rest of the extension — provider override, OAuth shaping, and `/anthropic-auth:status` — remains unaffected.
 
 ## Requirements
 
@@ -77,8 +84,9 @@ If a refresh fails after a successful fetch, the last successful snapshot remain
 
 ## Validation
 
-- `pnpm test` passed: 88 tests.
-- `pnpm run check` passed.
-- `pnpm run lint` passed.
-- LSP diagnostics passed with no findings.
-- Live Pi smoke test passed with local reset times, dynamic quota output, scaled credits, and store billing guidance.
+- `vitest run` passed: 91 tests across 12 test files.
+- `tsc --noEmit` passed.
+- `eslint .` passed.
+- `biome check .` passes for all changed files, with one pre-existing import-order error remaining in untouched `test/usage-client.test.ts`.
+- `rumdl check PR.md` passed.
+- The local `pnpm` wrapper could not run because its native binary integrity entry is missing from `pnpm-lock.yaml`; equivalent binaries were run directly from `node_modules/.bin`.

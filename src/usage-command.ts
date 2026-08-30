@@ -1,6 +1,6 @@
-import { fetchAnthropicUsage } from "./usage-client";
-import { UsageSnapshotCache } from "./usage-cache";
 import { isAnthropicOAuthToken } from "./oauth-transport";
+import { UsageSnapshotCache } from "./usage-cache";
+import { fetchAnthropicUsage } from "./usage-client";
 import type {
   AccountInfo,
   ExtraUsage,
@@ -120,7 +120,12 @@ export function formatUsageReport(
     );
   }
   if (snapshot.extraUsage) lines.push(...formatExtraUsage(snapshot.extraUsage));
-  if (snapshot.spend) lines.push(...formatSpend(snapshot.spend));
+  if (
+    snapshot.spend &&
+    !isDuplicateSpend(snapshot.extraUsage, snapshot.spend)
+  ) {
+    lines.push(...formatSpend(snapshot.spend));
+  }
   if (snapshot.account.email) {
     lines.push(`  email: ${sanitizeText(snapshot.account.email)}`);
   }
@@ -243,8 +248,6 @@ class UsageDashboard implements UsageUiComponent {
   invalidate(): void {}
 
   private renderUsageTab(): string[] {
-    if (this.snapshot.windows.length === 0)
-      return ["No usage windows returned."];
     const lines = this.snapshot.windows.flatMap((window) => {
       const color = isAdditionalQuota(window)
         ? ANSI_RED
@@ -257,6 +260,10 @@ class UsageDashboard implements UsageUiComponent {
         `  ${usageBar(window.utilizationPercent, color)}${formatReset(window.resetAt)}`,
       ];
     });
+    const extraUsage = renderExtraUsageSummary(this.snapshot.extraUsage);
+    if (extraUsage.length > 0) lines.push(...extraUsage);
+
+    if (lines.length === 0) return ["No usage windows returned."];
     if (hasAdditionalQuota(this.snapshot.windows)) {
       lines.unshift(
         "Note: Additional quota names are Anthropic-defined; 0% means no reported usage.",
@@ -285,7 +292,10 @@ class UsageDashboard implements UsageUiComponent {
     const lines = this.snapshot.extraUsage
       ? formatExtraUsage(this.snapshot.extraUsage).map((line) => line.trim())
       : ["No extra usage data returned."];
-    if (this.snapshot.spend) {
+    if (
+      this.snapshot.spend &&
+      !isDuplicateSpend(this.snapshot.extraUsage, this.snapshot.spend)
+    ) {
       lines.push(
         "",
         ...formatSpend(this.snapshot.spend).map((line) => line.trim()),
@@ -301,6 +311,60 @@ function isAdditionalQuota(window: UsageWindow): boolean {
 
 function hasAdditionalQuota(windows: UsageWindow[]): boolean {
   return windows.some(isAdditionalQuota);
+}
+
+function renderExtraUsageSummary(extraUsage: ExtraUsage | undefined): string[] {
+  if (!extraUsage?.enabled || extraUsage.utilizationPercent === null) {
+    return [];
+  }
+  const color = quotaColor(extraUsage.utilizationPercent);
+  return [
+    colorize(
+      `Extra usage: ${formatPercent(extraUsage.utilizationPercent)}`,
+      color,
+    ),
+    `  ${usageBar(extraUsage.utilizationPercent, color)}`,
+  ];
+}
+
+function isDuplicateSpend(
+  extraUsage: ExtraUsage | undefined,
+  spend: SpendInfo,
+): boolean {
+  const extraUsed = scaledAmount(
+    extraUsage?.usedCredits,
+    extraUsage?.decimalPlaces,
+  );
+  const extraLimit = scaledAmount(
+    extraUsage?.monthlyLimit,
+    extraUsage?.decimalPlaces,
+  );
+  const spendUsed = scaledAmount(spend.usedMinor, spend.exponent);
+  const spendLimit = scaledAmount(spend.limitMinor, spend.exponent);
+
+  return (
+    extraUsed !== undefined &&
+    extraLimit !== undefined &&
+    spendUsed !== undefined &&
+    spendLimit !== undefined &&
+    amountsEqual(extraUsed, spendUsed) &&
+    amountsEqual(extraLimit, spendLimit) &&
+    (extraUsage?.currency === null ||
+      spend.currency === null ||
+      extraUsage?.currency === spend.currency)
+  );
+}
+
+function scaledAmount(
+  amount: number | null | undefined,
+  decimalPlaces: number | null | undefined,
+): number | undefined {
+  if (amount === null || amount === undefined) return undefined;
+  return amount / 10 ** (decimalPlaces ?? 0);
+}
+
+function amountsEqual(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.000001;
 }
 
 function formatWindow(window: UsageWindow): string {

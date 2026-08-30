@@ -86,58 +86,15 @@ const USAGE_METADATA_KEYS = new Set([
   "spend",
 ]);
 
+const HIDDEN_OPAQUE_QUOTA_KEYS = new Set(["nimbus_quill"]);
+
 export function normalizeUsageResponse(input: unknown): NormalizedUsageData {
   const response = asRecord(input);
   if (!response) return { windows: [] };
 
-  const windows: UsageWindow[] = [];
-  const knownKeys = new Set<string>();
-
-  for (const [key, metadata] of Object.entries(LEGACY_WINDOW_LABELS)) {
-    const window = parseQuotaWindow(
-      response[key],
-      key,
-      metadata.label,
-      metadata.model,
-    );
-    if (!window) continue;
-    windows.push(window);
-    knownKeys.add(key);
-  }
-
-  for (const [key, value] of Object.entries(response)) {
-    if (knownKeys.has(key) || USAGE_METADATA_KEYS.has(key)) continue;
-    const window = parseQuotaWindow(
-      value,
-      key,
-      `Additional quota (${humanizeIdentifier(key)})`,
-    );
-    if (window) windows.push(window);
-  }
-
-  const limits = Array.isArray(response.limits) ? response.limits : [];
-  for (const [index, value] of limits.entries()) {
-    const limit = asRecord(value);
-    const percent = asNumber(limit?.percent);
-    if (!limit || percent === undefined) continue;
-    const group = asString(limit.group);
-    const kind = asString(limit.kind);
-    const scope = asString(limit.scope);
-    const resetAt = asNullableString(limit.resets_at);
-    const severity = asString(limit.severity);
-    const isActive = asBoolean(limit.is_active);
-    const label = group ?? kind ?? `Additional quota (Limit ${index + 1})`;
-    windows.push({
-      id: `limits:${index}`,
-      label,
-      utilizationPercent: percent,
-      resetAt,
-      source: "limits",
-      ...(scope === undefined ? {} : { scope }),
-      ...(severity === undefined ? {} : { severity }),
-      ...(isActive === undefined ? {} : { isActive }),
-    });
-  }
+  const limitWindows = parseLimitWindows(response.limits);
+  const windows =
+    limitWindows.length > 0 ? limitWindows : parseLegacyWindows(response);
 
   const result: NormalizedUsageData = { windows };
   const extraUsage = parseExtraUsage(response.extra_usage);
@@ -180,6 +137,100 @@ export function normalizeProfileResponse(input: unknown): AccountInfo {
   );
   setString(result, "subscriptionStatus", organization?.subscription_status);
   return result;
+}
+
+function parseLegacyWindows(response: Record<string, unknown>): UsageWindow[] {
+  const windows: UsageWindow[] = [];
+  const knownKeys = new Set<string>();
+
+  for (const [key, metadata] of Object.entries(LEGACY_WINDOW_LABELS)) {
+    const window = parseQuotaWindow(
+      response[key],
+      key,
+      metadata.label,
+      metadata.model,
+    );
+    if (!window) continue;
+    windows.push(window);
+    knownKeys.add(key);
+  }
+
+  for (const [key, value] of Object.entries(response)) {
+    if (
+      knownKeys.has(key) ||
+      USAGE_METADATA_KEYS.has(key) ||
+      HIDDEN_OPAQUE_QUOTA_KEYS.has(key)
+    ) {
+      continue;
+    }
+    const window = parseQuotaWindow(
+      value,
+      key,
+      `Additional quota (${humanizeIdentifier(key)})`,
+    );
+    if (window) windows.push(window);
+  }
+
+  return windows;
+}
+
+function parseLimitWindows(input: unknown): UsageWindow[] {
+  if (!Array.isArray(input)) return [];
+
+  return input.flatMap((value, index) => {
+    const limit = asRecord(value);
+    const percent = asNumber(limit?.percent);
+    if (!limit || percent === undefined) return [];
+
+    const kind = asString(limit.kind);
+    const group = asString(limit.group);
+    const scopedModel = readScopeName(limit.scope);
+    const scope = asString(limit.scope);
+    const resetAt = asNullableString(limit.resets_at);
+    const severity = asString(limit.severity);
+    const isActive = asBoolean(limit.is_active);
+    const label = limitLabel(kind, group, scopedModel, index);
+
+    return [
+      {
+        id: `limits:${index}`,
+        label,
+        utilizationPercent: percent,
+        resetAt,
+        source: "limits",
+        ...(scope === undefined ? {} : { scope }),
+        ...(scopedModel === undefined ? {} : { model: scopedModel }),
+        ...(severity === undefined ? {} : { severity }),
+        ...(isActive === undefined ? {} : { isActive }),
+      },
+    ];
+  });
+}
+
+function limitLabel(
+  kind: string | undefined,
+  group: string | undefined,
+  scopedModel: string | undefined,
+  index: number,
+): string {
+  if (kind === "session" || group === "session") return "5-hour session";
+  if (kind === "weekly_all") return "7-day all models";
+  if (kind === "weekly_scoped" && scopedModel !== undefined) {
+    return `${scopedModel} weekly`;
+  }
+  return group ?? kind ?? `Additional quota (Limit ${index + 1})`;
+}
+
+function readScopeName(input: unknown): string | undefined {
+  const scope = asRecord(input);
+  const model = asRecord(scope?.model);
+  const surface = asRecord(scope?.surface);
+  return (
+    asString(model?.display_name) ??
+    asString(model?.id) ??
+    asString(surface?.display_name) ??
+    asString(surface?.id)
+  );
 }
 
 function parseQuotaWindow(
