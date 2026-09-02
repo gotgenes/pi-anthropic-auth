@@ -3,7 +3,7 @@ import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_ENTRYPOINT,
-  CLAUDE_CODE_VERSION,
+  resolveClaudeCodeVersion,
 } from "./constants";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
 import { shapeSystemBlocks } from "./system-prompt-shaping";
@@ -75,6 +75,7 @@ function buildBillingHeaderValue(messages: MessageParam[]): string | undefined {
     return undefined;
   }
 
+  const claudeCodeVersion = resolveClaudeCodeVersion();
   const cch = createHash("sha256")
     .update(messageText)
     .digest("hex")
@@ -83,13 +84,13 @@ function buildBillingHeaderValue(messages: MessageParam[]): string | undefined {
     (index) => messageText[index] || "0",
   ).join("");
   const suffix = createHash("sha256")
-    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${CLAUDE_CODE_VERSION}`)
+    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${claudeCodeVersion}`)
     .digest("hex")
     .slice(0, 3);
 
   return [
     "x-anthropic-billing-header:",
-    `cc_version=${CLAUDE_CODE_VERSION}.${suffix};`,
+    `cc_version=${claudeCodeVersion}.${suffix};`,
     `cc_entrypoint=${CLAUDE_CODE_ENTRYPOINT};`,
     `cch=${cch};`,
   ].join(" ");

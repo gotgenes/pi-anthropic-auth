@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "vitest";
+import { onTestFinished, test } from "vitest";
 
 import {
   BILLING_HEADER_POSITIONS,
@@ -83,6 +83,46 @@ test("returns non-anthropic-messages payloads unchanged", () => {
   const payload = { not: "an anthropic payload" };
 
   assert.equal(shapeAnthropicOAuthPayload(payload), payload);
+});
+
+test("uses a configured Claude Code version in the billing header", () => {
+  const variable = "PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION";
+  const previous = process.env[variable];
+  process.env[variable] = "2.1.300";
+  onTestFinished(() => {
+    if (previous === undefined) {
+      delete process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION;
+      return;
+    }
+    process.env[variable] = previous;
+  });
+
+  const payload = createOAuthPayload();
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
+
+  assert.match(
+    systemBlocks[0]?.text ?? "",
+    /cc_version=2\.1\.300\.[a-f0-9]{3};/,
+  );
+});
+
+test("rejects an invalid configured Claude Code version", () => {
+  const variable = "PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION";
+  const previous = process.env[variable];
+  process.env[variable] = "latest";
+  onTestFinished(() => {
+    if (previous === undefined) {
+      delete process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION;
+      return;
+    }
+    process.env[variable] = previous;
+  });
+
+  assert.throws(
+    () => shapeAnthropicOAuthPayload(createOAuthPayload()),
+    /PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION must use the X\.Y\.Z format/,
+  );
 });
 
 test("prepends the billing header block without adding cache control on OAuth payloads", () => {

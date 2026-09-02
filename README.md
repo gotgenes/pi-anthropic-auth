@@ -63,6 +63,20 @@ If you have previously run `/login anthropic` and credentials are stored in `~/.
 
 To use the API key instead, run `/logout anthropic` inside Pi to remove the stored credentials, or delete `auth.json` before starting the session.
 
+### Anthropic rejects a new model because the Claude Code version is old
+
+The package sends a tested Claude Code version in the OAuth billing header.
+Anthropic can require a newer version before this package publishes an update.
+
+Set `PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION` to an installed Claude Code version:
+
+```bash
+export PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION="$(claude --version | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')"
+pi
+```
+
+The value must use the `X.Y.Z` format.
+
 ### Docker: extension missing after volume mount
 
 If you install the extension at image build time with `RUN pi install npm:@gotgenes/pi-anthropic-auth` and then mount a persistent volume over `~/.pi/agent` at runtime, Docker may mask the build-time install.

@@ -61,7 +61,24 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
  * too far from what Anthropic expects, OAuth requests may be rejected or
  * counted incorrectly.
  */
-export const CLAUDE_CODE_VERSION = "2.1.206";
+export const CLAUDE_CODE_VERSION = "2.1.258";
+
+export const CLAUDE_CODE_VERSION_ENV = "PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION";
+
+export function resolveClaudeCodeVersion(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  const configuredVersion = environment[CLAUDE_CODE_VERSION_ENV];
+  if (configuredVersion === undefined || configuredVersion === "") {
+    return CLAUDE_CODE_VERSION;
+  }
+  if (!/^\d+\.\d+\.\d+$/.test(configuredVersion)) {
+    throw new Error(
+      `${CLAUDE_CODE_VERSION_ENV} must use the X.Y.Z format, received ${JSON.stringify(configuredVersion)}`,
+    );
+  }
+  return configuredVersion;
+}
 
 /** Salt used in the billing header suffix hash. */
 export const BILLING_HEADER_SALT = "59cf53e54c78";
