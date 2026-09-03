@@ -47,10 +47,9 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
 // OAuth requests.  They must match the values Anthropic's backend expects for
 // the current Claude Code release.
 //
-// CLAUDE_CODE_VERSION must be updated when Anthropic ships a new Claude Code
-// version.  There is no upstream source to import it from; check the current
-// version at https://github.com/anthropics/claude-code or in a working Claude
-// Code installation (`claude --version`) -- confirm even when a value is handed to you.
+// An environment override can track a pinned Claude Code installation exactly.
+// The fallback keeps existing behavior for users who do not manage the CLI
+// version themselves.
 // ---------------------------------------------------------------------------
 
 /**
@@ -61,7 +60,25 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
  * too far from what Anthropic expects, OAuth requests may be rejected or
  * counted incorrectly.
  */
-export const CLAUDE_CODE_VERSION = "2.1.206";
+export const CLAUDE_CODE_VERSION = "2.1.259";
+
+type Environment = Readonly<Record<string, string | undefined>>;
+
+const CLAUDE_CODE_VERSION_ENV_NAMES = [
+  "PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION",
+  "ANTHROPIC_CLI_VERSION",
+] as const;
+
+export function resolveClaudeCodeVersion(
+  env: Environment = (globalThis as { process?: { env?: Environment } }).process
+    ?.env ?? {},
+): string {
+  for (const name of CLAUDE_CODE_VERSION_ENV_NAMES) {
+    const configuredVersion = env[name]?.trim();
+    if (configuredVersion?.length) return configuredVersion;
+  }
+  return CLAUDE_CODE_VERSION;
+}
 
 /** Salt used in the billing header suffix hash. */
 export const BILLING_HEADER_SALT = "59cf53e54c78";

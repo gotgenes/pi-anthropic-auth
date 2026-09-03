@@ -3,7 +3,7 @@ import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_ENTRYPOINT,
-  CLAUDE_CODE_VERSION,
+  resolveClaudeCodeVersion,
 } from "./constants";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
 import { shapeSystemBlocks } from "./system-prompt-shaping";
@@ -27,10 +27,12 @@ type MessageParam = {
   [key: string]: unknown;
 };
 
+type AnthropicSystem = string | unknown[] | null | undefined;
+
 type AnthropicPayload = {
   model?: unknown;
   messages?: unknown;
-  system?: unknown;
+  system?: AnthropicSystem;
   stream?: unknown;
   [key: string]: unknown;
 };
@@ -40,13 +42,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isAnthropicMessagesPayload(
-  payload: unknown,
+  payload: Record<string, unknown>,
 ): payload is AnthropicPayload {
+  const system = payload.system;
   return (
-    isRecord(payload) &&
     typeof payload.model === "string" &&
     Array.isArray(payload.messages) &&
-    typeof payload.stream === "boolean"
+    typeof payload.stream === "boolean" &&
+    (system === undefined ||
+      system === null ||
+      typeof system === "string" ||
+      Array.isArray(system))
   );
 }
 
@@ -82,14 +88,15 @@ function buildBillingHeaderValue(messages: MessageParam[]): string | undefined {
   const sampledCharacters = BILLING_HEADER_POSITIONS.map(
     (index) => messageText[index] || "0",
   ).join("");
+  const claudeCodeVersion = resolveClaudeCodeVersion();
   const suffix = createHash("sha256")
-    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${CLAUDE_CODE_VERSION}`)
+    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${claudeCodeVersion}`)
     .digest("hex")
     .slice(0, 3);
 
   return [
     "x-anthropic-billing-header:",
-    `cc_version=${CLAUDE_CODE_VERSION}.${suffix};`,
+    `cc_version=${claudeCodeVersion}.${suffix};`,
     `cc_entrypoint=${CLAUDE_CODE_ENTRYPOINT};`,
     `cch=${cch};`,
   ].join(" ");
@@ -112,9 +119,9 @@ function normalizeSystemBlock(block: unknown): TextBlock {
 }
 
 function prependBillingHeader(
-  system: unknown,
+  system: AnthropicSystem,
   messages: MessageParam[],
-): unknown {
+): AnthropicSystem {
   const billingHeader = buildBillingHeaderValue(messages);
   if (!billingHeader) {
     return system;
@@ -233,7 +240,9 @@ function shouldLogRequestDebug(messages: MessageParam[]): boolean {
  * sniff system-prompt markers here; non-Anthropic-messages payloads are still
  * returned untouched as a structural guard.
  */
-export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
+export function shapeAnthropicOAuthPayload(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
   if (!isAnthropicMessagesPayload(payload)) {
     return payload;
   }

@@ -56,6 +56,20 @@ pi-anthropic-auth diagnostics
 The `module` line shows which copy of the extension loaded.
 If the command is not found, the extension is not loaded at all.
 
+### Match the installed Claude Code version
+
+Set `PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION` when the billing header must match
+a pinned Claude Code installation exactly:
+
+```bash
+export PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION="$(claude --version | awk '{print $1}')"
+```
+
+`ANTHROPIC_CLI_VERSION` is also supported for compatibility with other Claude
+auth extensions. The package-specific variable takes precedence when both are
+set. When both are unset or empty, the extension uses its bundled fallback
+version.
+
 ### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
 
 Pi's auth resolver gives stored credentials priority over environment variables.

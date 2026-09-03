@@ -17,6 +17,10 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
  */
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 /**
  * The `streamSimple` handler shape Pi's `ProviderConfig` accepts.
  *
@@ -97,7 +101,7 @@ export function createAnthropicOAuthStreamSimple(
         ? ((await callerOnPayload(payload, payloadModel)) ?? payload)
         : payload;
 
-      if (!isAnthropicOAuthToken(options?.apiKey)) {
+      if (!isAnthropicOAuthToken(options?.apiKey) || !isRecord(upstream)) {
         return upstream;
       }
 
