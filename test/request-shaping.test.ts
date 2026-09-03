@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "vitest";
+import { onTestFinished, test } from "vitest";
 
 import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
+  CLAUDE_CODE_VERSION,
   resolveClaudeCodeVersion,
 } from "#src/constants";
 import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
@@ -108,40 +109,49 @@ test("prepends the billing header block without adding cache control on OAuth pa
   assert.equal(shaped["anthropic-beta"], "existing-beta");
 });
 
-test("uses ANTHROPIC_CLI_VERSION for the billing header", () => {
-  const previousVersion = process.env.ANTHROPIC_CLI_VERSION;
-  process.env.ANTHROPIC_CLI_VERSION = "2.1.259";
-
-  try {
-    const payload = createOAuthPayload();
-    const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
-    const systemBlocks = shaped.system as Array<{ text: string }>;
-
-    assert.equal(
-      systemBlocks[0]?.text,
-      buildExpectedBillingHeader(
-        "Please summarize this repository status.",
-        "2.1.259",
-      ),
-    );
-    assert.equal(
-      resolveClaudeCodeVersion({ ANTHROPIC_CLI_VERSION: " 2.1.259 " }),
-      "2.1.259",
-    );
-    assert.equal(
-      resolveClaudeCodeVersion({
-        PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION: "2.1.300",
-        ANTHROPIC_CLI_VERSION: "2.1.259",
-      }),
-      "2.1.300",
-    );
-  } finally {
+test("uses the package version override for the billing header", () => {
+  const previousVersion = process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION;
+  process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION = "2.1.300";
+  onTestFinished(() => {
     if (previousVersion === undefined) {
-      delete process.env.ANTHROPIC_CLI_VERSION;
+      delete process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION;
     } else {
-      process.env.ANTHROPIC_CLI_VERSION = previousVersion;
+      process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION = previousVersion;
     }
-  }
+  });
+
+  const payload = createOAuthPayload();
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
+
+  assert.equal(
+    systemBlocks[0]?.text,
+    buildExpectedBillingHeader(
+      "Please summarize this repository status.",
+      "2.1.300",
+    ),
+  );
+});
+
+test("resolves Claude Code version overrides in precedence order", () => {
+  assert.equal(
+    resolveClaudeCodeVersion({ ANTHROPIC_CLI_VERSION: " 2.1.259 " }),
+    "2.1.259",
+  );
+  assert.equal(
+    resolveClaudeCodeVersion({
+      PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION: "2.1.300",
+      ANTHROPIC_CLI_VERSION: "2.1.259",
+    }),
+    "2.1.300",
+  );
+  assert.equal(
+    resolveClaudeCodeVersion({
+      PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION: "  ",
+      ANTHROPIC_CLI_VERSION: "",
+    }),
+    CLAUDE_CODE_VERSION,
+  );
 });
 
 test("does not add anthropic-beta to the request body when it is absent", () => {
