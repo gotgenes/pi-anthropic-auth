@@ -7,6 +7,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { AnthropicStreamSimpleDelegate } from "./host-transport";
 import { shapeAnthropicOAuthPayload } from "./request-shaping";
+import { isRecord } from "./type-guards";
 
 /**
  * Anthropic OAuth access tokens are issued with an `sk-ant-oat` prefix.
@@ -16,10 +17,6 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
  * our shaping aligned with Pi's own OAuth detection.
  */
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
 
 /**
  * The `streamSimple` handler shape Pi's `ProviderConfig` accepts.

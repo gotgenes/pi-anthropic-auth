@@ -7,6 +7,7 @@ import {
 } from "./constants";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
 import { shapeSystemBlocks } from "./system-prompt-shaping";
+import { isRecord } from "./type-guards";
 
 type TextBlock = {
   type: "text";
@@ -36,10 +37,6 @@ type AnthropicPayload = {
   stream?: unknown;
   [key: string]: unknown;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
 
 function isAnthropicMessagesPayload(
   payload: Record<string, unknown>,

@@ -154,6 +154,15 @@ describe("createAnthropicOAuthStreamSimple", () => {
     );
   });
 
+  test("leaves non-record OAuth payloads untouched", async () => {
+    wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+
+    const input = "unrecognized provider payload";
+    const result = await resolveOnPayload(calls)(input, MODEL);
+
+    assert.equal(result, input);
+  });
+
   test("composes a caller-provided onPayload before shaping", async () => {
     const callerOnPayload: SimpleStreamOptions["onPayload"] = (payload) => {
       const next = payload as ReturnType<typeof samplePayload>;
