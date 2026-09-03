@@ -99,6 +99,7 @@ Current source layout:
 5. `src/system-prompt-shaping.ts`: anchor-driven Anthropic OAuth prompt sanitizer that replaces Pi's identity paragraph and preserves tool snippets, guidelines, and appended content
 6. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
 7. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, and handler factory for the `/anthropic-auth:status` command
+8. `src/type-guards.ts`: shared runtime guards for values crossing provider transport boundaries
 
 ### Project Skills
 
