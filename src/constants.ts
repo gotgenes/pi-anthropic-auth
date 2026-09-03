@@ -70,8 +70,7 @@ const CLAUDE_CODE_VERSION_ENV_NAMES = [
 ] as const;
 
 export function resolveClaudeCodeVersion(
-  env: Environment = (globalThis as { process?: { env?: Environment } }).process
-    ?.env ?? {},
+  env: Environment = process.env,
 ): string {
   for (const name of CLAUDE_CODE_VERSION_ENV_NAMES) {
     const configuredVersion = env[name]?.trim();
