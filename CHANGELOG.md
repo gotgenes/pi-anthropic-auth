@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.8](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.7...v2.0.8) (2026-09-04)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue #59 ([da1972e](https://github.com/gotgenes/pi-anthropic-auth/commit/da1972e0ea9250efc5a5fde50a70136e34eef52b))
+* explain Pi's Anthropic extra-usage warning in the README ([#64](https://github.com/gotgenes/pi-anthropic-auth/issues/64)) ([ebb91ef](https://github.com/gotgenes/pi-anthropic-auth/commit/ebb91efc108101715e553202a7a78895e79578b8)), closes [#45](https://github.com/gotgenes/pi-anthropic-auth/issues/45)
+
 ## [2.0.7](https://github.com/gotgenes/pi-anthropic-auth/compare/v2.0.6...v2.0.7) (2026-09-04)
 
 

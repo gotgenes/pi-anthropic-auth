@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-anthropic-auth",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Pi extension package for Anthropic OAuth compatibility",
   "author": {
     "name": "Chris Lasher"
