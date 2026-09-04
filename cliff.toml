@@ -1,0 +1,115 @@
+# git-cliff configuration for this single-package repository.
+#
+# Versions and changelog entries are derived from tags and local history, with
+# no network access. `scripts/release/` drives it; this file holds the changelog
+# format, the bump rules, and the commit-type mapping.
+#
+# Adapted from the same file in `gotgenes/pi-packages`, which is a monorepo and
+# therefore passes its tag pattern and path scoping per package on the command
+# line. Here the tag pattern is a constant, so it lives below in `[git]`; only
+# the path exclusions stay on the command line, because git-cliff accepts
+# `--include-path`/`--exclude-path` as CLI arguments only.
+#
+# The commit-type mapping reproduces the `changelog-sections` this repo ran
+# under release-please, one entry for one entry, so the migration does not
+# quietly change which commits users see (Refs #63).
+
+[changelog]
+header = """
+# Changelog
+"""
+body = """
+{% if version %}
+{% if previous.version %}\
+## [{{ version | trim_start_matches(pat="v") }}](<REPO>/compare/{{ previous.version }}...{{ version }}) ({{ timestamp | date(format="%Y-%m-%d") }})
+{% else %}\
+## {{ version | trim_start_matches(pat="v") }} ({{ timestamp | date(format="%Y-%m-%d") }})
+{% endif %}\
+{% else %}\
+## Unreleased
+{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+
+{% for commit in commits %}\
+* {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}**breaking:** {% endif %}\
+{{ commit.message }} ([{{ commit.id | truncate(length=7, end="") }}](<REPO>/commit/{{ commit.id }}))\
+{% for link in commit.links %}, closes [{{ link.text }}]({{ link.href }}){% endfor %}
+{% endfor %}\
+{% endfor %}
+"""
+trim = true
+postprocessors = [
+  # Rendered late so the template can stay readable, and so a repository rename
+  # is a one-line edit rather than a sweep through the body.
+  { pattern = '<REPO>', replace = "https://github.com/gotgenes/pi-anthropic-auth" },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+# Releases are tagged `vX.Y.Z` with no component prefix, matching
+# `include-v-in-tag: true` / `include-component-in-tag: false` from the retired
+# release-please config. The `[0-9]` guard keeps a future non-release tag
+# starting with `v` from being mistaken for a version.
+tag_pattern = "^v[0-9]"
+# `Refs #N` in a commit body is this repo's issue reference. Lifting it into
+# `commit.links` reproduces the `closes [#N]` suffix release-please emitted.
+# This key belongs to `[git]`; git-cliff silently ignores it under `[changelog]`.
+link_parsers = [
+  { pattern = "Refs #(\\d+)", href = "<REPO>/issues/$1", text = "#$1" },
+]
+# A breaking change must outrank its own type, so a `refactor!:` still forces a
+# major bump instead of being dropped by the `skip = true` parser below.
+protect_breaking_commits = true
+filter_commits = true
+sort_commits = "oldest"
+commit_preprocessors = [
+  # `(#N)` in a subject is this repo's issue reference, not a PR number.
+  { pattern = '\(#([0-9]+)\)', replace = "([#${1}](<REPO>/issues/${1}))" },
+]
+# Mirrors `changelog-sections` from the retired `release-please-config.json`:
+# six visible types keep their section names, five are skipped.
+#
+# `chore` is visible. That reads like bookkeeping, but it was `hidden: false`
+# under release-please and chore-only intervals really did cut releases here.
+# Skipping it would strand such an interval unreleasable and drop the section
+# from every future changelog.
+#
+# Parsers are evaluated in order and the first match wins, so both release-commit
+# forms are skipped ahead of the general `chore` rule: `chore(release):` is what
+# `scripts/release/prepare-release.sh` writes, and `chore(main): release` is what
+# release-please wrote before it.
+#
+# Those skips are load-bearing, and the reason is narrower than it looks. The
+# CHANGELOG entry is rendered before the release commit exists, and the *next*
+# release's range starts after the tag, so neither of those needs the skip.
+# The GitHub Release notes do: scripts/release/create-github-release.sh runs
+# `git-cliff --latest` once the commit and tag are both in place, and that range
+# includes the release commit. Without these rules, a release's own notes carry
+# its own version bump under Miscellaneous Chores.
+#
+# The `<!-- N -->` prefixes force the section order release-please used (its
+# `changelog-sections` array order); `group_by` would otherwise sort them
+# alphabetically and put Bug Fixes above Features. `striptags` removes them at
+# render time.
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Performance Improvements" },
+  { message = "^revert", group = "<!-- 3 -->Reverts" },
+  { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore\\(main\\): release", skip = true },
+  { message = "^chore", group = "<!-- 5 -->Miscellaneous Chores" },
+  { message = "^style", skip = true },
+  { message = "^refactor", skip = true },
+  { message = "^test", skip = true },
+  { message = "^build", skip = true },
+  { message = "^ci", skip = true },
+]
