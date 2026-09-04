@@ -131,8 +131,8 @@ Reusable slash-command flows live in `.pi/prompts/` (synced from `pi-packages`, 
 2. `tdd-plan`: execute a plan's TDD steps as red→green→commit cycles
 3. `build-plan`: execute a non-TDD plan (docs/config/prose changes)
 4. `pr-review`: triage a third-party PR (adopt/adapt/decline) and hand off to `plan-issue`
-5. `ship-issue`: push, close the issue, and merge the release-please PR
-6. `ship-no-issue`: push, verify CI, and merge the release-please PR (no issue)
+5. `ship-issue`: push, close the issue, and dispatch the release
+6. `ship-no-issue`: push, verify CI, and dispatch the release (no issue)
 7. `retro`: review a session for workflow improvements and persist retro notes
 8. `retro-note`: persist a quick retro observation to `docs/retro/`
 
@@ -211,19 +211,44 @@ At the end of the work:
 1. ensure all intended work is committed locally
 2. push the branch
 3. watch CI on `main`
-4. wait for release-please to catch up if needed
-5. only then merge the open release-please PR after its CI is green
-6. run `git pull --ff-only` locally to pick up the release commit
+4. dispatch the release once CI is green
+5. run `git pull --ff-only` locally to pick up the release commit and tag
 
-Preferred release step (pass the release-please PR number explicitly):
+Do not dispatch a release while local commits are still unpushed — the dispatch releases what is on `main`, and the `sha` guard will abort if `main` is not where you think it is.
+
+Release batching is plan-driven: the `improvement-discovery` skill defines a grep-able `Release:` tag (and a `Release batches` subsection) for roadmap steps, `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` reads the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise dispatching the release now.
+
+### Releases
+
+Releases are **dispatched, never automatic**.
+`.github/workflows/release.yml` triggers only on `workflow_dispatch` and takes an optional expected-SHA guard:
 
 ```bash
-gh pr merge --rebase <pr-number>
+gh workflow run release.yml -f sha="$(git rev-parse HEAD)"
 ```
 
-Do not merge a release-please PR while local commits are still unpushed or while the PR was generated from an older `main` than the commits you just finished.
+It runs three jobs: `prepare` (version, changelog, commit, tag, push), `publish` (npm Trusted Publishing), and `github-release` (notes rendered by git-cliff).
 
-Release batching is plan-driven: the `improvement-discovery` skill defines a grep-able `Release:` tag (and a `Release batches` subsection) for roadmap steps, `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` reads the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
+Before dispatching, ask what would release — read-only, offline, and instant:
+
+```bash
+./scripts/release/next-version.sh   # prints vX.Y.Z, or nothing
+```
+
+Do not reason about this from commit types when you can ask.
+Most types cut a release (`cliff.toml` mirrors the visible/hidden split the retired `release-please-config.json` declared, so `docs:` and `chore:` do bump), but commits touching only `docs/plans/**` or `docs/retro/**` do not — those paths are excluded from the release scope, which is why a plan or retro no longer ships a version on its own.
+
+Split a script that pushes from the read-only derivation it calls, and refuse the pushing half outside CI: `scripts/release/prepare-release.sh` guards on `CI` (override with `ALLOW_LOCAL_PUSH=1`), while `next-version.sh` only prints.
+
+If `prepare` fails, nothing was tagged and the release can simply be re-dispatched.
+If a later job fails, the tag is already pushed — fix the cause and re-run that job; re-dispatching would refuse on the existing tag.
+
+Versions and changelog entries come from [git-cliff](https://git-cliff.org) reading local git, with no network in the derivation.
+`CHANGELOG.md` is spliced, never regenerated: the entries below its era marker were produced under release-please with a different exclusion set, and regenerating would rewrite released history.
+See `gotgenes/pi-packages`, `docs/decisions/0002-git-cliff-release-automation.md` for the full rationale and for the accepted residual — there is no release-PR review gate.
+
+npm publishing uses Trusted Publishing, configured on npmjs.org against **`release.yml`**.
+A change that moves the publishing job to another workflow file requires updating that configuration first, or `publish` fails on OIDC after the tag has already been pushed.
 
 ### Commands
 
@@ -486,6 +511,7 @@ That full re-resolution also pulls every other devDep forward within its caret r
 6. `.pi/prompts/`
 7. `.pi/agents/`
 8. `.fallowrc.json`
-9. Workflow parity source: `~/development/pi/pi-packages/`
-10. Upstream reference clone: `~/development/pi/pi`
-11. Example reference project: `~/development/opencode-anthropic-auth`
+9. `cliff.toml` and `scripts/release/`
+10. Workflow parity source: `~/development/pi/pi-packages/`
+11. Upstream reference clone: `~/development/pi/pi`
+12. Example reference project: `~/development/opencode-anthropic-auth`
