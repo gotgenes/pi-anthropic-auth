@@ -1,0 +1,91 @@
+name: Release
+
+# Releases are explicit. Nothing releases on a push to main; a release happens
+# when someone dispatches this workflow, which is what replaced the standing
+# release-please pull request (Refs #63).
+#
+# `/ship-issue` and `/ship-no-issue` dispatch this workflow after the work is on
+# main, then watch it with `ci_find`/`ci_watch` (workflow `release`).
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Expected HEAD SHA — aborts if main moved since the release was requested"
+        required: false
+        type: string
+
+# One release at a time, so two dispatches cannot race.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          # Full history and tags: git-cliff derives the version and the
+          # changelog from them, and a shallow clone would silently produce a
+          # wrong version.
+          fetch-depth: 0
+
+      - uses: taiki-e/install-action@git-cliff
+
+      - name: Prepare release
+        id: prepare
+        env:
+          EXPECTED_SHA: ${{ inputs.sha }}
+        run: ./scripts/release/prepare-release.sh
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm Trusted Publishing. The publisher must be configured on npmjs.org
+      # against this workflow file; it previously named ci.yml.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The exact release commit, not `main` — another push could land
+          # between jobs, and `git tag --points-at HEAD` would then find nothing.
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish the released version
+        run: ./scripts/release/publish-released.sh
+
+  github-release:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: taiki-e/install-action@git-cliff
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/release/create-github-release.sh
