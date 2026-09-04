@@ -344,11 +344,13 @@ The `question` parameter should be a concise prompt, almost never more than one 
 Options should be short and outcome-oriented.
 When options differ in what they produce, include the rendered before/after — not just measurements of it — in that preceding message.
 
-### One decision per call
+### One decision per question
 
-Each `ask_user` call should address a single independent decision.
-Do not combine unrelated decisions into one call with combinatorial options.
-For multiple independent decisions, make sequential calls — one per decision.
+Each `ask_user` question addresses one decision.
+Do not collapse several decisions into a single question's option set as combinations.
+
+Bundle 2-3 questions into one call when they are facets of the same artifact or change (placement, depth, and cross-references for one doc section).
+Make sequential calls only when the next question's options depend on the previous answer.
 
 ## Testing Guidance
 
@@ -514,6 +516,14 @@ As of pi 0.84.0 the loader picks among three modes:
 
 Pi 0.84.0 added mode 2; before it, source runs took the `alias` path.
 The minimum supported host is pi >=0.80.8; every mode maps both the bare `@earendil-works/pi-ai` specifier and the `/compat` subpath to pi's own pi-ai compat entrypoint (`dist/compat.js`), and all expose `unregisterProvider` on the extension API.
+
+### Read Pi's Source From The Clone, Not The Installed `dist/`
+
+Grep `~/development/pi/pi` for how Pi behaves — it is readable TypeScript, and `git`-navigable across tags.
+A bare `rg` over `node_modules/@earendil-works/pi-coding-agent/dist/` instead returns 50 KB of noise per hit and truncates, because each `.d.ts.map` embeds the whole original source in `sourcesContent`.
+
+The two answer different questions, and the clone is often ahead of the installed copy (v0.84.4 vs 0.84.0 as of Issue #64).
+When the installed version is what matters, scope the grep: `rg -n <pattern> --glob '*.js' <dist-path>`.
 
 ### Diagnose Version Regressions From The Tag Source
 

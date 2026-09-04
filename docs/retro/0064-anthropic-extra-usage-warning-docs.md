@@ -155,3 +155,75 @@ The commit carries the agreed attribution: `Refs #45` and `Co-authored-by: J.Hen
 Pre-completion reviewer: PASS.
 It independently re-verified the gate order in `maybeWarnAboutAnthropicSubscriptionAuth` and the `warnings.anthropicExtraUsage` default against the installed pi 0.84.0, and confirmed `.pi/skills/anthropic/SKILL.md`'s three "extra usage" mentions are all about the HTTP 400 and correctly untouched.
 No warnings.
+
+## Stage: Final Retrospective (2026-09-05T02:40:00Z)
+
+### Session summary
+
+One session carried Issue #64 from planning through build to ship: plan `docs/plans/0064-anthropic-extra-usage-warning-docs.md`, implementation `ebb91ef`, release `v2.0.8`.
+The deliverable is a `README.md` Troubleshooting subsection explaining Pi's Anthropic extra-usage warning, plus a pointer from "What It Does".
+Across all four stages (PR Review, Planning, Build, Ship) the issue went from a declined third-party PR mechanism to shipped documentation without rework.
+
+### Observations
+
+#### What went well
+
+1. Re-verifying a claim recorded in this file's own PR Review stage caught an error.
+   That entry said the warning "is gated only on `checkAuth("anthropic")?.type === "oauth"`".
+   Reading `interactive-mode.js:3845` at planning time showed a four-deep gate — settings flag, already-shown flag, `model.provider === "anthropic"`, then auth type — living in the interactive-mode component, so headless `-p` runs never emit it.
+   Both corrections shaped the shipped README sentence ("whenever an Anthropic model is selected … once per interactive session").
+   A prior retro is a claim, not a source.
+
+2. `rumdl`'s MD051 anchor enforcement was measured, not assumed.
+   A throwaway probe confirmed `#nope` fails and an exact heading slug passes, before the plan committed to two in-page anchors.
+   That turned "the anchors are pinned by lint" from an assertion into an invariant with evidence behind it.
+
+3. The `ask_user` answer improved the design beyond the options offered.
+   The user's note on placement — "All we have to do is mention it doesn't suppress the warning and then link" — sized the "What It Does" pointer down to one sentence, which is what shipped.
+
+#### What caused friction (agent side)
+
+1. `other` (tool hygiene) — two `rg` calls over `node_modules/@earendil-works/pi-coding-agent/dist/` matched `.d.ts.map` files, whose `sourcesContent` field embeds the entire original TypeScript source.
+   Both results blew the 50 KB tool-output limit and truncated; a third narrowly-scoped call got the two facts I wanted.
+   Impact: large context burn on a docs-only issue, no rework.
+   The better source was `~/development/pi/pi` all along — readable TypeScript, `git`-navigable across tags.
+
+2. `instruction-violation` (self-identified) — `AGENTS.md` § "One decision per call" said to make sequential calls for multiple independent decisions; I sent placement, coverage-depth, and 400-vs-warning as three questions in one call.
+   Impact: no rework — the bundled call was answered in one round and worked better than three would have.
+   The friction was adjudicating a live conflict between that rule and the system prompt's "bundle 2-3 related unresolved decisions" guidance mid-session.
+   Resolved by fixing the rule rather than the behavior.
+
+#### What caused friction (user side)
+
+1. The placement option's description did not state how much content the "What It Does" pointer would add, so the user had to supply that constraint in a free-text note.
+   Opportunity: when an `ask_user` option adds content to an existing section, size it in the description ("one sentence", "a short paragraph") so the answer does not have to.
+
+2. The steer toward `~/development/pi/pi` arrived at retro time rather than during planning, after the truncated greps had already been paid for.
+   Opportunity: a mid-session nudge when a tool result truncates twice would have cost one sentence and saved the third call.
+
+### Diagnostic details
+
+1. Model-performance correlation — one subagent dispatch, `pre-completion-reviewer` on `anthropic/claude-sonnet-5` (locked in `.pi/agents/pre-completion-reviewer.md`), 17 tool calls in 53 s for a judgment-heavy review that independently re-derived the upstream gate order.
+   Appropriate pairing; no mismatch.
+   `tidy-first-assessor` was correctly skipped — docs-only change, per the skill's own applicability gate.
+
+2. Escalation-delay tracking — no `rabbit-hole` friction points.
+   The longest same-target sequence was three calls (the two truncated `dist/` greps plus the scoped retry), below the five-call threshold.
+
+3. Unused-tool detection — `colgrep` and `Explore` went unused, correctly: the change touched no `src/` symbol and the plan named its own files.
+   The one genuinely unused resource was the `~/development/pi/pi` clone, which `AGENTS.md` already lists under Related Files but no gotcha steered me toward while grepping `node_modules`.
+
+4. Feedback-loop gap analysis — verification ran incrementally, not just at the end: `rumdl` after the Troubleshooting insertion, full `pnpm run lint` after the "What It Does" pointer, then `check`/`lint`/`test` at the ship gate.
+   The green baseline was established before the first edit.
+   No gap.
+
+### Changes made
+
+1. `AGENTS.md` — retitled § "One decision per call" to "One decision per question" and rewrote it: the ban now targets combinatorial option sets within a question, and bundling 2-3 questions per call is explicitly allowed when they are facets of one artifact.
+   Sequential calls are reserved for answer-dependent questions.
+   Resolves the conflict with the system prompt's bundling guidance that cost adjudication time this session.
+
+2. `AGENTS.md` — new § Gotchas entry, "Read Pi's Source From The Clone, Not The Installed `dist/`", placed before "Diagnose Version Regressions From The Tag Source".
+   Points at `~/development/pi/pi` first, explains the `.d.ts.map` `sourcesContent` truncation trap, and gives the `--glob '*.js'` scoping for when the installed version is specifically what matters.
+
+3. Considered and not landed: a README-drift test pinning Pi's warning string (a code change, already recorded as an accepted residual in the plan's Risks); an `rg --hidden` rule (self-caught before it cost anything, and does not generalize past `.pi/`).
