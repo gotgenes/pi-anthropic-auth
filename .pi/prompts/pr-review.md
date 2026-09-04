@@ -28,6 +28,8 @@ Stop after recording the decision and handing off; do not start implementation h
    Record the author's name + email for the `Co-authored-by:` trailer (see Attribution).
 4. Review the changed files (`gh pr diff $1 --name-only`) to understand the scope of the change.
 5. Note the PR's base commit (`gh pr view $1 --json baseRefOid`) — every "does this defect exist" question below is asked against **current `main`**, not against the PR's narrative.
+   When that base lags `main`, read the change with `gh pr diff $1` or `git diff $(git merge-base main pr-$1) pr-$1`.
+   A plain `git diff main` reports every commit `main` gained since the base as a *deletion* by the PR.
 
 A fork PR's workflow runs sit at `action_required` until a maintainer approves them, so `statusCheckRollup` is usually **empty** — absent checks mean *not run*, never *passed*.
 Do not read `mergeable`/`mergeStateStatus` as evidence of a green build.
@@ -38,6 +40,10 @@ Approve the run (`gh api -X POST repos/gotgenes/pi-anthropic-auth/actions/runs/<
 A PR body is a claim, not evidence.
 Most of the cost of a bad review is spent evaluating the implementation of a problem that does not exist.
 Establish the problem is real **on current `main`** before you read the diff for design.
+
+When the PR adds a capability rather than fixing a defect, verify the **capability** instead: confirm the external surface it depends on exists and returns the shape the code assumes (hit the endpoint, run the API, check the upstream symbol).
+Steps 3–5 below still apply; steps 1–2 do not.
+Skipping this gate because "there is no defect" is not an option.
 
 1. **Reproduce it.**
    Write a throwaway test (or run an existing one) that exercises the claimed defect against current `main` and watch it fail.
