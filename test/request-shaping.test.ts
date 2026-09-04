@@ -1,17 +1,38 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "vitest";
+import { onTestFinished, test } from "vitest";
 
 import {
   BILLING_HEADER_POSITIONS,
   BILLING_HEADER_SALT,
   CLAUDE_CODE_VERSION,
+  CLAUDE_CODE_VERSION_ENV,
+  resolveClaudeCodeVersion,
 } from "#src/constants";
 import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
 
 const TEST_MODEL = "claude-haiku-4-5";
 
-function buildExpectedBillingHeader(messageText: string): string {
+/**
+ * Sets the Claude Code version override for one test and restores the previous
+ * value (including "was unset") when the test finishes.
+ */
+function withVersionOverride(value: string): void {
+  const previous = process.env[CLAUDE_CODE_VERSION_ENV];
+  process.env[CLAUDE_CODE_VERSION_ENV] = value;
+  onTestFinished(() => {
+    if (previous === undefined) {
+      delete process.env.PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION;
+      return;
+    }
+    process.env[CLAUDE_CODE_VERSION_ENV] = previous;
+  });
+}
+
+function buildExpectedBillingHeader(
+  messageText: string,
+  claudeCodeVersion: string = CLAUDE_CODE_VERSION,
+): string {
   const cch = createHash("sha256")
     .update(messageText)
     .digest("hex")
@@ -20,13 +41,13 @@ function buildExpectedBillingHeader(messageText: string): string {
     (index) => messageText[index] || "0",
   ).join("");
   const suffix = createHash("sha256")
-    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${CLAUDE_CODE_VERSION}`)
+    .update(`${BILLING_HEADER_SALT}${sampledCharacters}${claudeCodeVersion}`)
     .digest("hex")
     .slice(0, 3);
 
   return [
     "x-anthropic-billing-header:",
-    `cc_version=${CLAUDE_CODE_VERSION}.${suffix};`,
+    `cc_version=${claudeCodeVersion}.${suffix};`,
     "cc_entrypoint=sdk-cli;",
     `cch=${cch};`,
   ].join(" ");
@@ -103,6 +124,61 @@ test("prepends the billing header block without adding cache control on OAuth pa
   assert.equal(systemBlocks[0]?.cache_control, undefined);
   assert.equal(systemBlocks[1]?.text, payload.system[0]?.text);
   assert.equal(shaped["anthropic-beta"], "existing-beta");
+});
+
+test("pins a Claude Code version at or above the Fable 5.1 floor", () => {
+  // Anthropic rejects OAuth requests for claude-fable-5-1 when the reported
+  // Claude Code version is below 2.1.251 (error_code: claude_code_version_too_old).
+  const [major, minor, patch] = CLAUDE_CODE_VERSION.split(".").map(Number);
+
+  assert.equal(major, 2);
+  assert.equal(minor, 1);
+  assert.ok(
+    patch >= 251,
+    `CLAUDE_CODE_VERSION ${CLAUDE_CODE_VERSION} is below the 2.1.251 floor`,
+  );
+});
+
+test("falls back to the bundled version when no override is set", () => {
+  assert.equal(resolveClaudeCodeVersion({}), CLAUDE_CODE_VERSION);
+  assert.equal(
+    resolveClaudeCodeVersion({ [CLAUDE_CODE_VERSION_ENV]: "   " }),
+    CLAUDE_CODE_VERSION,
+  );
+});
+
+test("trims a configured Claude Code version", () => {
+  assert.equal(
+    resolveClaudeCodeVersion({ [CLAUDE_CODE_VERSION_ENV]: " 2.1.300 " }),
+    "2.1.300",
+  );
+});
+
+test("uses the configured Claude Code version in the billing header", () => {
+  withVersionOverride("2.1.300");
+
+  const payload = createOAuthPayload();
+  const shaped = shapeAnthropicOAuthPayload(payload) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
+
+  // The override must reach both the emitted cc_version and its hashed suffix.
+  assert.equal(
+    systemBlocks[0]?.text,
+    buildExpectedBillingHeader(
+      "Please summarize this repository status.",
+      "2.1.300",
+    ),
+  );
+});
+
+test("rejects a malformed Claude Code version override", () => {
+  for (const invalid of ["latest", "2.1", "v2.1.260", "2.1.260-beta"]) {
+    assert.throws(
+      () => resolveClaudeCodeVersion({ [CLAUDE_CODE_VERSION_ENV]: invalid }),
+      /must be a bare X\.Y\.Z version/,
+      `expected ${invalid} to be rejected`,
+    );
+  }
 });
 
 test("does not add anthropic-beta to the request body when it is absent", () => {

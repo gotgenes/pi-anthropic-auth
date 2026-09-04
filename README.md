@@ -63,6 +63,32 @@ If you have previously run `/login anthropic` and credentials are stored in `~/.
 
 To use the API key instead, run `/logout anthropic` inside Pi to remove the stored credentials, or delete `auth.json` before starting the session.
 
+### A new model is rejected as `claude_code_version_too_old`
+
+Anthropic gates newly released models on a minimum Claude Code version:
+
+```text
+400 invalid_request_error: Claude Code 2.1.206 does not support this model;
+version 2.1.251 or newer is required.
+details.error_code: claude_code_version_too_old
+```
+
+This package reports a bundled Claude Code version in the OAuth billing header.
+When Anthropic raises the floor faster than a release ships, override the pin:
+
+```bash
+export PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION=2.1.260
+```
+
+The value must be a bare `X.Y.Z` version; anything else fails fast with an explicit error.
+Check the current release with `npm view @anthropic-ai/claude-code version`.
+
+Do not derive the value from a local `claude --version`.
+Claude Code's `stable` release channel lags `latest`, so an installed copy is often *below* the floor a new model requires.
+
+If the version in the error message is **not** the one this package reports, the request is being rejected on Pi's own `user-agent: claude-cli/<version>`, which this extension does not control.
+That pin lives in Pi's `pi-ai` package and needs a Pi upgrade.
+
 ### Docker: extension missing after volume mount
 
 If you install the extension at image build time with `RUN pi install npm:@gotgenes/pi-anthropic-auth` and then mount a persistent volume over `~/.pi/agent` at runtime, Docker may mask the build-time install.
