@@ -104,3 +104,31 @@ Co-authored-by: J.Henrique <joaohenrique145@outlook.com.br>
 Reference the PR as `Refs #45`, never `Closes #45`.
 
 [#45]: https://github.com/gotgenes/pi-anthropic-auth/pull/45
+
+## Stage: Planning (2026-09-05T01:30:00Z)
+
+### Session summary
+
+Wrote `docs/plans/0064-anthropic-extra-usage-warning-docs.md`, a docs-only plan for a README Troubleshooting subsection explaining Pi's Anthropic extra-usage warning.
+Re-verified the mechanism against the installed `@earendil-works/pi-coding-agent@0.84.0` rather than trusting the PR-review notes: the warning is a module constant at `interactive-mode.js:101`, and `maybeWarnAboutAnthropicSubscriptionAuth` gates on `warnings.anthropicExtraUsage !== false` → not-yet-shown → `model.provider === "anthropic"` → `checkAuth("anthropic")?.type === "oauth"`.
+The plan is `Release: ship independently` and hands off to `/build-plan`.
+
+### Observations
+
+The `model.provider === "anthropic"` guard is a detail the earlier PR-review entry did not record — the gate is not only `checkAuth`, and the method lives in interactive mode, so headless `-p` runs never emit the warning.
+Both facts made it into the drafted README text.
+
+Three presentation choices went to `ask_user`, and the operator chose: subsection under Troubleshooting **plus** a one-line pointer from "What It Does" (narrowed to "mention it doesn't suppress the warning, then link"), prose-plus-link rather than an inline coverage table, and an explicit one-sentence contrast between the startup warning and the `You're out of extra usage.` HTTP 400.
+The inline-table option was rejected to keep `docs/architecture.md` the single source of truth for call-path coverage.
+
+Measured, not assumed: `rumdl` enforces MD051, so a stale in-page anchor fails lint rather than review.
+Probed with a throwaway file — `#nope` fails, the exact slug passes.
+That is the plan's pin for the two anchors (`#pi-warns-about-extra-usage-on-every-oauth-session`, `#verify-the-extension-is-loaded`).
+
+Grepped `AGENTS.md`, `.pi/` (with `--hidden`, which plain `rg .` would have skipped), and `README.md` for the mechanism: the only hits are three in `.pi/skills/anthropic/SKILL.md`, all about the HTTP 400 rather than the startup warning, so no skill or AGENTS edit is needed.
+Recorded as a Non-Goal so the next stage does not re-litigate it.
+
+Attribution decided in the PR-review stage carries forward: a `Co-authored-by` trailer for @Hmenez3s and `Refs #45`, with `README.md`'s Acknowledgments left alone.
+No follow-up issues filed — the plan defers no concrete work, and Issue [#53] already covers the adjacent compat-dispatch question.
+
+[#53]: https://github.com/gotgenes/pi-anthropic-auth/issues/53
