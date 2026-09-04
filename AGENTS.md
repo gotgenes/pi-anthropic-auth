@@ -373,11 +373,16 @@ Live Pi repro (prefer the latest Haiku alias for fast feedback unless the bug ap
 ```bash
 pi \
   --model anthropic/claude-haiku-4-5 \
+  -ne \
   --no-session \
   --tools read,grep,find,ls \
   -e /Users/chris/development/pi/pi-anthropic-auth/src/index.ts \
   -p "How many lines are in @AGENTS.md ?"
 ```
+
+Always pass `-ne`.
+It disables extension *discovery* while still honoring explicit `-e` paths, which is the only reliable way to guarantee the `-e` copy is the one under test.
+Without it, the installed `packages[]` copy loads too and can silently win the provider registration, so the repro exercises the released code instead of the working tree — a green result then means nothing (see the Claude Code version-floor gotcha).
 
 Run this live repro before treating any change to import specifiers, module resolution, or extension registration as done: green `check`/`lint`/`test` can still fail under pi's `jiti` loader, which resolves module specifiers differently from vitest (Refs #28).
 
@@ -443,6 +448,26 @@ Third-party background agents calling pi-ai's bare `streamSimple` do not reach o
 Any shaping that must apply to every OAuth request `provider-composer` sees belongs in the transport wrapper, not in `before_provider_request`.
 `test/index-registration.test.ts` pins the boundary: registering the extension must leave the built-in `anthropic-messages` api-registry entry untouched.
 
+### Claude Code Version Floors Gate New Models
+
+Anthropic rejects OAuth requests for a newly released model when the reported Claude Code version is below a per-model floor, with `error_code: claude_code_version_too_old`.
+Claude Fable 5.1 (`claude-fable-5-1`) requires >= 2.1.251; the 2.1.206 pin blocked it entirely (Issue #60).
+
+Two different version signals reach Anthropic, and only one is ours:
+
+1. `user-agent: claude-cli/<version>`, hardcoded as `claudeCodeVersion` in pi-ai's `anthropic-messages.ts` (2.1.75 through pi 0.84.4; bumped to 2.1.251 on pi `main` in `96317e50b`, still unreleased)
+2. `cc_version=<version>` in the billing header this extension injects, from `CLAUDE_CODE_VERSION` in `src/constants.ts`
+
+Verified live against `claude-fable-5-1` on pi 0.84.4: bumping only our `cc_version` fixes the rejection even though pi still sends `claude-cli/2.1.75`.
+So Anthropic gates on the billing header when it is present, and this repo can fix a version floor without waiting on a pi release.
+Read the version named in the error message to tell the two apart — if it is not our pin, the request is being rejected on pi's user-agent and needs a pi upgrade instead.
+
+Do not source the value from a local `claude --version`.
+Claude Code's `stable` dist-tag lags `latest` (2.1.236 vs 2.1.260 on 2026-09-03), so an installed copy is routinely *below* the floor a new model requires; `npm view @anthropic-ai/claude-code version` is the check that matters.
+Also confirm the value rather than trusting a number quoted in an issue or PR: Issue #60 and PRs #61/#62 each cited a different "current" version, and all three were stale by the time they were read.
+
+Users can override the pin at runtime with `PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION` (validated `X.Y.Z`, throws otherwise).
+
 ### Avoid Over-Porting From OpenCode
 
 This repository is not trying to reproduce `opencode-anthropic-auth` wholesale.
@@ -468,7 +493,8 @@ Omitting a field does not clear a value a prior registration set.
 A stale installed copy that registers `oauth` keeps it in the merged config even after a fixed copy re-registers without `oauth`, so `/login` still runs the stale override (Issue #43).
 The merge is an intentional upstream contract (the `ModelRuntime.registerProvider` source states it "merges defined values over the previous registration and preserves undefined ones, matching the legacy ModelRegistry contract"), so it will not be "fixed" upstream.
 As partial hardening, `src/index.ts` calls `pi.unregisterProvider("anthropic")` before re-registering, restoring the built-in provider first so a stale merged `oauth` is cleared — but during the initial load phase the loader only drops *pending* registrations, so this only helps when the stale copy loaded *before* ours; running a single up-to-date copy remains the actual fix.
-When a local `-e`/`"../"` copy and an installed `packages[]` copy both load, isolate to one copy before validating a registration change.
+When a local `-e`/`"../"` copy and an installed `packages[]` copy both load, isolate to one copy before validating a registration change — pass `-ne` to suppress the discovered copies.
+Note that `.pi/settings.json` and `~/.pi/agent/settings.json` are separate package lists, so removing the local `"../"` entry does not stop a globally installed copy from loading.
 A breaking release ships as a major bump, so a stale installed copy pinned `^oldmajor` is not upgraded by `pi update` (it stays within the caret range); cross the major with `pi install npm:<pkg>@latest`, which rewrites the pin (Issue #43 shipped as `2.0.0`; a stale `^1.0.0` install kept clobbering refresh with the removed-API `oauth` override until re-installed).
 
 ### Model ID Alias Drift
