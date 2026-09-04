@@ -22,6 +22,8 @@ Shaping runs in a thin transport wrapper around Pi's own Anthropic transport, so
 Background agents that run their own agent loop are a known exception on Pi 0.80.8 and later.
 See [docs/architecture.md](docs/architecture.md) for how this works, and for the workaround if you write such an extension.
 
+Pi's own extra-usage warning still appears on every Anthropic OAuth session and is not suppressed by this extension — see [Pi warns about extra usage on every OAuth session](#pi-warns-about-extra-usage-on-every-oauth-session).
+
 ## Install
 
 ```bash
@@ -55,6 +57,36 @@ pi-anthropic-auth diagnostics
 
 The `module` line shows which copy of the extension loaded.
 If the command is not found, the extension is not loaded at all.
+
+### Pi warns about extra usage on every OAuth session
+
+Pi prints this warning once per interactive session whenever an Anthropic model is selected and your stored Anthropic credentials are OAuth:
+
+> Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at <https://claude.ai/settings/usage>. Disable this warning in `/settings`.
+
+Installing this extension does not silence it, and that is not a sign the extension is broken.
+Pi's check looks only at which provider the selected model belongs to and whether the stored credential is an OAuth token.
+It has no way to see that a provider registration is in place, so no extension can suppress it.
+
+The warning is also not entirely wrong.
+Interactive turns and compaction go through this extension's request shaping; requests from background agents that run their own agent loop do not, and for those the warning describes exactly what happens.
+See [docs/architecture.md](docs/architecture.md) for the full call-path table.
+
+This is a startup notice, not a failure.
+A request that actually fails with an HTTP 400 saying `You're out of extra usage.` is a different problem — start with [Verify the extension is loaded](#verify-the-extension-is-loaded).
+
+Pi owns the switch for this warning, so the extension leaves it alone.
+Turn it off yourself with `/settings` → Warnings → "Anthropic extra usage", or set it in `~/.pi/agent/settings.json`:
+
+```json
+{
+  "warnings": {
+    "anthropicExtraUsage": false
+  }
+}
+```
+
+Because the warning concerns real billing on paths this extension does not cover, that call is yours to make; the extension will never write the setting for you.
 
 ### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
 
