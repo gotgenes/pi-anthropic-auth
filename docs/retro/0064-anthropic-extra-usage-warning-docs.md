@@ -132,3 +132,26 @@ Attribution decided in the PR-review stage carries forward: a `Co-authored-by` t
 No follow-up issues filed — the plan defers no concrete work, and Issue [#53] already covers the adjacent compat-dispatch question.
 
 [#53]: https://github.com/gotgenes/pi-anthropic-auth/issues/53
+
+## Stage: Implementation — Build (2026-09-05T02:05:00Z)
+
+### Session summary
+
+Executed the docs-only plan in one commit: a new `### Pi warns about extra usage on every OAuth session` subsection under `README.md`'s Troubleshooting, plus a one-sentence pointer to it from "What It Does".
+No `src/` or `test/` changes, so Tidy First was skipped per its applicability gate.
+`README.md` went from 160 to 192 lines, against the plan's ~195 estimate.
+
+### Observations
+
+No deviations.
+The drafted text in the plan's Design Overview was applied verbatim, including both in-page anchors (`#pi-warns-about-extra-usage-on-every-oauth-session` and the back-reference to `#verify-the-extension-is-loaded`), which `rumdl`'s MD051 confirmed resolve.
+Plan steps 1 and 2 were squashed into a single commit, as the plan's Build Order explicitly permitted.
+
+Re-read the whole Troubleshooting section after inserting to confirm the new `###` did not reparent the `ANTHROPIC_API_KEY` subsection that follows it — the `markdown-conventions` insertion check.
+It did not.
+
+The commit carries the agreed attribution: `Refs #45` and `Co-authored-by: J.Henrique <joaohenrique145@outlook.com.br>`.
+
+Pre-completion reviewer: PASS.
+It independently re-verified the gate order in `maybeWarnAboutAnthropicSubscriptionAuth` and the `warnings.anthropicExtraUsage` default against the installed pi 0.84.0, and confirmed `.pi/skills/anthropic/SKILL.md`'s three "extra usage" mentions are all about the HTTP 400 and correctly untouched.
+No warnings.
