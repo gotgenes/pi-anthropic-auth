@@ -106,7 +106,7 @@ A field the record never mentions is a field an implementer drops.
    Commit any fixup as `style:` if you haven't pushed yet.
 4. If the change corrects a recurring claim or phrasing, grep the repo for the *old* phrasing one final time — a file-by-file review, yours or the reviewer's, misses occurrences a mechanical sweep catches.
 5. If `docs/architecture.md` exists and the issue completes a numbered roadmap step, prefix `✅` on both the step heading and its Mermaid diagram node — a `Landed:` detail line is not a substitute for the `✅`; flip the phase status row only when every step in the phase is done; commit as `docs:`.
-6. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+6. **Do not edit `CHANGELOG.md`** — the release workflow owns it, and git-cliff generates entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review
 

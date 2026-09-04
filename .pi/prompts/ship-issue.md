@@ -1,5 +1,5 @@
 ---
-description: Push, close a GitHub issue with a summary, and merge the release-please PR
+description: Push, close a GitHub issue with a summary, and dispatch the release
 ---
 
 # Ship the implementation
@@ -63,8 +63,8 @@ Optionally run `pnpm fallow:dead-code` for dead-code hygiene — it is not a CI 
 
 ## 4b. Check for a stacked release
 
-Every Conventional Commit type cuts a release in this repo — `release-please-config.json` declares `changelog-sections` for `docs`, `chore`, `test`, and `refactor` too, so a docs-only range still produces a patch bump (`v2.0.2`, `v2.0.3`).
-Do not predict whether release-please will cut anything; `release_pr_find` in step 6 answers it.
+Do not predict whether anything will release: `./scripts/release/next-version.sh` applies the real rules offline and prints the tag that would be cut, or nothing.
+Most commit types cut a release here — `cliff.toml` maps `docs` and `chore` to visible changelog sections, so a docs-only range still produces a patch bump (`v2.0.2`, `v2.0.3`) — but plan- and retro-only commits do not, because `docs/plans/**` and `docs/retro/**` are excluded from the release scope.
 
 Apply the decision recorded in the early "Release coordination" section.
 The issue **always** closes in step 5, regardless of this decision (subject to step 5's hypothesis-pending exception) — closing records that the work is on `main`; releasing is a separate, batched concern.
@@ -117,34 +117,40 @@ Close each PR the plan names with `gh pr comment` then `gh pr close`, never merg
 
 Then check whether this push shipped work for **other** issues (a stacked refactor/enabler, other `(#M)` commit refs, or sibling `docs/plans/`/`docs/retro/` files in the `<previous-tag-or-base>..HEAD` range).
 A mid-batch sibling that shipped on its own `/ship-issue` is already closed by that ship — this scan is for stacked work that never had a ship of its own.
-Close each with its own short summary — release-please omits `refactor:` commits from the changelog, so a stacked refactor issue leaves no reminder.
+Close each with its own short summary — `cliff.toml` skips `refactor:` commits, so a stacked refactor issue leaves no changelog entry to remind you.
 
-## 6. Merge release-please PR (if present)
+## 6. Dispatch the release
 
 Skip this step entirely if step 4b recorded a defer/batch decision — the release lands later with the batch tail.
 
-This repo is a single package, so release-please opens a single repo-wide release PR (tagged `vX.Y.Z`).
+1. Ask what would release:
 
-1. Use `release_pr_find` to locate an open release-please PR.
-2. If none is found (timeout), skip to step 7.
-3. If one exists, read the **full** PR body to confirm the version bump it proposes and that it matches the work you just shipped.
-4. Use `release_pr_merge` with the PR number.
-   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
-   - Note: release-please PRs typically have **no CI runs** because PRs created by the default `GITHUB_TOKEN` do not trigger workflows.
-     This is expected; do not block on it.
-   - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
-     A `reason: no checks reported (statusCheckRollup is empty)` or `merge_state: UNSTABLE` refusal is the expected `GITHUB_TOKEN` case: confirm with `gh pr view <N> --json statusCheckRollup` (an empty rollup means no checks ran), then merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
-   - Any other reason (`check failed: ...`, `mergeable is ...`, `merge state is ...`), a `timeout:` result, or a genuinely blocked PR (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check) means stop and report — let the user decide.
-5. Use `release_watch` to wait for the release tag to land on HEAD.
+   ```bash
+   ./scripts/release/next-version.sh
+   ```
 
-## 6b. Verify the release-triggered CI run
+   It prints the tag it would cut (`vX.Y.Z`), or nothing.
+   Read-only and offline; it never mutates anything.
+2. If it prints nothing, there is nothing to release — skip to step 7 and say so in the report.
+3. Dispatch the release, pinning the commit:
 
-Skip this step if step 6 was skipped (deferred/batch release, or no release-please PR found) — there is nothing to verify.
+   ```bash
+   gh workflow run release.yml -f sha="$(git rev-parse HEAD)"
+   ```
 
-1. Capture the merge commit SHA: `release_pr_merge`'s `head_sha`, or `git rev-parse HEAD` after `release_watch`.
-2. Use `ci_find` with that SHA and workflow `ci`, then `ci_watch` the returned `run_id`.
-3. If the `release-please` or `publish` job failed, or `publish` was skipped when a release was expected, stop — do not proceed to step 7.
-   A `release-please` job can fail after already tagging and creating the GitHub release, silently skipping `publish`, so check whether the tag landed and whether the version is on npm before retrying anything, then re-verify before continuing.
+   The `sha` is a guard — the run aborts if `main` moved after you derived it.
+
+## 6b. Verify the release run
+
+Skip this step if step 6 was skipped (deferred/batch release, or nothing to release) — there is nothing to verify.
+
+1. Use `ci_find` with workflow `release` and the SHA you passed as `-f sha`, then `ci_watch` the returned `run_id` with `timeout: 600`.
+   A dispatched run's `head_sha` is `main`'s tip at dispatch time, so it matches the SHA you pinned.
+   If `ci_find` times out, the dispatch's SHA guard most likely failed because `main` moved — check the run list before re-dispatching.
+2. If the `prepare`, `publish`, or `github-release` job failed, stop — do not proceed to step 7.
+   `prepare` failing means nothing was tagged and the release can simply be re-dispatched.
+   `publish` or `github-release` failing means the tag is already pushed: fix the cause and re-run that job rather than re-dispatching, which would refuse on the existing tag.
+3. After the run succeeds, `git pull --ff-only` to bring the release commit and tag down.
 
 ## 7. Final report
 
@@ -162,7 +168,7 @@ Do **not** recommend the next issue to plan here — `/retro` surfaces the next 
 ## Constraints
 
 - Never force-push.
-- Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); an `UNSTABLE` state from no checks running is the expected `GITHUB_TOKEN` case (step 6.4).
+- Never dispatch a release when `next-version.sh` prints nothing — `prepare-release.sh` refuses the run and nothing is tagged (step 6.2).
+- Never re-dispatch a release after `prepare` succeeded; the tag exists, and the run would refuse on it (step 6b.2).
 - If CI fails, the issue stays open.
-- If the release-triggered CI run (step 6b) fails, do not proceed to step 7 until resolved.
-- If multiple release-please PRs exist, stop and ask — that's a configuration issue, not a normal merge.
+- If the release run (step 6b) fails, do not proceed to step 7 until resolved.

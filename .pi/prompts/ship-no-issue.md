@@ -1,5 +1,5 @@
 ---
-description: Push, verify CI, and merge the release-please PR (no issue to close)
+description: Push, verify CI, and dispatch the release (no issue to close)
 ---
 
 # Ship (no issue)
@@ -40,20 +40,27 @@ If this session did not run `/tdd-plan` or `/build-plan`, dispatch the `pre-comp
    Do not merge anything.
 4. If it lands `success`, continue.
 
-## 5. Merge release-please PR (if present)
+## 5. Dispatch the release (if anything is releasable)
 
-This repo is a single package, so release-please opens a single repo-wide release PR (tagged `vX.Y.Z`).
+1. Ask what would release:
 
-1. Use `release_pr_find` to locate an open release-please PR.
-2. If none is found (timeout), skip to step 6.
-3. If one exists, use `release_pr_merge` with the PR number.
-   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
-   - Note: release-please PRs typically have **no CI runs** because PRs created by the default `GITHUB_TOKEN` do not trigger workflows.
-     This is expected; do not block on it.
-   - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
-     A `reason: no checks reported (statusCheckRollup is empty)` or `merge_state: UNSTABLE` refusal is the expected `GITHUB_TOKEN` case: confirm with `gh pr view <N> --json statusCheckRollup` (an empty rollup means no checks ran), then merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
-   - Any other reason, a `timeout:` result, or a genuinely blocked PR (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check) means stop and report — let the user decide.
-4. Use `release_watch` to wait for the release tag to land on HEAD.
+   ```bash
+   ./scripts/release/next-version.sh
+   ```
+
+   It prints the tag it would cut (`vX.Y.Z`), or nothing.
+   Read-only and offline; it never mutates anything.
+2. If it prints nothing, skip to step 6.
+3. There is no issue plan here to say whether this push was meant to release, so **show the operator the tag and ask** before dispatching — do not release just because something is releasable.
+4. Dispatch the confirmed release, pinning the commit:
+
+   ```bash
+   gh workflow run release.yml -f sha="$(git rev-parse HEAD)"
+   ```
+
+5. Follow it with `ci_find` (workflow `release`, that same SHA) and `ci_watch` with `timeout: 600`, then `git pull --ff-only`.
+   If `prepare` fails, nothing was tagged and the release can be re-dispatched.
+   If `publish` or `github-release` fails, the tag is already pushed — re-run that job rather than re-dispatching.
 
 ## 6. Final report
 
@@ -66,6 +73,6 @@ Print:
 ## Constraints
 
 - Never force-push.
-- Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); an `UNSTABLE` state from no checks running is the expected `GITHUB_TOKEN` case (step 5.3).
-- If CI fails, do not merge anything.
-- If multiple release-please PRs exist, stop and ask — that's a configuration issue, not a normal merge.
+- Never dispatch a release without the operator's confirmation (step 5.3) — this flow has no plan to say what the push was for.
+- Never re-dispatch a release after `prepare` succeeded; the tag exists, and the run would refuse on it (step 5.5).
+- If CI fails, do not dispatch a release.

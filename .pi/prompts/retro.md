@@ -205,4 +205,4 @@ If the roadmap queues nothing, say so explicitly.
 - Be specific — provide exact proposed text, not vague suggestions.
 - Look for removals alongside additions.
 - Don't duplicate — check whether a rule already exists in `AGENTS.md` or a prompt before adding.
-- Do not edit `CHANGELOG.md` — release-please owns it.
+- Do not edit `CHANGELOG.md` — the release workflow owns it.
