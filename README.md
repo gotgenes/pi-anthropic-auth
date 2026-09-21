@@ -45,6 +45,21 @@ pi -e npm:@gotgenes/pi-anthropic-auth
 2. Select a Claude Pro/Max model and start chatting. The extension handles compatibility transparently.
 3. API-key behavior is unaffected; the extension's changes apply only to OAuth sessions.
 
+### Additional Anthropic subscriptions
+
+Pi applies an extension's transport per provider **name**, so only the provider named `anthropic` is shaped by default.
+If another extension registers a second Claude subscription under its own name — [pi-multi-pass](https://github.com/hjanuschka/pi-multi-pass) registers `anthropic-2`, `anthropic-3`, … — name those providers so they are shaped too:
+
+```bash
+export PI_ANTHROPIC_AUTH_PROVIDERS=anthropic-2
+```
+
+Entries are comma-separated; `anthropic` is always shaped and does not need listing.
+A value that is not a provider name fails fast rather than being skipped, because a skipped typo is invisible until a request fails.
+
+Run `/anthropic-auth:status` to see which providers are shaped.
+An Anthropic OAuth provider left out of that list runs on Pi's built-in transport, which sends no billing header — see [A provider fails with "You're out of extra usage"](#a-provider-fails-with-youre-out-of-extra-usage).
+
 ## Troubleshooting
 
 ### Verify the extension is loaded
@@ -56,10 +71,12 @@ pi-anthropic-auth diagnostics
   version: 0.6.5
   module:  /root/.pi/agent/.../src/index.ts
   built-in Anthropic transport: resolved
+  shaped providers: anthropic
 ```
 
 The `module` line shows which copy of the extension loaded.
 If the command is not found, the extension is not loaded at all.
+The `shaped providers` line lists every provider registered with the OAuth wrapper.
 
 ### Pi warns about extra usage on every OAuth session
 
@@ -90,6 +107,22 @@ Turn it off yourself with `/settings` → Warnings → "Anthropic extra usage", 
 ```
 
 Because the warning concerns real billing on paths this extension does not cover, that call is yours to make; the extension will never write the setting for you.
+
+### A provider fails with "You're out of extra usage"
+
+```text
+400 invalid_request_error: You're out of extra usage. Ask your workspace admin to
+add more so you can keep going.
+```
+
+On a request that carries a real agent prompt, this usually means the request reached Anthropic without the Claude Code billing header, so it was billed as third-party API usage instead of against the subscription.
+The same account succeeds on a provider this extension shapes.
+
+Check `/anthropic-auth:status` first.
+If the failing provider is not in its `shaped providers` line, add it to `PI_ANTHROPIC_AUTH_PROVIDERS` — see [Additional Anthropic subscriptions](#additional-anthropic-subscriptions).
+
+If the provider *is* shaped, the request took a call path this extension cannot reach: background agents running their own agent loop are the known gap ([docs/architecture.md](docs/architecture.md)).
+A plan that is genuinely out of usage fails the same way on every path, including Claude Code itself.
 
 ### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
 

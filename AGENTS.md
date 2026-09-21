@@ -38,6 +38,7 @@ The current implementation does the following:
 4. Sanitizes Pi's default prompt section by section during the same shaping pass — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools` — while preserving every other section byte-identically (tool snippets, guidelines, and appended extension content)
 5. Applies the same section rules to the mid-conversation system messages Pi 0.86.0 re-sends on models that accept them (Issue #69)
 6. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
+7. Registers the same wrapper on any extra provider named in `PI_ANTHROPIC_AUTH_PROVIDERS`, for Anthropic OAuth subscriptions another extension registers under its own name (pi-multi-pass's `anthropic-2`, Issue #70)
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and only injects an `onPayload` shaping step.
@@ -72,7 +73,7 @@ The main extension entrypoint is `src/index.ts`.
 
 It uses one Pi extension seam:
 
-1. `pi.registerProvider("anthropic", { api: "anthropic-messages", streamSimple })`
+1. `pi.registerProvider("anthropic", { api: "anthropic-messages", streamSimple })`, plus the same call for each provider named in `PI_ANTHROPIC_AUTH_PROVIDERS`
 
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, system prompt shaping).
@@ -458,6 +459,18 @@ Built-in compaction (`completeSimple`) issues Anthropic requests through the sam
 Third-party background agents calling pi-ai's bare `streamSimple` do not reach our wrapper at all on pi >=0.80.8, and cannot be covered from this extension (Issue #46).
 Any shaping that must apply to every OAuth request `provider-composer` sees belongs in the transport wrapper, not in `before_provider_request`.
 `test/index-registration.test.ts` pins the boundary: registering the extension must leave the built-in `anthropic-messages` api-registry entry untouched.
+
+### Shaping Is Scoped By Provider Name, Not By Api
+
+`provider-composer`'s `streamWith` looks up the config stored for the request's provider, so only the provider names this extension registers are shaped.
+An Anthropic OAuth subscription another extension registers under a different name (pi-multi-pass's `anthropic-2`) falls through to pi's built-in transport: Claude Code user-agent, `x-app: cli` and the OAuth betas, but no billing header, so Anthropic bills it as third-party API usage and rejects a real agent prompt with the misleading `You're out of extra usage.` 400 (Issue #70).
+
+The billing header is the deciding factor; the prompt fingerprint is not.
+A 28 KB pi prompt with the preamble sanitized but no billing header still fails, and the same prompt with the header passes (measurements in `docs/architecture.md`).
+Small prompts pass either way, so a trivial repro is a false green — reproduce with a real project prompt.
+
+Extra providers are registered but never unregistered first: `unregisterProvider` drops the owning extension's models and `oauth`.
+The merge contract is what makes a bare `{ api, streamSimple }` registration safe in either load order.
 
 ### Claude Code Version Floors Gate New Models
 

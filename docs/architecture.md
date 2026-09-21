@@ -77,6 +77,32 @@ A loader-aliased specifier is required because `import.meta.resolve` and non-ali
 The #35 seam concern is resolved in practice: the loader aliases `/compat` in both modes and pi ships this delegation pattern as an official example.
 The residual watch is the eventual `compat` removal, at which point `anthropicMessagesApi()` relocates off the compat entrypoint (Issue #35).
 
+## Provider-name scope
+
+`streamWith` reads the config stored for the request's **provider**, so the wrapper covers exactly the provider names this extension registers.
+`anthropic` is always one of them.
+
+That is not the only Anthropic OAuth provider a session can have.
+[pi-multi-pass](https://github.com/hjanuschka/pi-multi-pass) registers each additional Claude subscription as its own provider (`anthropic-2`, `anthropic-3`, ...) with `api: "anthropic-messages"` and no `streamSimple`, so requests on those providers fall through to the built-in transport.
+That transport emits the Claude Code user-agent, `x-app: cli`, and the OAuth betas, but not the billing header, which is what Anthropic reads to bill a request against the subscription.
+Measured on 2026-09-21 against `anthropic-2` on a healthy Claude Max seat, `claude-opus-5`, with pi 0.86.1's 28 KB agent system prompt:
+
+| request | result |
+| --- | --- |
+| built-in transport, no billing header | 400 `You're out of extra usage.` |
+| same prompt, billing header prepended | 200 |
+| preamble sanitized, still no billing header | 400 |
+| minimal prompt, billing header prepended | 200 |
+
+The billing header is the deciding factor, not prompt size or the pi fingerprint; small prompts pass either way, which is why the failure only shows up in real sessions.
+
+Pi exposes no API that enumerates extension-registered providers, and guessing names would register providers a user never asked for, so the extra names are declared explicitly in `PI_ANTHROPIC_AUTH_PROVIDERS` and resolved by `resolveExtraProviderNames` (Issue #70).
+Each is registered with the same wrapper instance; the wrapper is stateless and reads the OAuth token off each call's options, so one instance serves every provider.
+
+Those providers are registered but never *un*registered first.
+`anthropic` is unregistered defensively to clear a stale merged `oauth` (Issue #43), but an extra provider is owned by another extension, and `unregisterProvider` would drop that owner's models and `oauth` with it.
+The merge contract makes the bare re-registration safe in either load order: `{ api, streamSimple }` overlays only those two keys, and the owner's later registration leaves `streamSimple` in place because it does not define that key.
+
 ## OAuth gating
 
 Shaping is gated on the resolved API key, available to the transport as `options.apiKey`.
@@ -201,7 +227,7 @@ Upstream draws the same distinction: `agent-session.ts` branches on `this.agent.
 
 ## Related files
 
-- `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the `streamSimple` wrapper and the `/anthropic-auth:status` diagnostics command.
+- `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the `streamSimple` wrapper on `anthropic` plus every provider named in `PI_ANTHROPIC_AUTH_PROVIDERS`, and the `/anthropic-auth:status` diagnostics command.
 - `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, reading the `anthropicMessagesApi()` factory (Issue #28, Issue #31, Issue #35, Issue #54); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
