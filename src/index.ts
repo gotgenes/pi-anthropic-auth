@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { resolveExtraProviderNames } from "./constants";
 import {
   createStatusCommandHandler,
   type ExtensionDiagnostics,
@@ -61,11 +62,20 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   const builtinAnthropicStreamSimple =
     await resolveBuiltinAnthropicStreamSimple();
 
+  const extraProviders = resolveExtraProviderNames();
+
   const diagnostics: ExtensionDiagnostics = {
     version: pkg.default.version,
     modulePath: fileURLToPath(import.meta.url),
     transportResolved: true,
+    shapedProviders: ["anthropic", ...extraProviders],
   };
+
+  // One wrapper instance serves every provider: it closes over the resolved
+  // delegate only, and reads the OAuth token off each call's own options.
+  const streamSimple = createAnthropicOAuthStreamSimple(
+    builtinAnthropicStreamSimple,
+  );
 
   // Defensively clear any prior `anthropic` registration before installing our
   // wrapper.  Pi's `registerProvider` MERGES each registration's defined values
@@ -84,10 +94,29 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   pi.unregisterProvider("anthropic");
   pi.registerProvider("anthropic", {
     api: "anthropic-messages",
-    streamSimple: createAnthropicOAuthStreamSimple(
-      builtinAnthropicStreamSimple,
-    ),
+    streamSimple,
   });
+
+  // Additional Anthropic OAuth providers another extension registered under
+  // its own name (pi-multi-pass's `anthropic-2`, ...).  Pi keys an extension's
+  // `streamSimple` by provider name, so those providers otherwise run on the
+  // bare built-in transport: Claude Code headers but no billing header, which
+  // Anthropic bills as third-party API usage and rejects with a misleading
+  // 400 "You're out of extra usage."
+  //
+  // Unlike `anthropic`, these are NOT unregistered first.  They are owned by
+  // the other extension, and `unregisterProvider` drops that owner's models
+  // and `oauth` along with the registration.  The merge contract is what makes
+  // the bare re-registration safe in either load order: registering
+  // `{ api, streamSimple }` overlays only those two keys, and a later
+  // registration from the owning extension leaves our `streamSimple` in place
+  // because it does not define that key.
+  for (const provider of extraProviders) {
+    pi.registerProvider(provider, {
+      api: "anthropic-messages",
+      streamSimple,
+    });
+  }
 
   // The /anthropic-auth:status command surfaces the loaded version, module
   // path, and transport resolution result so users can confirm the extension

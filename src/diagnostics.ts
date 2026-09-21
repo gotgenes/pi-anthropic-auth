@@ -13,6 +13,15 @@ export interface ExtensionDiagnostics {
    * failure aborts extension load before `registerCommand` runs.
    */
   transportResolved: boolean;
+  /**
+   * Provider names registered with the OAuth shaping wrapper: always
+   * `anthropic`, plus any names resolved from `PI_ANTHROPIC_AUTH_PROVIDERS`.
+   *
+   * Surfacing it is what makes a misconfigured extra provider visible: an
+   * unshaped provider fails with Anthropic's misleading "out of extra usage"
+   * 400, which says nothing about which provider was in the request.
+   */
+  shapedProviders: string[];
 }
 
 /**
@@ -42,6 +51,7 @@ export function formatDiagnosticsReport(d: ExtensionDiagnostics): string {
     `  version: ${d.version}`,
     `  module:  ${d.modulePath}`,
     `  built-in Anthropic transport: ${transport}`,
+    `  shaped providers: ${d.shapedProviders.join(", ")}`,
   ].join("\n");
 }
 

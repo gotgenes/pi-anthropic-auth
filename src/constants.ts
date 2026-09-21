@@ -96,6 +96,73 @@ export function resolveClaudeCodeVersion(
   return configuredVersion;
 }
 
+// ---------------------------------------------------------------------------
+// Extra shaped providers
+//
+// Pi applies an extension's `streamSimple` per provider *name*, so wrapping
+// the built-in `anthropic` provider leaves any other Anthropic OAuth provider
+// on Pi's bare built-in transport.  Extensions that register additional
+// Claude subscriptions under their own names -- pi-multi-pass registers
+// `anthropic-2`, `anthropic-3`, ... -- therefore send OAuth requests with no
+// billing header and no prompt shaping, which Anthropic answers with a
+// 400 "You're out of extra usage." once the prompt is a real agent prompt.
+//
+// There is no host API that enumerates extension-registered providers, so the
+// extra names are named explicitly by the user.
+// ---------------------------------------------------------------------------
+
+/**
+ * Environment variable naming additional providers to shape.
+ *
+ * Comma-separated provider names, for example
+ * `PI_ANTHROPIC_AUTH_PROVIDERS=anthropic-2,anthropic-3`.  Each named provider
+ * is registered with the same OAuth transport wrapper as `anthropic`, so its
+ * requests are shaped whenever they carry an `sk-ant-oat` token.
+ */
+export const EXTRA_PROVIDERS_ENV = "PI_ANTHROPIC_AUTH_PROVIDERS";
+
+/**
+ * Provider names Pi accepts: the shape its own providers and the
+ * `provider/model` model selector use.
+ */
+const PROVIDER_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+
+/**
+ * Resolves the extra provider names to wrap alongside `anthropic`.
+ *
+ * Entries are trimmed, de-duplicated, and `anthropic` is dropped because it is
+ * always wrapped.  A malformed entry throws rather than being skipped: a typo
+ * would otherwise leave that provider silently unshaped, which is the exact
+ * failure this setting exists to fix.
+ */
+export function resolveExtraProviderNames(
+  environment: NodeJS.ProcessEnv = process.env,
+): string[] {
+  const configured = environment[EXTRA_PROVIDERS_ENV]?.trim();
+  if (!configured) {
+    return [];
+  }
+
+  const names: string[] = [];
+  for (const entry of configured.split(",")) {
+    const name = entry.trim();
+    if (name.length === 0) {
+      continue;
+    }
+    if (!PROVIDER_NAME_PATTERN.test(name)) {
+      throw new Error(
+        `${EXTRA_PROVIDERS_ENV} entries must be provider names, received ${JSON.stringify(name)}`,
+      );
+    }
+    if (name === "anthropic" || names.includes(name)) {
+      continue;
+    }
+    names.push(name);
+  }
+
+  return names;
+}
+
 /** Salt used in the billing header suffix hash. */
 export const BILLING_HEADER_SALT = "59cf53e54c78";
 

@@ -12,6 +12,7 @@ const SAMPLE: ExtensionDiagnostics = {
   modulePath:
     "/root/.pi/agent/node_modules/@gotgenes/pi-anthropic-auth/src/index.ts",
   transportResolved: true,
+  shapedProviders: ["anthropic"],
 };
 
 describe("createStatusCommandHandler", () => {
@@ -77,6 +78,14 @@ describe("formatDiagnosticsReport", () => {
   test("includes a transport-resolved marker when resolved", () => {
     const report = formatDiagnosticsReport(SAMPLE);
     assert.match(report, /resolved/i);
+  });
+
+  test("lists every shaped provider", () => {
+    const report = formatDiagnosticsReport({
+      ...SAMPLE,
+      shapedProviders: ["anthropic", "anthropic-2"],
+    });
+    assert.match(report, /anthropic, anthropic-2/);
   });
 
   test("reports transport as unresolved when false", () => {

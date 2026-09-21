@@ -31,6 +31,16 @@ const MODEL = {
   provider: "anthropic",
 } as unknown as Model<"anthropic-messages">;
 
+/**
+ * A model on an extra Anthropic subscription another extension registered,
+ * the way pi-multi-pass registers `anthropic-2` (Issue #70).
+ */
+const EXTRA_PROVIDER_MODEL = {
+  id: "claude-haiku-4-5",
+  api: "anthropic-messages",
+  provider: "anthropic-2",
+} as unknown as Model<"anthropic-messages">;
+
 // `normalizeContext` is the only producer of the brand pi-ai's stream
 // signature requires, so the fake is minted rather than cast.
 const CONTEXT = normalizeContext({ messages: [] });
@@ -133,6 +143,7 @@ function createFakePi(): {
   pi: ExtensionAPI;
   commands: Map<string, CapturedCommand>;
   calls: string[];
+  registrations: Map<string, ProviderConfig>;
   dispatch: (
     model: Model<Api>,
     context: TranscriptContext,
@@ -143,15 +154,19 @@ function createFakePi(): {
   // Ordered log of provider lifecycle calls so tests can assert that the
   // defensive `unregisterProvider` runs before `registerProvider`.
   const calls: string[] = [];
-  let registered: ProviderConfig | undefined;
+  // Keyed by provider name, because pi stores one `ProviderConfig` per
+  // provider and `provider-composer` looks it up by the request's provider.
+  const registrations = new Map<string, ProviderConfig>();
   const pi: ExtensionAPI = {
     unregisterProvider(name: string): void {
       calls.push(`unregister:${name}`);
-      registered = undefined;
+      registrations.delete(name);
     },
     registerProvider(name: string, config: ProviderConfig): void {
       calls.push(`register:${name}`);
-      registered = config;
+      // Mirrors pi's merge contract: defined values overlay the previous
+      // registration, undefined keys are preserved.
+      registrations.set(name, { ...registrations.get(name), ...config });
     },
     registerCommand(
       name: string,
@@ -166,15 +181,16 @@ function createFakePi(): {
     context: TranscriptContext,
     options?: SimpleStreamOptions,
   ): AssistantMessageEventStream => {
+    const registered = registrations.get(model.provider);
     if (!registered?.streamSimple || model.api !== registered.api) {
       throw new Error(
-        `no extension streamSimple registered for api "${model.api}"`,
+        `no extension streamSimple registered for provider "${model.provider}"`,
       );
     }
     return registered.streamSimple(model, context, options);
   };
 
-  return { pi, commands, calls, dispatch };
+  return { pi, commands, calls, registrations, dispatch };
 }
 
 function samplePayload() {
@@ -292,6 +308,95 @@ describe("index registration: wrapper shapes every request on the provider-compo
   });
 });
 
+// pi keys an extension's `streamSimple` by provider name, so an Anthropic
+// OAuth subscription another extension registers under its own name
+// (pi-multi-pass's `anthropic-2`) runs on the bare built-in transport unless
+// this extension wraps that name too (Issue #70).
+describe("index registration: extra providers named by PI_ANTHROPIC_AUTH_PROVIDERS (#70)", () => {
+  beforeEach(() => {
+    resetApiProviders();
+    delegateCalls.length = 0;
+    registryStubCalls = 0;
+    builtinTransportMock.mockClear();
+    vi.unstubAllEnvs();
+  });
+
+  test("shapes requests on a provider another extension registered", async () => {
+    vi.stubEnv("PI_ANTHROPIC_AUTH_PROVIDERS", "anthropic-2");
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+      resetApiProviders();
+    });
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, dispatch } = createFakePi();
+    await registerExtension(pi);
+
+    dispatch(EXTRA_PROVIDER_MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+
+    assert.equal(
+      delegateCalls.length,
+      1,
+      "the extra provider's request must reach the built-in transport delegate",
+    );
+    assert.equal(
+      await delegateCallWasShaped(delegateCalls[0]),
+      true,
+      "an OAuth request on the extra provider must be shaped with the billing header",
+    );
+  });
+
+  test("never unregisters an extra provider, so its owner's models and oauth survive", async () => {
+    vi.stubEnv("PI_ANTHROPIC_AUTH_PROVIDERS", "anthropic-2");
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+      resetApiProviders();
+    });
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, calls, registrations } = createFakePi();
+    // The owning extension registered first, as pi-multi-pass does when it
+    // loads ahead of this extension.
+    pi.registerProvider("anthropic-2", {
+      api: "anthropic-messages",
+      oauth: { name: "Anthropic #2" } as never,
+      models: [{ id: "claude-haiku-4-5" }] as never,
+    });
+    calls.length = 0;
+
+    await registerExtension(pi);
+
+    assert.equal(
+      calls.includes("unregister:anthropic-2"),
+      false,
+      "unregistering a provider owned by another extension would drop its models and oauth",
+    );
+    const merged = registrations.get("anthropic-2");
+    assert.ok(merged, "the owner's registration must still exist");
+    assert.ok(merged.oauth, "the owner's oauth registration must survive");
+    assert.ok(merged.models, "the owner's models must survive");
+    assert.equal(
+      typeof merged.streamSimple,
+      "function",
+      "the shaping wrapper must be merged onto the owner's registration",
+    );
+  });
+
+  test("leaves extra providers unshaped when the variable is unset", async () => {
+    onTestFinished(() => resetApiProviders());
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, calls } = createFakePi();
+    await registerExtension(pi);
+
+    assert.deepEqual(
+      calls,
+      ["unregister:anthropic", "register:anthropic"],
+      "no extra provider may be registered without the user naming it",
+    );
+  });
+});
+
 // Registering an api-registry override would place this extension in the
 // dispatch path of every `anthropic-messages` provider — not just `anthropic` —
 // because the registry is keyed by api and `registerApiProvider` is a
@@ -370,5 +475,28 @@ describe("index registration: diagnostics command", () => {
     assert.match(report, /src[/\\]index\.ts/);
     // Transport resolved marker
     assert.match(report, /resolved/i);
+    // Shaped provider list
+    assert.match(report, /anthropic/);
+  });
+
+  test("anthropic-auth:status handler report lists extra shaped providers", async () => {
+    vi.stubEnv("PI_ANTHROPIC_AUTH_PROVIDERS", "anthropic-2");
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    onTestFinished(() => {
+      consoleSpy.mockRestore();
+      vi.unstubAllEnvs();
+    });
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, commands } = createFakePi();
+    await registerExtension(pi);
+
+    const command = commands.get("anthropic-auth:status");
+    assert.ok(command, "command must be registered before invoking handler");
+
+    await command.handler("", { hasUI: false, ui: { notify: vi.fn() } });
+
+    const [report] = consoleSpy.mock.calls[0];
+    assert.match(report, /anthropic, anthropic-2/);
   });
 });
