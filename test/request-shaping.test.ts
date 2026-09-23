@@ -489,6 +489,44 @@ test("keeps non-text blocks when a system message's only text block is dropped",
   ]);
 });
 
+test("keeps a per-message effort system message that has no content", () => {
+  // Pi 0.87.1 carries the requested effort on managed-effort models
+  // (claude-opus-5-5, claude-opus-5, claude-fable-5-1) as content-less
+  // system messages; the top-level `output_config` is pinned to "high".
+  const payload = createOAuthPayload({
+    output_config: { effort: "high" },
+    messages: [
+      { role: "user", content: [{ type: "text", text: "First question." }] },
+      { role: "system", content: [], output_config: { effort: "medium" } },
+      { role: "assistant", content: [{ type: "text", text: "First answer." }] },
+      { role: "user", content: [{ type: "text", text: "Second question." }] },
+      { role: "system", content: [], output_config: { effort: "low" } },
+    ],
+  });
+
+  assert.deepEqual(shapedMessages(payload), payload.messages);
+});
+
+test("keeps effort on a system message whose only text block is dropped", () => {
+  const payload = payloadWithSystemMessage([
+    { type: "text", text: sectionUpdate("docs", PI_DOCS_UPDATE_BODY) },
+  ]);
+  const messages = shapedMessages({
+    ...payload,
+    messages: payload.messages.map((message) =>
+      message.role === "system"
+        ? { ...message, output_config: { effort: "low" } }
+        : message,
+    ),
+  });
+
+  assert.deepEqual(messages[1], {
+    role: "system",
+    content: [],
+    output_config: { effort: "low" },
+  });
+});
+
 test("drops only the docs part of a multi-section update", () => {
   const toolsUpdate = sectionUpdate("tools", "- read: Read file contents");
   const messages = shapedMessages(

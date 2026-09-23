@@ -106,7 +106,8 @@ function prependBillingHeader(
  * A message whose text blocks all shape away is dropped, since Anthropic
  * rejects an empty `content` array.  Non-text blocks — the `tool_addition`
  * and `tool_removal` entries a section update can carry — pass through, and
- * keep their message alive.
+ * keep their message alive.  So does `output_config`: Pi carries the
+ * requested effort for managed-effort models in content-less system messages.
  */
 function shapeSystemRoleMessages(messages: MessageParam[]): MessageParam[] {
   return messages.flatMap((message) => {
@@ -115,7 +116,9 @@ function shapeSystemRoleMessages(messages: MessageParam[]): MessageParam[] {
     }
 
     const content = message.content.flatMap(shapeSystemMessageBlock);
-    return content.length > 0 ? [{ ...message, content }] : [];
+    return content.length > 0 || message.output_config !== undefined
+      ? [{ ...message, content }]
+      : [];
   });
 }
 
