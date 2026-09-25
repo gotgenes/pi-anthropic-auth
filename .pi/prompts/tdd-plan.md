@@ -19,7 +19,7 @@ Before locating or reading the plan, make sure the working tree is up to date wi
 
 - If `$1` looks like a path, use it.
 - If `$1` is a number, find `docs/plans/NNNN-*.md` matching that integer (issue number or plan number).
-- Otherwise, use the newest file in `docs/plans/` (by mtime).
+- Otherwise, use the newest file in `docs/plans/` (by mtime); if its issue is closed (`gh issue view N --json state -q .state`), stop and ask which plan to run.
 
 Read the plan in full before doing anything else.
 If "TDD Order" is missing or empty, stop and report — re-run `/plan-issue` first.

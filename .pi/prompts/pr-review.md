@@ -179,7 +179,10 @@ Then hand off based on the decision:
 
 1. **Simplified design** — commit the triage note (`docs(pr-review): triage PR #$1 → adopt-with-simplified-design`), then tell the operator to run `/plan-issue #<issue>` — the issue number the note is keyed to, not `#$1`.
    `/plan-issue` reads this retro note as prior context: the direction is already decided here, so its Decide gate is satisfied — it should plan around the recorded decision rather than re-litigate it.
-2. **Adopt as-is** — produce a focused review checklist (correctness, convention fit, test coverage, behavior-change/breaking call-out, attribution) and either request changes on the PR or proceed to merge per the operator's call.
+2. **Adopt as-is** — produce a focused review checklist (correctness, convention fit, test coverage, behavior-change/breaking call-out, attribution).
+   With no follow-up work, request changes or merge per the operator's call.
+   With follow-up commits, commit the triage note and hand off to `/plan-issue #<issue>` as in direction 1.
+   The contributor's commit is rebased onto `main` with authorship kept, lands by `/ship-issue`'s fast-forward push, and the PR is closed with credit — never force-push the contributor's branch (Refs #79).
 3. **Decline / defer** — commit the triage note, then close the PR with a comment that credits `@<login>`, explains the reasoning, and (if the problem is real) points at a tracked follow-up.
 
 Commit the triage note before stopping: `git add <retro-file> && git commit -m "docs(pr-review): triage PR #$1 → <decision>"` (e.g. `adopt-as-is`, `decline`), matching the form in direction 1.
