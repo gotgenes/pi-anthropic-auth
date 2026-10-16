@@ -71,7 +71,7 @@ describe("pickAnthropicStreamSimple", () => {
 
   // Pins the Issue #54 decision: the deprecated `streamSimpleAnthropic` alias
   // is deliberately no longer consulted.  `anthropicMessagesApi` has shipped
-  // from the compat entrypoint since pi v0.80.0, below the `>=0.80.8` peer
+  // from the compat entrypoint since pi v0.80.0, below the `>=0.86.0` peer
   // floor, so a host offering only the alias cannot exist — and reinstating
   // the fallback would silently bind the delegate to a deprecated handle.
   test("throws when only the deprecated streamSimpleAnthropic alias is present", () => {
