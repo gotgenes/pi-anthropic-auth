@@ -559,6 +559,7 @@ Anthropic rejects OAuth requests for a newly released model when the reported Cl
 Claude Fable 5.1 (`claude-fable-5-1`) requires >= 2.1.251; the 2.1.206 pin blocked it entirely (Issue #60).
 Claude Opus 5.5 (`claude-opus-5-5`, added to pi-ai's catalog in 0.87.1) requires >= 2.1.280; the 2.1.260 pin blocked it entirely (Issue #74).
 Claude Sonnet 5.5 (`claude-sonnet-5-5`, added in pi-ai 0.99.0) accepts 2.1.280 with no rejection and no recovery retry (measured live on pi 0.99.1); that bounds its floor, if any, at or below 2.1.280 without naming one.
+Claude Haiku 5.5 (`claude-haiku-5-5`, added in pi-ai 1.1.0) likewise accepts 2.1.280 with no rejection and no recovery retry (measured live on pi 1.3.0).
 
 Two different version signals reach Anthropic:
 
