@@ -33,7 +33,7 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 
 - OAuth Anthropic payload shaping prepends an `x-anthropic-billing-header` system block.
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
-- Content-less `role: "system"` messages carrying `output_config` must survive system-message shaping: on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`; as of pi 0.99.1: Fable 5.1, Opus 5, Opus 5.5, Sonnet 5.5) they are the only carrier of the requested effort, since Pi pins the top-level effort to `"high"`.
+- Content-less `role: "system"` messages carrying `output_config` must survive system-message shaping: on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) they are the only carrier of the requested effort, since Pi pins the top-level effort to `"high"`.
   Dropping them errors nowhere and silently runs every request at `"high"`; Anthropic accepts them with `content: []` (verified live on pi 0.87.1, PR #79).
 - Assistant block ordering must *not* be normalized: measured 2026-09-20, Anthropic returns 200 for `[tool_use..., text]` and `[text, tool_use, text, tool_use]` on sonnet-4-5, haiku-4-5, sonnet-5, fable-5, and opus-4-8.
   The split that used to rewrite those turns corrupted signed `thinking` blocks and was removed (Issue #66).

@@ -128,7 +128,7 @@ This replaces the previous, brittle approach of sniffing system-prompt markers a
 For OAuth requests, the injected `onPayload` runs `shapeAnthropicOAuthPayload`, which:
 
 1. sanitizes Pi's default prompt section by section (de-fingerprinting) — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools`, while preserving every other section byte-identically,
-2. applies those same section rules to the mid-conversation `role: "system"` messages Pi 0.86.0 re-sends on models that accept them (Issue #69) — a message the rules empty is dropped unless it carries `output_config`, because on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`; as of pi 0.99.1: Fable 5.1, Opus 5, Opus 5.5, Sonnet 5.5) Pi pins the top-level effort to `"high"` and sends the requested effort as content-less system messages, which dropping would silently discard (PR #79), and
+2. applies those same section rules to the mid-conversation `role: "system"` messages Pi 0.86.0 re-sends on models that accept them (Issue #69) — a message the rules empty is dropped unless it carries `output_config`, because on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) Pi pins the top-level effort to `"high"` and sends the requested effort as content-less system messages, which dropping would silently discard (PR #79), and
 3. prepends an `x-anthropic-billing-header` system block (without `cache_control`).
 
 Assistant messages pass through unmodified; see "Assistant block ordering is not normalized" below.
