@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.4.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.2...v3.4.3) (2026-10-16)
+
+
+### Documentation
+
+* point carriesEffort at the compat flag instead of a model list ([959c859](https://github.com/gotgenes/pi-anthropic-auth/commit/959c859a8666c811af09c121f54659d047361c1a))
+* correct stale >=0.80.8 peer-floor references to >=0.86.0 ([ce3e2be](https://github.com/gotgenes/pi-anthropic-auth/commit/ce3e2be12953eec38ec69e043a562b858b0ff0aa))
+* point managed-effort model lists at the compat flag and drift suite ([f222b28](https://github.com/gotgenes/pi-anthropic-auth/commit/f222b281890d39fd4fbd80e8184f179fa92488d1))
+
+### Miscellaneous Chores
+
+* bump pi-ai and pi-coding-agent devDependencies to 1.3.0 ([b3884c8](https://github.com/gotgenes/pi-anthropic-auth/commit/b3884c8958b362f0e39ec446ebe29c377230d94d))
+
 ## [3.4.2](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.1...v3.4.2) (2026-10-01)
 
 
