@@ -95,7 +95,7 @@ export function isAnthropicOAuthToken(
  *   whatever another extension registered there last.  On pi <=0.80.7 it would
  *   also have recursed, because `registerProvider` bridged this wrapper into
  *   that slot.  The related 0.79.x lazy-registration clobber is precluded by
- *   the >=0.80.8 peer floor (Issue #28, Issue #40).
+ *   the >=0.86.0 peer floor (Issue #28, Issue #40).
  * @param learnedFloor The Claude Code version floor learned from Anthropic's
  *   `claude_code_version_too_old` rejections.  It is owned here, once per
  *   registered wrapper, because it must outlive the per-request billing

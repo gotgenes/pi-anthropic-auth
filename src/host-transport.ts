@@ -35,7 +35,7 @@ type AnthropicMessagesApi = () => { streamSimple?: unknown };
  * Reads the forward primitive `anthropicMessagesApi().streamSimple` — the
  * non-deprecated public factory pi's own `custom-provider-gitlab-duo` example
  * delegates through — and nothing else.  The factory has shipped from the
- * compat entrypoint since pi v0.80.0, below this package's `>=0.80.8` peer
+ * compat entrypoint since pi v0.80.0, below this package's `>=0.86.0` peer
  * floor, so no supported host needs the deprecated `streamSimpleAnthropic`
  * alias as a fallback (Issue #54).
  * We read the delegate directly off the namespace rather than from the api

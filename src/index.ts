@@ -61,7 +61,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // registry we do not participate in would bind the delegate to whatever
   // another extension registered there last.  On pi <=0.80.7 it would also
   // have recursed, since the bridge put this wrapper in that slot.  The
-  // related 0.79.x lazy-registration clobber is precluded by the >=0.80.8
+  // related 0.79.x lazy-registration clobber is precluded by the >=0.86.0
   // peer floor (Issue #28, Issue #40).
   //
   // The factory is `async` because resolving the host transport performs a
