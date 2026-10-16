@@ -125,8 +125,9 @@ function shapeSystemRoleMessages(messages: MessageParam[]): MessageParam[] {
  * Whether a system message carries a per-message effort level.
  *
  * On models pi-ai flags `compat.supportsMidConvoEffort` (the source of truth;
- * as of pi 0.99.1: Fable 5.1, Opus 5, Opus 5.5, Sonnet 5.5), Pi pins the top-level `output_config.effort` to `"high"` and sends the
- * requested effort as content-less `role: "system"` messages.  Anthropic
+ * `test/managed-effort-drift.test.ts` enumerates them from the installed
+ * catalog), Pi pins the top-level `output_config.effort` to `"high"` and sends
+ * the requested effort as content-less `role: "system"` messages.  Anthropic
  * accepts them with an empty `content` array, and dropping them silently runs
  * every request at `"high"` (PR #79).
  */
