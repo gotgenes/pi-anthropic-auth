@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.4.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.3...v3.4.4) (2026-11-01)
+
+
+### Documentation
+
+* explain why the billing header reports sdk-cli ([3c21a83](https://github.com/gotgenes/pi-anthropic-auth/commit/3c21a83e53389a285919d235dec92fd308b2a20a)), closes [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83)
+* explain why Pi uses the 5-hour window faster than Claude Code ([02828fd](https://github.com/gotgenes/pi-anthropic-auth/commit/02828fdd24582ab332281edb9783adf128b189d4)), closes [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83)
+* attribute the sdk-* weighting claim to its upstream report ([7fb93d9](https://github.com/gotgenes/pi-anthropic-auth/commit/7fb93d90cc293a3f089c7e79854dda63777bcb27)), closes [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83)
+* soften the sdk-cli entrypoint wording ([58abc25](https://github.com/gotgenes/pi-anthropic-auth/commit/58abc25a820f868285724f8ac41ad88c2913c0b3)), closes [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83)
+
 ## [3.4.3](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.2...v3.4.3) (2026-10-16)
 
 
