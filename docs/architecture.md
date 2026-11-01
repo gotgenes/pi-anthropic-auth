@@ -129,7 +129,7 @@ For OAuth requests, the injected `onPayload` runs `shapeAnthropicOAuthPayload`, 
 
 1. sanitizes Pi's default prompt section by section (de-fingerprinting) — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools`, while preserving every other section byte-identically,
 2. applies those same section rules to the mid-conversation `role: "system"` messages Pi 0.86.0 re-sends on models that accept them (Issue #69) — a message the rules empty is dropped unless it carries `output_config`, because on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) Pi pins the top-level effort to `"high"` and sends the requested effort as content-less system messages, which dropping would silently discard (PR #79), and
-3. prepends an `x-anthropic-billing-header` system block (without `cache_control`).
+3. prepends an `x-anthropic-billing-header` system block (without `cache_control`) that reports `cc_entrypoint=sdk-cli`, Claude Code's own print-mode label, and never another Anthropic client's label such as the interactive app's `cli` (Issue #83).
 
 Assistant messages pass through unmodified; see "Assistant block ordering is not normalized" below.
 

@@ -33,6 +33,8 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 
 - OAuth Anthropic payload shaping prepends an `x-anthropic-billing-header` system block.
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
+- The billing block reports `cc_entrypoint=sdk-cli`, the label Claude Code sends from `claude -p`; interactive `claude` sends `cli` (both captured from Claude Code 2.1.309 against a local server).
+  [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) measured `sdk-*` labels weighted about 2x against the 5-hour window, with the weekly limit apparently unaffected and Anthropic silent on intent; a Pi-specific label is deferred until Anthropic answers (Issue #83).
 - Content-less `role: "system"` messages carrying `output_config` must survive system-message shaping: on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) they are the only carrier of the requested effort, since Pi pins the top-level effort to `"high"`.
   Dropping them errors nowhere and silently runs every request at `"high"`; Anthropic accepts them with `content: []` (verified live on pi 0.87.1, PR #79).
 - Assistant block ordering must *not* be normalized: measured 2026-09-20, Anthropic returns 200 for `[tool_use..., text]` and `[text, tool_use, text, tool_use]` on sonnet-4-5, haiku-4-5, sonnet-5, fable-5, and opus-4-8.
@@ -164,6 +166,7 @@ Do not "fix" that by calling `registerApiProvider` — the registry is keyed by 
 - wholesale OpenCode debranding logic
 - `mcp_` tool prefix transport hacks
 - reimplementing Pi's Anthropic transport (the wrapper delegates to the built-in transport resolved by `src/host-transport.ts`)
+- reporting another Anthropic client's `cc_entrypoint` (`cli`, `claude-desktop`, `claude-vscode`), by default or as an option: it misrepresents the caller to change how Anthropic meters usage (Issue #83)
 - assistant block reordering "to satisfy Anthropic" — measured unnecessary and removed in Issue #66; re-add only against a fresh live rejection, never against a claim ported from another project
 
 ## Useful References

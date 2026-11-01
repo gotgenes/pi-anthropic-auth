@@ -53,6 +53,7 @@ export function buildExpectedBillingHeader(
   return [
     "x-anthropic-billing-header:",
     `cc_version=${claudeCodeVersion}.${suffix};`,
+    // Deliberate pin, not a stale fixture: see CLAUDE_CODE_ENTRYPOINT (Issue #83).
     "cc_entrypoint=sdk-cli;",
     `cch=${cch};`,
   ].join(" ");
