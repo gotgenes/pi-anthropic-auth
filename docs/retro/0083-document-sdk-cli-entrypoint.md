@@ -26,3 +26,24 @@ Plan committed as `docs/plans/0083-document-sdk-cli-entrypoint.md`; execute with
 - Friction: a `strings` scan of the 268 MB `claude` binary timed out at 120 s; the live capture was the faster instrument.
 - `AGENTS.md` left unchanged by its admission test; the rule goes in the `anthropic` skill's "Avoid by default".
 - Tidy-First assessor not dispatched: the only `src/`/`test/` edits are comments.
+
+## Stage: Planning — revision (2026-11-01T05:06:04Z)
+
+### Session summary
+
+The operator surfaced anthropics/claude-code#97074, which refuted two premises of the first plan, so the plan was rewritten (`5d62ecc`).
+The decision is unchanged in effect (keep `sdk-cli`, docs only) but now cites #97074 as an open Anthropic-side question and defers a truthful Pi label until Anthropic answers.
+
+### Observations
+
+- Refuted premises: the first plan said the gap reflected Anthropic deliberately metering programmatic use, and that `sdk-cli` was the accurate label for Pi.
+  #97074 shows the weighting attaches to the `sdk-*` labels (headless `claude-vscode` and arbitrary custom labels meter at the normal rate), and `sdk-cli` is Claude Code's print-mode label, borrowed.
+  Lesson: search the upstream product's tracker (`anthropics/claude-code`) for the mechanism before framing a metering or policy claim; the first plan searched only `earendil-works/pi` and opencode.
+- Live acceptance grid (Pi 1.4.0, one request per cell, this repo's prompt): header-only 200, sanitizer-only 200, neither 400 on Haiku 4.5 and Sonnet 5.5 (bare Pi 400 on Opus 5.5 too).
+  The extension is still necessary; acceptance can no longer distinguish `cc_entrypoint` labels (`pi` returned 200 3/3).
+  Issue #70's "sanitized, no header, 400" row was a different prompt and model, so not acted on.
+- The first no-header control was non-discriminating (Haiku passed without a header); a passing positive check needs a negative control before it means anything.
+- Metering A/B skipped by the operator: the account is now Ultra, responses carry only `anthropic-ratelimit-unified-7d-*` headers (no 5-hour meter, measured twice), and #97074 reports the weekly meter unweighted; resolving 2x at 1% weekly steps was estimated at $800+ API-equivalent.
+  `/api/oauth/profile` still reported `claude_max` / `default_claude_max_20x`, so the profile endpoint may lag a plan rename.
+- T3 Code is not a precedent: it spawns the real `claude` binary with `CLAUDE_CODE_ENTRYPOINT=t3-code`, the path Anthropic's terms allow; Pi calls `/v1/messages` directly.
+- Revisit trigger (not filed as an issue): Anthropic's answer on #97074.
