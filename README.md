@@ -141,6 +141,23 @@ Turn it off yourself with `/settings` → Warnings → "Anthropic extra usage", 
 
 Because the warning concerns real billing on paths this extension does not cover, that call is yours to make; the extension will never write the setting for you.
 
+### Pi uses the 5-hour window faster than Claude Code
+
+The billing header this extension sends reports `cc_entrypoint=sdk-cli`.
+That is the label Claude Code itself sends from its non-interactive print mode; captured from Claude Code 2.1.309:
+
+| Claude Code mode | `cc_entrypoint` |
+| --- | --- |
+| `claude -p` (print mode) | `sdk-cli` |
+| interactive `claude` | `cli` |
+
+Several controlled measurements in [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) show requests labeled `sdk-cli` (or `sdk-ts`, from the Agent SDK) using the 5-hour window about twice as fast as the interactive labels for the same tokens.
+The same reports find the weekly limit apparently unaffected, so on that evidence a plan without a 5-hour window is unaffected too.
+Anthropic has not said whether the weighting is intended.
+
+The extension will not report another Anthropic client's label (`cli`, `claude-desktop`, `claude-vscode`), by default or as an option: Pi is none of those apps.
+A label naming Pi itself would likely avoid the weighting, but it waits on Anthropic's answer; see [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83).
+
 ### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
 
 Pi's auth resolver gives stored credentials priority over environment variables.
