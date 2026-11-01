@@ -31,10 +31,11 @@ export const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
  *
  * Never report another Anthropic client's label (`cli`, `claude-desktop`,
  * `claude-vscode`), by default or as an option: it misrepresents the caller
- * to change how Anthropic meters usage.  Anthropic weights `sdk-*` labels
- * more heavily against the 5-hour window
- * (https://github.com/anthropics/claude-code/issues/97074); a Pi-specific
- * label is deferred until Anthropic says whether that is intended (Issue #83).
+ * to change how Anthropic meters usage.  Controlled measurements reported in
+ * https://github.com/anthropics/claude-code/issues/97074 show `sdk-*` labels
+ * using the 5-hour window about twice as fast; Anthropic has not said whether
+ * that is intended, and a Pi-specific label is deferred until it does
+ * (Issue #83).
  */
 export const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
 
