@@ -22,20 +22,22 @@ The value arrived with the original override (`092da47`) and carries a one-line 
 
 ## Goals
 
-- Record, next to the constant, why `cc_entrypoint` is `sdk-cli` and why it must not become `cli`.
-- Answer the reporter's three questions in the README, where the next user with the same observation will look.
-- Route future agents away from the change through the `anthropic` skill, which the Skill Index loads before any OAuth-shaping work.
+- Record, next to the constant, what `sdk-cli` is, why the extension never reports another Anthropic client's label, and why a Pi-specific label is deferred.
+- Answer the reporter's three questions in the README, citing the upstream report ([anthropics/claude-code#97074]) that the observation matches.
+- Route future agents away from the `cli` change through the `anthropic` skill, which the Skill Index loads before any OAuth-shaping work.
 - Not breaking: no runtime behavior, default, or output shape changes.
 
 ## Non-Goals
 
-- Changing `CLAUDE_CODE_ENTRYPOINT` to `cli`, or making it configurable through the config file or an environment variable.
-  The only effect of either is to have Anthropic meter a third-party harness as its interactive first-party app; see Design Overview.
-- Measuring the reporter's metering claim.
-  That measurement would require sending requests that claim to be the interactive app, which is the change this plan declines.
-- Reconciling `cc_entrypoint` with what other Claude Code invocation paths send (opencode-anthropic-auth #175 observed `claude-desktop` from the desktop app).
+- Reporting another Anthropic client's label (`cli`, `claude-desktop`, `claude-vscode`), by default or behind a config file or environment variable.
+  Those labels identify Anthropic's own apps; reporting one from Pi misrepresents the caller, which is what the reporter's own third question asks to avoid.
+- Reporting a truthful Pi-specific label (for example `pi`) now.
+  The operator chose to defer it until Anthropic says whether the `sdk-*` weighting in [anthropics/claude-code#97074] is intended; see Open Questions.
+- Measuring the weighting on the operator's account.
+  The account (Ultra) exposes no 5-hour meter, only `anthropic-ratelimit-unified-7d-utilization`, and #97074's evidence says the weekly meter is unweighted; resolving a 2x effect at its 1% steps was estimated at $800+ of API-equivalent work.
 - Raising the bundled Claude Code version pin (2.1.280; npm `latest` is 2.1.316 as of 2026-10-31).
-  The floor reconciliation (Issue [#74]) and rejection recovery (Issue [#75]) already cover a model gated higher, and opencode-anthropic-auth's bump to 2.1.284 (its #278) quotes no rejection.
+  The floor reconciliation (Issue [#74]) and rejection recovery (Issue [#75]) already cover a model gated higher.
+- Changing the billing header or the prompt sanitizer on the strength of today's acceptance grid (see Background); it is one request per cell, on one account.
 - `AGENTS.md` (predicted unchanged).
   Per its admission test, the rule is needed only when touching OAuth shaping, so it belongs in the `anthropic` skill that the Skill Index loads for that work; item 6 of the Local Files list already names "entrypoint" as part of `src/billing-header.ts`.
 
@@ -53,7 +55,7 @@ x-anthropic-billing-header: cc_version=<version>.<suffix>; cc_entrypoint=sdk-cli
 Measured at planning time: changing the constant to `"cli"` turns 13 tests red across `test/billing-version-sync.test.ts` (10) and `test/request-shaping.test.ts` (3).
 The value is already pinned; the plan adds no test.
 
-### Evidence gathered at planning time
+### What the labels mean (measured)
 
 What Anthropic's own client sends, measured on Claude Code 2.1.309 against a local capture server (`ANTHROPIC_BASE_URL=http://127.0.0.1:<port>`, every request answered with a 500, so nothing reached Anthropic):
 
@@ -62,74 +64,94 @@ What Anthropic's own client sends, measured on Claude Code 2.1.309 against a loc
 | `claude -p "hi"` (print mode) | `claude-cli/2.1.309 (external, sdk-cli)` | `sdk-cli` |
 | interactive `claude "hi"` (under `script` for a TTY) | `claude-cli/2.1.309 (external, cli)` | `cli` |
 
-The capture risk (Claude Code changing its header under a custom base URL) did not materialize: both modes sent a complete billing header.
+`opencode-anthropic-auth`'s `captures/claude-code-v2.1.87.txt` (pulled to `93cdd23`) records `sdk-cli` beside the Agent SDK identity prompt, and that project still sends it on `main` and `v2/main`.
+`sdk-cli` is Claude Code's print-mode label, borrowed: Pi is not Claude Code in any mode.
+It is the least misleading of Anthropic's labels for a program driving the model, not an accurate one.
 
-Corroborating sources:
+### The upstream report
 
-1. `opencode-anthropic-auth`'s `captures/claude-code-v2.1.87.txt` (pulled to `93cdd23`) records `cc_entrypoint=sdk-cli` beside the Agent SDK identity prompt ("You are a Claude agent, built on Anthropic's Claude Agent SDK").
-2. That project still sends `sdk-cli` on `main` and `v2/main`; its maintainer did not switch when users asked in its #139 to "use Claude Cli to continue with subscription."
-3. Anthropic's Help Center article "Use the Claude Agent SDK with your Claude plan" (updated 2026-10-30) treats "Claude Agent SDK, `claude -p`, and third-party app usage" as one category with its own policy history.
-4. Claude Code's "Legal and compliance" page: OAuth is "designed to support ordinary use of Claude Code and other native Anthropic applications", and "Advertised usage limits for Pro, Max, and Ultra plans assume ordinary, individual usage of Claude Code and the Agent SDK."
-5. Pi's own startup warning, already quoted in `README.md`: "Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits."
+[anthropics/claude-code#97074] (open since 2026-09-25, 60 comments, none from Anthropic as of 2026-11-01) reports the reporter's observation with controlled A/Bs from at least six accounts:
 
-The reporter's 11% / 3% / 4% figures are theirs (one comparison) and were not reproduced.
+1. Requests labeled `sdk-cli` or `sdk-ts` use the 5-hour window about 1.8-2.9x faster than `cli`, `claude-desktop`, or `claude-vscode` for the same tokens.
+2. The VS Code extension runs the same headless stream-json session as `claude -p` and is metered at the normal rate, so the weighting attaches to the `sdk-*` labels, not to programmatic use.
+3. An arbitrary custom label (`my-tool`, `t3-code`, `local-probe-97074`) is metered at the normal rate.
+4. The weekly meter appears unweighted: t3dotgg reports "Weekly is not affected"; harry924's pooled data (Max 20x) fits equal weighting; oviano saw about $27 per weekly point under both labels.
+5. Commenters who relabel use their own tool's name and decline `cli` and `claude-vscode` because those belong to other clients; one (t3dotgg) guesses a recent 5-hour boost was never applied to Agent SDK traffic.
+
+So the weighting is real, label-specific, unacknowledged, and of unknown intent.
+This corrects an earlier draft of this plan, which attributed the gap to Anthropic deliberately metering programmatic use and called `sdk-cli` the accurate label for Pi.
+
+### Live acceptance grid (2026-11-01, operator's account, Pi 1.4.0)
+
+One request per cell, this repository's project prompt, `-ne`; working-tree spikes only, reverted.
+
+| | Prompt sanitized | Prompt not sanitized |
+| --- | --- | --- |
+| Billing header sent | 200 | 200 (Haiku 4.5, Sonnet 5.5, Opus 5.5) |
+| No billing header | 200 (Haiku 4.5, Sonnet 5.5, Opus 5.5) | 400 `You're out of extra usage.` (Haiku, Sonnet; bare Pi without the extension: all three) |
+
+`cc_entrypoint=pi` also returned 200 three times on Haiku 4.5, but the grid shows acceptance cannot distinguish labels today.
+The extension remains necessary: without either half, Pi is rejected.
+Issue #70's 2026-09-21 table recorded "preamble sanitized, still no billing header" as a 400 on a different prompt (28 KB) and model (`claude-opus-5`), so the sanitizer-only pass here does not generalize, and nothing in this plan acts on it.
+
+T3 Code is not a precedent for Pi: it launches the real `claude` binary and sets `CLAUDE_CODE_ENTRYPOINT=t3-code` on that process (t3code PR #25597, closed unmerged), the path Anthropic's terms allow for "the unmodified Claude Code binary".
+Pi calls `/v1/messages` directly.
 
 ## Design Overview
 
-`cli` is how Anthropic's first-party interactive app identifies itself; `sdk-cli` is what its non-interactive print mode and the Agent SDK send.
-Pi driving the model through this extension is a program, not Anthropic's interactive app, so `sdk-cli` is the category that describes it.
-Reporting `cli` would tell Anthropic that a third-party harness is the interactive Claude Code app, and the reporter's own data says the reason to do so is to land in a cheaper metering bucket.
-The plan keeps `sdk-cli` and writes the reason down in the three places a future reader or agent would look.
+Keep `sdk-cli` and write down three things where a reader or agent would look:
 
-The tension is acknowledged rather than hidden: the billing header as a whole already sits uneasily with the "native Anthropic applications" wording above.
-The line this plan draws is narrower: `sdk-cli` is the category Anthropic itself assigns to programmatic and third-party use; `cli` claims to be the first-party interactive app.
+1. What the value is: Claude Code's print-mode label, borrowed because Pi is a program driving the model and no Anthropic label names Pi.
+2. What the extension will never do: report another Anthropic client's label (`cli`, `claude-desktop`, `claude-vscode`).
+3. What is deferred and why: a truthful Pi-specific label would likely avoid the 5-hour weighting [anthropics/claude-code#97074] measured, but Anthropic has not said whether that weighting is intended; the decision is revisited when it does.
 
-The prose states measured facts as measured (the capture table, with version and date) and the reporter's numbers as the reporter's.
+The prose states measured facts as measured (the capture table, with version and date), cites #97074 for the weighting rather than restating it as fact, and reports the reporter's numbers as theirs.
+It names the weekly meter as apparently unaffected, since plans without a 5-hour window (Ultra) are then unaffected by the label.
 
 ### Issue reply (posted at ship time, close as `not_planned`)
 
 ````markdown
 Thanks for the careful comparison and the numbers.
 
-`sdk-cli` is intentional, and I'm keeping it.
-I checked what Anthropic's own client sends, using Claude Code 2.1.309 against a local capture server so nothing reached Anthropic:
-
-| Mode | `cc_entrypoint` |
-| --- | --- |
-| `claude -p` (print mode) | `sdk-cli` |
-| interactive `claude` | `cli` |
-
-`cli` is how Claude Code identifies its interactive app.
-Its non-interactive print mode and the Claude Agent SDK send `sdk-cli`, which is the closer description of Pi driving the model.
+What you measured matches anthropics/claude-code#97074: several controlled A/Bs there show requests labeled `sdk-cli` or `sdk-ts` using the 5-hour window about 2x faster than `cli`, `claude-desktop`, or `claude-vscode` for the same tokens, while the weekly limit appears unaffected.
+Anthropic hasn't said yet whether that weighting is intended.
 
 To your questions:
 
-1. Yes, it's intentional, though it wasn't written down until now.
-2. I haven't reproduced your numbers, but a difference between the two labels is consistent with Anthropic metering programmatic and third-party usage under its own policy (see [Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)), rather than a bug here.
-3. Not that I know of.
-   Reporting `cli` from Pi tells Anthropic it is the interactive Claude Code app, which is the misrepresentation you asked about, so this extension won't do it, by default or as an option.
+1. Yes, `sdk-cli` is intentional, though it wasn't written down until now.
+   It's the label Claude Code itself sends from `claude -p`; interactive `claude` sends `cli` (I captured both from Claude Code 2.1.309 against a local server).
+2. Yes, it's a known upstream report; see the issue above.
+3. Not from this extension.
+   `cli` identifies Anthropic's interactive app, so reporting it from Pi is the misrepresentation you asked about, and I won't do that, by default or as an option.
+   Several people in that thread report a custom label naming their own tool avoids the weighting.
+   I'd rather wait for Anthropic to say whether the weighting is intended before doing the same here, and I'll revisit this when they do.
 
 I've documented the reasoning in the README's troubleshooting section and next to the constant.
-Closing as not planned.
+Closing as not planned for now.
 ````
 
 ## Module-Level Changes
 
 1. `src/billing-header.ts`: replace the one-line doc comment on `CLAUDE_CODE_ENTRYPOINT` with a block stating:
-   1. the value is deliberate and matches what Claude Code's non-interactive print mode and the Agent SDK send (measured on 2.1.309);
-   2. `cli` is the interactive app's label, and reporting it changes how Anthropic meters the request, so do not change it (Issue #83).
+   1. the value is the label Claude Code sends from its print mode (`claude -p`, measured on 2.1.309), borrowed because no Anthropic label names Pi;
+   2. never report another Anthropic client's label (`cli`, `claude-desktop`, `claude-vscode`);
+   3. a Pi-specific label is deferred pending Anthropic's answer on anthropics/claude-code#97074 (Issue #83).
    No code change; the constant stays `"sdk-cli"`.
 2. `test/billing-header-fixtures.ts`: a one-line comment on the `"cc_entrypoint=sdk-cli;"` literal saying it pins a deliberate value (Issue #83), so a contributor whose edit turns 13 tests red reads why before "fixing" the fixture.
 3. `README.md`: new Troubleshooting subsection, inserted directly after "Pi warns about extra usage on every OAuth session" (it continues that section's subject) and before "`ANTHROPIC_API_KEY` is ignored when OAuth credentials exist".
-   Working title: "Pi uses more of my plan's usage limit than Claude Code".
-   Content: the capture table; that Anthropic meters programmatic and third-party usage under its own policy (link the Help Center article); that the extension reports `sdk-cli` and offers no setting to report `cli`; that Claude Code itself is the supported way to get Claude Code's interactive metering.
+   Working title: "Pi uses the 5-hour window faster than Claude Code".
+   Content:
+   1. the extension reports `sdk-cli`, Claude Code's own `claude -p` label (the capture table);
+   2. [anthropics/claude-code#97074] reports `sdk-*` labels weighted about 2x against the 5-hour window, with the weekly limit apparently unaffected, and Anthropic has not said whether that is intended;
+   3. the extension will not report another client's label, and a Pi-specific label waits on Anthropic's answer (link Issue #83);
+   4. plans without a 5-hour window are, on that evidence, unaffected.
    Read the parent `## Troubleshooting` section end to end before inserting (markdown-conventions, "Inserting a new section").
-4. `docs/architecture.md`: in "What the wrapper does", extend item 3 ("prepends an `x-anthropic-billing-header` system block") with one sentence: the block reports `cc_entrypoint=sdk-cli`, the label Claude Code's print mode and the Agent SDK send, deliberately not the interactive app's `cli` (Issue #83).
+4. `docs/architecture.md`: in "What the wrapper does", extend item 3 ("prepends an `x-anthropic-billing-header` system block") with one sentence: the block reports `cc_entrypoint=sdk-cli`, Claude Code's print-mode label, and never another Anthropic client's label (Issue #83).
    Follow the section's existing inline `(Issue #N)` style.
    No Mermaid block models the billing header's fields (the diagrams show call paths), so none changes.
 5. `.pi/skills/anthropic/SKILL.md`:
-   1. under "Confirmed local fixes", one bullet recording the capture table's two rows and that the header reports `sdk-cli`;
-   2. under "Avoid by default", one bullet: "changing `cc_entrypoint` to `cli`, or making it configurable: it claims the interactive Claude Code app to change how Anthropic meters usage (Issue #83)".
+   1. under "Confirmed local fixes", one bullet recording the capture table's two rows, that the header reports `sdk-cli`, and that [anthropics/claude-code#97074] measured `sdk-*` labels weighted against the 5-hour window (Issue #83);
+   2. under "Avoid by default", one bullet: "reporting another Anthropic client's `cc_entrypoint` (`cli`, `claude-desktop`, `claude-vscode`), by default or as an option: it misrepresents the caller to change how Anthropic meters usage (Issue #83)".
 6. `AGENTS.md`: predicted unchanged; see Non-Goals.
 
 Grep at planning time for other prose naming the entrypoint (`rg -n -i 'sdk-cli|cc_entrypoint|CLAUDE_CODE_ENTRYPOINT'` outside `node_modules`, `CHANGELOG.md`, and plans): only `src/billing-header.ts` and `test/billing-header-fixtures.ts` match, both listed above.
@@ -143,12 +165,13 @@ Verification commands for `/build-plan`, with expected output recorded at planni
 ```bash
 pnpm test                                   # all 17 files pass
 rg -n 'CLAUDE_CODE_ENTRYPOINT = "sdk-cli"' src/billing-header.ts   # one match: the constant is unchanged
-rg -n 'Issue #83' src/billing-header.ts test/billing-header-fixtures.ts docs/architecture.md .pi/skills/anthropic/SKILL.md README.md
+rg -n '#83' src/billing-header.ts test/billing-header-fixtures.ts docs/architecture.md .pi/skills/anthropic/SKILL.md README.md
+rg -n '97074' src/billing-header.ts README.md .pi/skills/anthropic/SKILL.md
 pnpm run lint                               # includes rumdl over README.md and docs/
 pnpm exec rumdl check .pi                   # lint:md skips .pi/**
 ```
 
-The `Issue #83` grep should match in all five files (README may phrase the reference as a link; adjust the grep to `#83` if so).
+The `#83` grep should match in all five files; the `97074` grep in all three.
 
 ## Invariants at risk
 
@@ -161,24 +184,27 @@ This is a docs-and-comments change; execute with `/build-plan`.
 
 1. `docs: explain why the billing header reports sdk-cli` — `src/billing-header.ts` doc comment, `test/billing-header-fixtures.ts` comment, `docs/architecture.md` sentence, `.pi/skills/anthropic/SKILL.md` bullets.
    Verify: `pnpm test`, `pnpm run check`, `pnpm run lint`, `pnpm exec rumdl check .pi`.
-2. `docs: explain why Pi uses more plan usage than Claude Code` — the `README.md` Troubleshooting subsection.
+2. `docs: explain why Pi uses the 5-hour window faster than Claude Code` — the `README.md` Troubleshooting subsection.
    Verify: `pnpm run lint`, plus the markdown-conventions non-ASCII scans on `README.md`.
 
 No mechanism is adopted from a third party (the reporter's patch is declined), so no `Co-authored-by:` trailer applies.
 
 ## Risks and Mitigations
 
-- **The capture goes stale.**
-  A later Claude Code may label its modes differently.
-  Mitigation: every prose statement carries the measured version (2.1.309), and the rationale ("a program, not the interactive app") does not depend on the exact label.
-- **The README entry reads as a policy claim on Anthropic's behalf.**
-  Mitigation: quote and link Anthropic's own pages, and state the reporter's numbers as unreproduced.
+- **The capture or the upstream picture goes stale.**
+  Claude Code may relabel its modes, and Anthropic may answer #97074.
+  Mitigation: prose carries the measured version (2.1.309) and dates, and cites #97074 rather than restating its numbers as settled.
+- **The README entry reads as a claim about Anthropic's metering.**
+  Mitigation: attribute every number to #97074 or the reporter, and say plainly that Anthropic has not confirmed intent.
 - **Someone accepts the reporter's patch anyway.**
   Mitigation: the doc comment, the fixture comment, the skill's "Avoid by default" bullet, and 13 failing tests all point at Issue #83.
 
 ## Open Questions
 
-None.
+- Revisit a truthful Pi-specific label (for example `cc_entrypoint=pi`) when Anthropic answers [anthropics/claude-code#97074].
+  If the `sdk-*` weighting is a bug and is fixed, nothing changes here; if it is intended and documented, decide then whether a custom label is appropriate.
+  Not filed as an issue: the trigger is an external response, not work this repo can schedule.
 
 [#74]: https://github.com/gotgenes/pi-anthropic-auth/issues/74
 [#75]: https://github.com/gotgenes/pi-anthropic-auth/issues/75
+[anthropics/claude-code#97074]: https://github.com/anthropics/claude-code/issues/97074
