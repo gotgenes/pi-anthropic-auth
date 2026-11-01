@@ -23,19 +23,13 @@ export const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
 /**
  * Entrypoint identifier included in the billing header (`cc_entrypoint`).
  *
- * `sdk-cli` is the label Claude Code itself sends from its print mode
- * (`claude -p`); the interactive app sends `cli` (both captured from Claude
- * Code 2.1.309).  Pi is not Claude Code in any mode, and no Anthropic label
- * names Pi, so this borrows the print-mode label as the least misleading one
+ * Claude Code sends `sdk-cli` from print mode (`claude -p`) and `cli` from
+ * its interactive app (observed on 2.1.309).  `sdk-cli` seems the closer fit
  * for a program driving the model.
  *
- * Never report another Anthropic client's label (`cli`, `claude-desktop`,
- * `claude-vscode`), by default or as an option: it misrepresents the caller
- * to change how Anthropic meters usage.  Controlled measurements reported in
- * https://github.com/anthropics/claude-code/issues/97074 show `sdk-*` labels
- * using the 5-hour window about twice as fast; Anthropic has not said whether
- * that is intended, and a Pi-specific label is deferred until it does
- * (Issue #83).
+ * Users have reported `sdk-*` labels drawing down the 5-hour window faster
+ * (https://github.com/anthropics/claude-code/issues/97074); Anthropic has not
+ * said whether that is intended.  See Issue #83 before changing this value.
  */
 export const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
 
