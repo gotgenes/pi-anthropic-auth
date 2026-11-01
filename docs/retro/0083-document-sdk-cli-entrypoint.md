@@ -47,3 +47,19 @@ The decision is unchanged in effect (keep `sdk-cli`, docs only) but now cites #9
   `/api/oauth/profile` still reported `claude_max` / `default_claude_max_20x`, so the profile endpoint may lag a plan rename.
 - T3 Code is not a precedent: it spawns the real `claude` binary with `CLAUDE_CODE_ENTRYPOINT=t3-code`, the path Anthropic's terms allow; Pi calls `/v1/messages` directly.
 - Revisit trigger (not filed as an issue): Anthropic's answer on #97074.
+
+## Stage: Implementation — Build (2026-11-01T17:00:53Z)
+
+### Session summary
+
+Both plan steps landed: comments in `src/billing-header.ts` and `test/billing-header-fixtures.ts`, the `docs/architecture.md` sentence, two `anthropic` skill bullets (`3c21a83`), and the README troubleshooting entry (`02828fd`).
+Two follow-up commits fixed a reviewer finding (`7fb93d9`) and softened all shipped wording at the operator's direction (`58abc25`), including the plan's issue-reply draft.
+
+### Observations
+
+- Pre-completion round 1: FAIL. The source comment stated the #97074 `sdk-*` weighting as Anthropic's fact; reworded to attribute it as a user report.
+- Operator direction after the fix: the comment was "too overblown". Dropped every "never report" / "misrepresents" phrasing across source, README, architecture, and skill; the skill's "Avoid by default" bullet became "changing `cc_entrypoint` without first reading Issue #83".
+  The issue reply now frames keeping `sdk-cli` as "the plan for now, subject to change as Anthropic updates its policies".
+  Lesson: match a decision's prose confidence to its evidence; a choice deferred on an open upstream question reads as current, not absolute.
+- Pre-completion round 2 (delta `7fb93d9`, `58abc25`): PASS.
+- No deviations in scope; `AGENTS.md` unchanged as predicted; `CLAUDE_CODE_ENTRYPOINT` still `"sdk-cli"`, 236 tests green.
