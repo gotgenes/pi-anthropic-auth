@@ -119,6 +119,27 @@ describe("createAnthropicOAuthStreamSimple", () => {
     assert.equal(typeof calls[0]?.options?.onPayload, "function");
   });
 
+  test("opts OAuth requests out of message-thread continuations", () => {
+    // pi 1.5.x continuations omit `system`, which strips the Claude Code
+    // identity from every turn after the first, and Anthropic answers those
+    // with 400 "Third-party apps now draw from your extra usage".
+    wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+    const forwarded = calls[0]?.options as unknown as
+      | Record<string, unknown>
+      | undefined;
+
+    assert.equal(forwarded?.disableContinuation, true);
+  });
+
+  test("leaves API-key requests on Pi's own thread behavior", () => {
+    wrapped(MODEL, CONTEXT, { apiKey: API_KEY });
+    const forwarded = calls[0]?.options as unknown as
+      | Record<string, unknown>
+      | undefined;
+
+    assert.equal(forwarded?.disableContinuation, undefined);
+  });
+
   // Pi 0.84.0 documents the `ProviderConfig.streamSimple` contract explicitly:
   // an implementation must invoke `options.onPayload` before sending the
   // request and `options.onResponse` after receiving it, matching built-in

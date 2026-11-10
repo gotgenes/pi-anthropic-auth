@@ -57,6 +57,7 @@ The current implementation does the following:
 7. Recovers from a `claude_code_version_too_old` rejection by retrying once at the floor Anthropic names, remembering that floor for later requests, and appending a hint to the error when it cannot recover (Issue #75)
 8. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 9. Registers the same wrapper on any extra provider named in the extension's config file, for Anthropic OAuth subscriptions another extension registers under its own name (pi-multi-pass's `anthropic-2`, Issue #70)
+10. Opts OAuth requests out of Pi 1.5.0's server-side message threads: a `thread: {"type": "continue"}` request omits `system`, so every turn after the first would reach Anthropic without the Claude Code identity and be billed as third-party usage
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and injects two steps: an `onPayload` shaping step, and an `options.fetch` wrapper for the version reconciliation and rejection recovery, which need the built request's headers and the response.

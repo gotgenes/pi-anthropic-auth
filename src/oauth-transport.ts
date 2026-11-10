@@ -23,6 +23,31 @@ import { shapeAnthropicOAuthPayload } from "./request-shaping";
 const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
 
 /**
+ * Opts this request out of Pi's server-side message threads.
+ *
+ * On pi 1.5.x an Anthropic model whose catalog marks
+ * `compat.supportsMessageThreads` continues a conversation with
+ * `thread: { type: "continue", previous_message_id }`: the request carries only
+ * the new messages and **omits `system` and `tools`**, which the server keeps
+ * from the thread's first turn.  For an OAuth request that removes the Claude
+ * Code identity block and our billing header from every turn after the first,
+ * so Anthropic classifies the request as third-party usage and rejects it with
+ * `400 invalid_request_error: "Third-party apps now draw from your extra usage,
+ * not your plan limits."` — the first tool call of a turn succeeds and its
+ * continuation fails.
+ *
+ * Re-adding `system` to a continuation is not an option: the server answers
+ * `thread_fingerprint_mismatch` unless the shape stays byte-identical to the
+ * thread's first turn.  Sending full requests instead keeps the identity on
+ * every turn, which is what pi did before message threads and what prompt
+ * caching already makes cheap.  The threads beta stays in `betas`: without a
+ * `thread` field the request is an ordinary one, which Anthropic accepts.
+ */
+const THREAD_CONTINUATION_OPT_OUT = {
+  disableContinuation: true,
+} as unknown as SimpleStreamOptions;
+
+/**
  * The `streamSimple` handler shape Pi's `ProviderConfig` accepts.
  *
  * It matches `ApiStreamSimpleFunction` from `@earendil-works/pi-ai` and is
@@ -152,6 +177,7 @@ export function createAnthropicOAuthStreamSimple(
       ...options,
       onPayload,
       ...(versionSync ? { fetch: versionSync.fetch } : {}),
+      ...(isOAuthRequest ? THREAD_CONTINUATION_OPT_OUT : {}),
     });
   };
 }

@@ -111,6 +111,20 @@ Check `/anthropic-auth:status`.
 If the failing provider is missing from `shaped providers`, name it in the config file (see [Additional Anthropic subscriptions](#additional-anthropic-subscriptions)).
 Its line under `accounts` shows which subscription that provider's login belongs to, and whether extra usage is enabled on it.
 
+### Every turn after the first fails with "Third-party apps now draw from your extra usage"
+
+```text
+400 invalid_request_error: Third-party apps now draw from your extra usage, not your plan limits. Add more at claude.ai/settings/usage and keep going.
+```
+
+When the first request of a turn succeeds and its continuation — after a tool call, say — fails with that message, the request reached Anthropic without the Claude Code identity.
+Pi 1.5.0 sends every turn after the first as a server-side message thread (`thread: {"type": "continue", "previous_message_id": …}`) on models whose catalog sets `compat.supportsMessageThreads`, and a continuation carries only the new messages: no `system` block, which is where Pi's Claude Code identity and this extension's billing header live.
+Anthropic then bills the request as third-party usage.
+
+From the next release on, the extension opts OAuth requests out of continuations, so every turn is a full request and keeps the identity; prompt caching keeps that cheap.
+Threads cannot be re-enabled on OAuth — re-adding `system` to a continuation draws `thread_fingerprint_mismatch`, because the server requires a thread's fixed fields to stay byte-identical to its first turn.
+API-key sessions are unaffected and keep Pi's own behavior.
+
 ### Pi warns about extra usage on every OAuth session
 
 Pi prints this warning once per interactive session whenever an Anthropic model is selected and your stored Anthropic credentials are OAuth:
