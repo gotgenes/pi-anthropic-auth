@@ -113,10 +113,90 @@ describe("createAnthropicOAuthStreamSimple", () => {
 
     assert.equal(result, STREAM_STUB);
     assert.equal(calls.length, 1);
-    assert.equal(calls[0]?.model, MODEL);
+    assert.deepEqual(calls[0]?.model, {
+      ...MODEL,
+      compat: { supportsMessageThreads: false },
+    });
     assert.equal(calls[0]?.context, CONTEXT);
     assert.equal(calls[0]?.options?.apiKey, OAUTH_TOKEN);
     assert.equal(typeof calls[0]?.options?.onPayload, "function");
+  });
+
+  describe("request-scoped message-thread compatibility", () => {
+    test.each([true, false, undefined])(
+      "disables OAuth threads when supportsMessageThreads is %s without mutating the model",
+      (supportsMessageThreads) => {
+        const compat = Object.freeze({
+          supportsMessageThreads,
+          supportsMidConvoEffort: true,
+          supportsMidConvoSystemMessages: false,
+        });
+        const model = Object.freeze({ ...MODEL, compat });
+
+        wrapped(model, CONTEXT, { apiKey: OAUTH_TOKEN });
+
+        const requestModel = calls[0]?.model;
+        assert.ok(requestModel);
+        assert.notEqual(requestModel, model);
+        assert.notEqual(requestModel.compat, compat);
+        assert.deepEqual(requestModel, {
+          ...model,
+          compat: { ...compat, supportsMessageThreads: false },
+        });
+        assert.equal(model.compat, compat);
+        assert.equal(
+          model.compat.supportsMessageThreads,
+          supportsMessageThreads,
+        );
+      },
+    );
+
+    test("disables OAuth threads when compat is absent", () => {
+      const model = Object.freeze({ ...MODEL });
+
+      wrapped(model, CONTEXT, { apiKey: OAUTH_TOKEN });
+
+      assert.notEqual(calls[0]?.model, model);
+      assert.deepEqual(calls[0]?.model, {
+        ...model,
+        compat: { supportsMessageThreads: false },
+      });
+      assert.equal(Object.hasOwn(model, "compat"), false);
+    });
+
+    test.each([API_KEY, undefined])(
+      "preserves model identity and compat for non-OAuth key %s",
+      (apiKey) => {
+        const compat = Object.freeze({
+          supportsMessageThreads: true,
+          supportsMidConvoEffort: true,
+        });
+        const model = Object.freeze({ ...MODEL, compat });
+
+        wrapped(model, CONTEXT, { apiKey });
+
+        assert.equal(calls[0]?.model, model);
+        assert.equal(calls[0]?.model.compat, compat);
+      },
+    );
+
+    test("does not carry the OAuth override into a later API-key request", () => {
+      const model = {
+        ...MODEL,
+        compat: { supportsMessageThreads: true, supportsMidConvoEffort: true },
+      };
+
+      wrapped(model, CONTEXT, { apiKey: OAUTH_TOKEN });
+      wrapped(model, CONTEXT, { apiKey: API_KEY });
+
+      assert.deepEqual(calls[0]?.model.compat, {
+        ...model.compat,
+        supportsMessageThreads: false,
+      });
+      assert.equal(calls[1]?.model, model);
+      assert.equal(calls[1]?.model.compat, model.compat);
+      assert.equal(model.compat.supportsMessageThreads, true);
+    });
   });
 
   // Pi 0.84.0 documents the `ProviderConfig.streamSimple` contract explicitly:

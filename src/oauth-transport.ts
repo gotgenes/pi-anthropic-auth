@@ -144,11 +144,21 @@ export function createAnthropicOAuthStreamSimple(
       return shapeAnthropicOAuthPayload(upstream);
     };
 
+    // Thread continuations omit system metadata after onPayload runs. OAuth
+    // shaping needs that metadata on every request, so send full requests.
+    // Clone only for OAuth; preserve API-key behavior and all other compat flags.
+    const requestModel = isOAuthRequest
+      ? {
+          ...model,
+          compat: { ...model.compat, supportsMessageThreads: false },
+        }
+      : model;
+
     // `provider-composer` only invokes this transport when
     // `model.api === extension.api`, so the wide `Model<Api>` is guaranteed to
     // be `Model<"anthropic-messages">` at runtime — safe to narrow for the
     // delegate call.
-    return delegate(model as Model<"anthropic-messages">, context, {
+    return delegate(requestModel as Model<"anthropic-messages">, context, {
       ...options,
       onPayload,
       ...(versionSync ? { fetch: versionSync.fetch } : {}),
