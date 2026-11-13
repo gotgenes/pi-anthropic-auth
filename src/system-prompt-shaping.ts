@@ -323,13 +323,15 @@ type TextBlock = {
  */
 export function shapeSystemBlocks(blocks: TextBlock[]): TextBlock[] {
   return blocks.map((block) => {
-    if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive runtime guard
-      block.type !== "text" ||
-      !block.text.includes(PI_DEFAULT_PROMPT_PREFIX)
-    ) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive runtime guard
+    if (block.type !== "text" || !containsPiPreamble(block.text)) {
       return block;
     }
     return { ...block, text: shapeAnthropicOAuthSystemPrompt(block.text) };
   });
+}
+
+/** Whether a system block carries Pi's default preamble. */
+function containsPiPreamble(text: string): boolean {
+  return text.includes(PI_DEFAULT_PROMPT_PREFIX);
 }
