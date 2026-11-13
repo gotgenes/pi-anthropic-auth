@@ -27,7 +27,7 @@
  * too far from what Anthropic expects, OAuth requests may be rejected or
  * counted incorrectly.
  */
-export const CLAUDE_CODE_VERSION = "2.1.280";
+export const CLAUDE_CODE_VERSION = "2.1.323";
 
 /**
  * Environment variable that overrides {@link CLAUDE_CODE_VERSION}.
