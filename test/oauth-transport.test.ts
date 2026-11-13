@@ -11,7 +11,6 @@ import { beforeEach, describe, test } from "vitest";
 import {
   createAnthropicOAuthStreamSimple,
   isAnthropicOAuthToken,
-  type MessageThreadOptOut,
 } from "#src/oauth-transport";
 import {
   claudeCodeVersionTooOldResponse,
@@ -273,7 +272,7 @@ describe("createAnthropicOAuthStreamSimple", () => {
   // pi-ai >=1.5.0 strips `system` from message-thread continuations after
   // `onPayload` runs, so a continuation cannot carry the billing header.
   describe("message-thread opt-out", () => {
-    function delegatedOptions(): SimpleStreamOptions & MessageThreadOptOut {
+    function delegatedOptions(): SimpleStreamOptions {
       const options = calls[0]?.options;
       assert.ok(options);
       return options;
@@ -286,7 +285,7 @@ describe("createAnthropicOAuthStreamSimple", () => {
     });
 
     test("overrides a caller that allowed continuations on an OAuth request", () => {
-      const callerOptions: SimpleStreamOptions & MessageThreadOptOut = {
+      const callerOptions: SimpleStreamOptions = {
         apiKey: OAUTH_TOKEN,
         disableContinuation: false,
       };
@@ -303,7 +302,7 @@ describe("createAnthropicOAuthStreamSimple", () => {
     });
 
     test("keeps an API-key caller's own opt-out", () => {
-      const callerOptions: SimpleStreamOptions & MessageThreadOptOut = {
+      const callerOptions: SimpleStreamOptions = {
         apiKey: API_KEY,
         disableContinuation: true,
       };

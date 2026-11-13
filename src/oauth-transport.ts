@@ -31,14 +31,13 @@ const ANTHROPIC_OAUTH_TOKEN_MARKER = "sk-ant-oat";
  * continuation, so the header cannot be put back; OAuth requests are sent in
  * full instead, as on pi <=1.4 and as Claude Code sends them (Issue #86).
  *
- * The field is absent from the pinned pi-ai 1.3.0 `SimpleStreamOptions`
- * type, hence this local declaration; older pi drops it as an unknown option.
+ * Typed against pi-ai's own option so an upstream rename fails `tsc`; pi
+ * <=1.4 drops the field as an unknown option.
  */
-export type MessageThreadOptOut = { disableContinuation?: boolean };
-
-const MESSAGE_THREAD_OPT_OUT: MessageThreadOptOut = {
-  disableContinuation: true,
-};
+const MESSAGE_THREAD_OPT_OUT: Pick<SimpleStreamOptions, "disableContinuation"> =
+  {
+    disableContinuation: true,
+  };
 
 /**
  * The `streamSimple` handler shape Pi's `ProviderConfig` accepts.
