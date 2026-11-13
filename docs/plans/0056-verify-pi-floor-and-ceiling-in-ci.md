@@ -116,14 +116,15 @@ Steps:
    - nothing when every package's `latest` equals its devDependency pin, unless `--force` (the `check` job already covers that version);
    - otherwise the specs, with each version validated against `^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$` so a malformed registry answer exits 1 rather than reaching a shell.
 
-   The step writes `specs` and a cache `key` (`pi-ceiling-` plus the specs with spaces, `/`, and `@` mapped to `_`, `-`, and `-`) to `$GITHUB_OUTPUT`.
+   The step writes `specs` and a cache `key` (`pi-ceiling-` plus the specs with spaces, `/`, and `@` each mapped to `-`) to `$GITHUB_OUTPUT`.
    Inputs reach the script through `env:`, not `${{ }}` interpolation inside `run:`.
 3. **Dedupe.** `actions/cache/restore@v6` with `lookup-only: true` on that key, skipped when `force` is set.
    A hit means this release was already tested; every later step is skipped and the run is green.
 4. **Run** (only when specs are non-empty and the lookup missed or `force` is set): `pnpm add -D <specs>`, `pnpm run check`, `pnpm run test`.
-5. **Mark.** With `if: always()` and the same run condition, write a marker file and `actions/cache/save@v6` it under the key.
+5. **Mark.** With `if: ${{ !cancelled() && … }}` and the same run condition (implemented as `!cancelled()` rather than the originally planned `always()`, so a cancelled run marks nothing), write a marker file and `actions/cache/save@v6` it under the key.
    Pass or fail, each release is tested once, so a red result sends one failure email rather than one per hour.
-   A cache entry is evicted after 7 days without access; while `latest` is still ahead of the pin, that re-tests the release about weekly, which reads as a reminder.
+   A failed install, transient or not, also marks the release; `force` re-tests it.
+   Whether hourly `lookup-only` restores count as access, and so whether eviction ever re-tests a release, is unverified.
 
 ```text
 $ ./scripts/ci/pi-ceiling-specs.sh            # today: latest 1.5.2 equals the pins
@@ -252,13 +253,13 @@ If npm `latest` has moved past 1.5.2 by implementation time, the third row print
    A Pi release can pull a third-party package published under an hour earlier, and pnpm then fails the install.
    The marker is saved anyway, so this costs one false alarm; re-run with `force` once the dependency ages.
 3. **Cache-key characters.**
-   GitHub rejects keys containing commas; the specs are mapped to `_`/`-` before use, so no raw `@`, `/`, or space reaches the key.
+   GitHub rejects keys containing commas; the specs' separators are mapped to `-` before use, so no raw `@`, `/`, or space reaches the key.
 4. **Script injection through registry data.**
    The ceiling script validates every version against a strict pattern before printing it, and the workflow passes values through `env:`.
 5. **The scheduled workflow is disabled after 60 days of repository inactivity.**
    This repository commits far more often; if it goes quiet, the floor job is unaffected and the ceiling can be re-enabled from the Actions tab.
-6. **A ceiling failure that nobody fixes keeps re-testing weekly** (cache eviction).
-   Accepted: it reads as a reminder, and the fix is the devDep bump the failure asked for.
+6. **A ceiling failure that nobody fixes is reported once.**
+   Accepted: the failure email names the release, and the fix is the devDep bump it asked for.
 
 ## Open Questions
 
