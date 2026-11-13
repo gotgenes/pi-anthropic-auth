@@ -13,34 +13,41 @@ import {
   FIXTURE_CONTEXT_FILE_PATH,
   FIXTURE_CWD,
   FIXTURE_TOOL_SNIPPETS,
+  PI_WORDING_1_4,
+  type PiPromptWording,
   PROJECT_INSTRUCTION,
 } from "#test/system-prompt-fixture-parts";
 
 // ---------------------------------------------------------------------------
-// Pi 0.86.0 system-prompt fixture
+// Pi system-prompt fixture
 //
 // Mirrors what upstream `buildSystemPromptSections` + `getSystemMessageText`
 // render: an untagged preamble, then `<name>...</name>` sections joined by a
-// blank line.  Verified against the prompt the installed pi 0.86.0 builds; the
-// caller-supplied literals come from the shared fixture module so this stays
-// in step with `test/upstream-prompt-drift.test.ts`.
+// blank line.  The structure was verified against the prompt pi 0.86.0 builds;
+// the Pi-authored wording comes from a `PiPromptWording`, and the
+// caller-supplied literals from the shared fixture module, so this stays in
+// step with `test/upstream-prompt-drift.test.ts`.
 // ---------------------------------------------------------------------------
-const PI_086_TOOLS_BODY = [
-  `- read: ${FIXTURE_TOOL_SNIPPETS.read}`,
-  `- bash: ${FIXTURE_TOOL_SNIPPETS.bash}`,
-  "- my_ext_tool: Extension-registered tool snippet",
-  "",
-  "In addition to the tools above, you may have access to other custom tools depending on the project.",
-].join("\n");
+function piToolsBody(wording: PiPromptWording = PI_WORDING_1_4): string {
+  return [
+    `- read: ${FIXTURE_TOOL_SNIPPETS.read}`,
+    `- bash: ${FIXTURE_TOOL_SNIPPETS.bash}`,
+    "- my_ext_tool: Extension-registered tool snippet",
+    "",
+    wording.toolsFiller,
+  ].join("\n");
+}
 
-const PI_086_DOCS_BODY = [
-  "Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):",
-  "- Main documentation: /home/user/.pi/agent/README.md",
-  "- Additional docs: /home/user/.pi/agent/docs",
-  "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
-].join("\n");
+function piDocsBody(wording: PiPromptWording = PI_WORDING_1_4): string {
+  return [
+    wording.docsIntro,
+    "- Main documentation: /home/user/.pi/agent/README.md",
+    "- Additional docs: /home/user/.pi/agent/docs",
+    "- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)",
+  ].join("\n");
+}
 
-const PI_086_RULES_BODY = [
+const PI_RULES_BODY = [
   "- Use bash for file operations like ls, rg, find",
   `- ${EXTRA_GUIDELINE}`,
   "- Be concise in your responses",
@@ -51,17 +58,16 @@ function section(name: string, body: string): string {
   return `<${name}>\n${body}\n</${name}>`;
 }
 
-/** Build a pi 0.86.0-shaped prompt, overriding individual sections per case. */
-function pi086Prompt(
+/** Build a Pi-shaped prompt, overriding individual sections per case. */
+function piPrompt(
   overrides: { preamble?: string; sections?: string[] } = {},
+  wording: PiPromptWording = PI_WORDING_1_4,
 ): string {
-  const preamble =
-    overrides.preamble ??
-    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.";
+  const preamble = overrides.preamble ?? wording.preamble;
   const sections = overrides.sections ?? [
-    section("tools", PI_086_TOOLS_BODY),
-    section("rules", PI_086_RULES_BODY),
-    section("docs", PI_086_DOCS_BODY),
+    section("tools", piToolsBody(wording)),
+    section("rules", PI_RULES_BODY),
+    section("docs", piDocsBody(wording)),
     section("addendum", `${APPENDED_NOTE}\n${APPENDED_NOTE_BODY}`),
     section(
       "project_context",
@@ -104,28 +110,34 @@ function unbalancedTags(text: string): string[] {
   return [...unmatched, ...remaining.map((name) => `</${name}>`)];
 }
 
-test("the 0.86.0 fixture is well-formed before shaping", () => {
+test("the fixture is well-formed before shaping", () => {
   // Guards the tag-balance assertions below from false-greening on a fixture
   // that was already unbalanced.
-  assert.deepEqual(unbalancedTags(pi086Prompt()), []);
+  assert.deepEqual(unbalancedTags(piPrompt()), []);
 });
 
 test("leaves no unbalanced section tags in the shaped prompt", () => {
   assert.deepEqual(
-    unbalancedTags(shapeAnthropicOAuthSystemPrompt(pi086Prompt())),
+    unbalancedTags(shapeAnthropicOAuthSystemPrompt(piPrompt())),
     [],
   );
 });
 
 // Assert the preamble-replacement invariant shared across shaping tests:
 // the minimal prompt replaces pi's identity paragraph.
-function assertPreambleReplaced(shaped: string): void {
+function assertPreambleReplaced(
+  shaped: string,
+  wording: PiPromptWording = PI_WORDING_1_4,
+): void {
   assert.match(shaped, /^You are an expert coding assistant\./);
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+  assert.ok(
+    !shaped.includes(wording.preamble),
+    "pi's identity paragraph must not survive shaping",
+  );
 }
 
 test("replaces the untagged preamble with the minimal prompt", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(pi086Prompt());
+  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
 
   assertPreambleReplaced(shaped);
   assert.match(shaped, /Be concise and helpful\./);
@@ -136,21 +148,24 @@ test("replaces the untagged preamble with the minimal prompt", () => {
 });
 
 test("drops the whole docs section", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(pi086Prompt());
+  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
 
   assert.doesNotMatch(shaped, /<docs>/);
   assert.doesNotMatch(shaped, /<\/docs>/);
-  assert.doesNotMatch(
-    shaped,
-    /Pi documentation \(read only when the user asks about pi itself/,
+  assert.ok(
+    !shaped.includes(PI_WORDING_1_4.docsIntro),
+    "pi's documentation intro must not survive shaping",
   );
   assert.doesNotMatch(shaped, /- Main documentation:/);
 });
 
 test("strips the filler from the tools section but keeps the section", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(pi086Prompt());
+  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
 
-  assert.doesNotMatch(shaped, /In addition to the tools above/);
+  assert.ok(
+    !shaped.includes(PI_WORDING_1_4.toolsFiller),
+    "the custom-tool filler must not survive shaping",
+  );
   assert.match(
     shaped,
     /<tools>\n- read: Read file contents\n- bash: Execute shell commands\n- my_ext_tool: Extension-registered tool snippet\n<\/tools>/,
@@ -158,9 +173,9 @@ test("strips the filler from the tools section but keeps the section", () => {
 });
 
 test("preserves rules, addendum, project context, skills, and cwd verbatim", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(pi086Prompt());
+  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
 
-  assert.ok(shaped.includes(section("rules", PI_086_RULES_BODY)));
+  assert.ok(shaped.includes(section("rules", PI_RULES_BODY)));
   assert.ok(
     shaped.includes(
       section("addendum", `${APPENDED_NOTE}\n${APPENDED_NOTE_BODY}`),
@@ -176,9 +191,9 @@ test("preserves rules, addendum, project context, skills, and cwd verbatim", () 
 
 test("keeps an extension-registered section it knows nothing about", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
+    piPrompt({
       sections: [
-        section("tools", PI_086_TOOLS_BODY),
+        section("tools", piToolsBody()),
         section("my_ext", "Extension-owned guidance."),
       ],
     }),
@@ -189,9 +204,9 @@ test("keeps an extension-registered section it knows nothing about", () => {
 
 test("keeps a docs section an extension overwrote with its own content", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
+    piPrompt({
       sections: [
-        section("tools", PI_086_TOOLS_BODY),
+        section("tools", piToolsBody()),
         section("docs", "Our team's runbook lives at docs/runbook.md."),
       ],
     }),
@@ -207,13 +222,13 @@ test("keeps a docs section an extension overwrote with its own content", () => {
 
 test("applies TEXT_REPLACEMENTS inside pi-owned sections", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
+    piPrompt({
       sections: [
         section(
           "rules",
           "Here is some useful information about the environment you are running in:",
         ),
-        section("tools", PI_086_TOOLS_BODY),
+        section("tools", piToolsBody()),
       ],
     }),
   );
@@ -226,9 +241,9 @@ test("leaves a user's project context untouched by TEXT_REPLACEMENTS", () => {
   const quoted =
     "Here is some useful information about the environment you are running in:";
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
+    piPrompt({
       sections: [
-        section("tools", PI_086_TOOLS_BODY),
+        section("tools", piToolsBody()),
         section("project_context", quoted),
       ],
     }),
@@ -242,7 +257,7 @@ test("leaves a user's project context untouched by TEXT_REPLACEMENTS", () => {
 
 test("keeps a custom preamble that is not pi's default", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({ preamble: "You are a helpful assistant for Acme Corp." }),
+    piPrompt({ preamble: "You are a helpful assistant for Acme Corp." }),
   );
 
   assert.match(shaped, /^You are a helpful assistant for Acme Corp\./);
@@ -300,27 +315,21 @@ test("keeps the filler sentence when an extension quotes it downstream", () => {
   const quoted =
     "In addition to the tools above, this extension adds a downstream policy paragraph.";
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
-      sections: [
-        section("tools", PI_086_TOOLS_BODY),
-        section("addendum", quoted),
-      ],
+    piPrompt({
+      sections: [section("tools", piToolsBody()), section("addendum", quoted)],
     }),
   );
 
   assert.ok(shaped.includes(section("addendum", quoted)));
-  assert.doesNotMatch(
-    shaped,
-    /In addition to the tools above, you may have access to other custom tools/,
-  );
+  assert.ok(!shaped.includes(PI_WORDING_1_4.toolsFiller));
 });
 
 test("preserves a prompt with no project context or skills sections", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
-    pi086Prompt({
+    piPrompt({
       sections: [
-        section("tools", PI_086_TOOLS_BODY),
-        section("docs", PI_086_DOCS_BODY),
+        section("tools", piToolsBody()),
+        section("docs", piDocsBody()),
         section("cwd", FIXTURE_CWD),
       ],
     }),
@@ -346,7 +355,7 @@ test("shapeSystemBlocks passes through non-text blocks and blocks without the pr
     },
     {
       type: "text" as const,
-      text: pi086Prompt(),
+      text: piPrompt(),
     },
   ];
 

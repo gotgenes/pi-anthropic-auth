@@ -49,3 +49,32 @@ export const FIXTURE_TOOL_SNIPPETS: Record<string, string> = {
 
 /** Tools selected for both fixtures; matches {@link FIXTURE_TOOL_SNIPPETS}. */
 export const FIXTURE_SELECTED_TOOLS = Object.keys(FIXTURE_TOOL_SNIPPETS);
+
+/**
+ * The Pi-authored text shaping keys on, in one Pi release's wording.
+ *
+ * Pi has reworded these strings across releases while the peer range still
+ * spans them, so the hand-built fixtures render each wording and the shaping
+ * tests run against every one.
+ */
+export type PiPromptWording = {
+  /** Label for `describe` blocks. */
+  label: string;
+  /** The default preamble, the prompt's untagged first chunk. */
+  preamble: string;
+  /** The trailing filler paragraph of the `tools` section. */
+  toolsFiller: string;
+  /** First line of Pi's own `docs` section. */
+  docsIntro: string;
+};
+
+/** Pi 0.86.0 through 1.4.x. */
+export const PI_WORDING_1_4: PiPromptWording = {
+  label: "pi <=1.4 wording",
+  preamble:
+    "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
+  toolsFiller:
+    "In addition to the tools above, you may have access to other custom tools depending on the project.",
+  docsIntro:
+    "Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):",
+};
