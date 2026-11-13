@@ -1,6 +1,10 @@
 import type { FetchFunction } from "@earendil-works/pi-ai";
 import type { MessageParam } from "./anthropic-message";
-import { buildBillingHeaderValue, getFirstUserText } from "./billing-header";
+import {
+  BILLING_HEADER_MARKER,
+  buildBillingHeaderValue,
+  getFirstUserText,
+} from "./billing-header";
 import {
   hasClaudeCodeVersionOverride,
   higherVersion,
@@ -36,6 +40,10 @@ import {
  * and teaches it to the shared {@link LearnedClaudeCodeFloor} so later
  * requests go out at it directly.  Only a 400 is ever read, and only through
  * a clone, so the streaming success path is untouched.
+ *
+ * A rejected request that carried no billing header is neither retried nor
+ * learned from: Anthropic gated Pi's own user-agent, so the hint says to
+ * upgrade Pi (Issue #86).
  */
 export interface BillingVersionSync {
   /**
@@ -102,7 +110,8 @@ export function createBillingVersionSync(
   const syncFetch = (async (input, init) => {
     const dispatch = baseFetch ?? globalThis.fetch;
     const pinned = resolveClaudeCodeVersion();
-    const target = targetVersion(readUserAgent(input, init));
+    const userAgent = readUserAgent(input, init);
+    const target = targetVersion(userAgent);
     const upgraded =
       target === pinned ? undefined : rebuildBody(init?.body, pinned, target);
     const sentInit =
@@ -113,6 +122,17 @@ export function createBillingVersionSync(
     const response = await dispatch(input, sentInit);
     const rejection = await readVersionRejection(response);
     if (!rejection) return response;
+
+    // Checked before `planRecovery`, which would learn the floor and blame
+    // the override: without our header, Anthropic gated Pi's user-agent, so
+    // neither the floor nor the override bears on it.  A retry body always
+    // carries the header, so only this first rejection can be header-less.
+    if (lacksBillingHeader(sentInit?.body)) {
+      return hintedResponse(response, rejection, {
+        kind: "no-billing-header",
+        userAgentVersion: readClaudeCliVersion(userAgent),
+      });
+    }
 
     const recovery = planRecovery(rejection, sentInit?.body, sentVersion);
     if (recovery.kind === "hint") {
@@ -187,6 +207,18 @@ export function createBillingVersionSync(
     },
     fetch: syncFetch,
   };
+}
+
+/**
+ * True when a request body provably carries no billing header.
+ *
+ * pi-ai >=1.5.0 sends message-thread continuations without `system`, and
+ * shaping adds no header when the first user message has no text.  A body
+ * that is not a string cannot be inspected, so it is not reported as
+ * header-less.
+ */
+function lacksBillingHeader(body: BodyInit | null | undefined): boolean {
+  return typeof body === "string" && !body.includes(BILLING_HEADER_MARKER);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

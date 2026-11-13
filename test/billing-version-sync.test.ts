@@ -608,4 +608,112 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
       sentVersion: REQUIRED,
     });
   });
+
+  // A request without our billing header is gated on Pi's own `claude-cli`
+  // user-agent, which neither the pin nor the override can change.
+  describe("when the rejected request carried no billing header", () => {
+    test("blames Pi's own claude-cli version", async () => {
+      const base = createCapturingFetch([
+        claudeCodeVersionTooOldResponse(REQUIRED),
+        okResponse(),
+      ]);
+      const sync = createBillingVersionSync(
+        createLearnedClaudeCodeFloor(),
+        base.fetch,
+      );
+      sync.recordRequest(shapedPayload());
+
+      const response = await sync.fetch(
+        MESSAGES_URL,
+        requestInit("claude-cli/2.1.280", headerlessBody()),
+      );
+
+      await assertHinted(response, {
+        kind: "no-billing-header",
+        userAgentVersion: "2.1.280",
+      });
+      assert.equal(base.calls.length, 1);
+    });
+
+    test("blames Pi rather than an override that was never sent", async () => {
+      withVersionOverride("2.1.260");
+      const base = createCapturingFetch([
+        claudeCodeVersionTooOldResponse(REQUIRED),
+      ]);
+      const sync = createBillingVersionSync(
+        createLearnedClaudeCodeFloor(),
+        base.fetch,
+      );
+      sync.recordRequest(shapedPayload());
+
+      const response = await sync.fetch(
+        MESSAGES_URL,
+        requestInit("claude-cli/2.1.280", headerlessBody()),
+      );
+
+      await assertHinted(response, {
+        kind: "no-billing-header",
+        userAgentVersion: "2.1.280",
+      });
+    });
+
+    test("omits Pi's version when the request had no user-agent", async () => {
+      const base = createCapturingFetch([
+        claudeCodeVersionTooOldResponse(REQUIRED),
+      ]);
+      const sync = createBillingVersionSync(
+        createLearnedClaudeCodeFloor(),
+        base.fetch,
+      );
+      sync.recordRequest(shapedPayload());
+
+      const response = await sync.fetch(
+        MESSAGES_URL,
+        requestInit(undefined, headerlessBody()),
+      );
+
+      await assertHinted(response, {
+        kind: "no-billing-header",
+        userAgentVersion: undefined,
+      });
+    });
+
+    // The named floor rejected Pi's user-agent, not our header, so later
+    // requests must not have their headers raised on its account.
+    test("does not learn the floor it names", async () => {
+      const floor = createLearnedClaudeCodeFloor();
+      const base = createCapturingFetch([
+        claudeCodeVersionTooOldResponse(REQUIRED),
+      ]);
+      const sync = createBillingVersionSync(floor, base.fetch);
+      sync.recordRequest(shapedPayload());
+
+      await sync.fetch(
+        MESSAGES_URL,
+        requestInit("claude-cli/2.1.280", headerlessBody()),
+      );
+
+      assert.equal(floor.applyTo("1.0.0"), "1.0.0");
+    });
+  });
 });
+
+/**
+ * What pi-ai >=1.5.0 sends on a message-thread continuation: only the new
+ * messages, and no `system`, so no billing header.
+ */
+function headerlessBody(): string {
+  return JSON.stringify({
+    model: "claude-haiku-4-5",
+    stream: true,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "toolu_01", content: "hi" },
+        ],
+      },
+    ],
+    thread: { type: "continue", previous_message_id: "msg_01" },
+  });
+}
