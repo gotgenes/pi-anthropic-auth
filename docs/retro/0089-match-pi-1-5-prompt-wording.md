@@ -55,3 +55,56 @@ Tests went from 246 to 268 (+22): 11 from the per-wording fixture and mid-conver
   On <=1.4 wording, a tool `promptSnippet` containing the new filler sentence "Additional tools may be available." now drops the whole tool-list paragraph, so the plan's "byte-identical on <=1.4" is slightly overstated.
   The old anchor carried the same hazard; accepted as is.
   The reviewer otherwise re-derived, with its own inputs against real 1.3.0 and 1.5.2 builders, that the gate decision is unchanged on <=1.4 and that the warning never fires for a prompt a supported Pi emits by itself.
+
+## Stage: Final Retrospective (2026-11-13T03:08:11Z)
+
+### Session summary
+
+One session took #89 from planning through the v3.5.0 release.
+Shaping now matches both Pi wordings, a reworded preamble warns once at runtime, the pin is 2.1.323, devDeps are at pi 1.5.2, and a real-transport alarm pins the message-thread opt-out.
+The latest-Pi CI canary was recorded on #56 instead of a new issue.
+
+### Observations
+
+#### What went well
+
+- A planning-time scratch worktree (`/tmp/bump89`) turned every design input into a measurement before the plan was written:
+  - it reproduced the issue's 6 failures;
+  - an anchor-list prototype shaped the real 1.5.2 prompt from 2271 to 613 bytes;
+  - a two-turn thread spike was shown to discriminate by its own killing mutation.
+
+  TDD then hit no surprises: every planned mutation reddened exactly the tests the plan predicted.
+- Enumerating the other writers of the system prompt (the `plan-issue` rule) changed the runtime-warning design before it was written.
+  `pi-permission-system` writes `tools` and `rules` under a subagent's custom prompt, so the warning requires all three Pi-owned sections, and the gate stays prefix-based.
+- The pre-completion re-derivation mandate earned its cost.
+  The reviewer bundled base and HEAD with esbuild, fed both its own inputs plus real 1.3.0 and 1.5.2 `buildSystemPrompt` output, and found the one <=1.4 byte-difference the plan's argument had missed (a tool snippet containing the new filler sentence).
+- The devDep's own `./node_modules/.bin/pi` (1.5.2) gave a live repro on a Pi newer than the operator's global 1.4.0, with no throwaway install.
+
+#### What caused friction (agent side)
+
+- `other` (mutation not applied) — in TDD step 8 the rename probe ran as a `sed` that matched nothing, because Biome had re-wrapped the constant.
+  `git diff --stat` reported 13 changed lines, but those were the step's own uncommitted refactor, so the check the testing skill prescribes could not see the miss.
+  It was caught only because the expected `tsc` error did not appear (self-identified).
+  Impact: two extra tool calls, no rework.
+- `instruction-violation` (self-identified at review, reviewer-caught) — the plan's Goals claimed "on pi <=1.4 the shaped output is byte-identical" from an argument rather than from enumerating the new anchors' inputs.
+  `plan-issue` already says an invariant discharged by argument is unproven.
+  Impact: none on the code; the plan text overstates, and the close comment states the exception.
+- `other` — two format and lint slips surfaced only at commit time: Biome re-wrapping after a scripted `sed` rename, and `no-unnecessary-condition` on `shaped?.text` for a destructured array element.
+  Impact: one re-run each, no rework.
+
+#### What caused friction (user side)
+
+- None.
+  The operator answered the three-question planning gate in one pass.
+  Choosing "add in this plan" for the runtime warning, over the recommended follow-up, widened scope by one step, which landed cleanly.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the main session ran on `claude-opus-5-5`; the `tidy-first-assessor` and `pre-completion-reviewer` ran on `claude-sonnet-5-5` (per their transcripts), appropriate for read-heavy review.
+  The reviewer's esbuild-bundle comparison was judgment-heavy and was done well on sonnet.
+- **Feedback-loop gap analysis** — `pnpm run check`, the affected test file, and `pnpm run lint` ran inside every TDD step before its commit; no verification was deferred to the end.
+
+### Changes made
+
+1. `.pi/skills/testing/SKILL.md`: the mutation-applied check now diffs against the saved green copy instead of `git diff --stat`, which also counts the step's uncommitted edits.
+2. `.pi/skills/pi-cli-repro/SKILL.md`: when the version under test is the devDep pin, run `./node_modules/.bin/pi` instead of a throwaway install.
