@@ -43,3 +43,30 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: pnpm fallow
+
+  # The test suite against the oldest Pi `peerDependencies` admits, which the
+  # `check` job's frozen lockfile never installs (Refs #56). No typecheck:
+  # types newer than the floor are expected, and the peer contract is runtime
+  # behavior. Kill criterion: if this catches nothing across a few Pi minor
+  # bumps, remove it rather than keep it for symmetry.
+  floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install the Pi peer floor
+        run: |
+          specs=$(./scripts/ci/pi-floor-specs.sh)
+          echo "Installing $specs"
+          # shellcheck disable=SC2086 # one word per spec
+          pnpm add -D $specs
+
+      - name: Test
+        run: pnpm run test
