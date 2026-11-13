@@ -25,3 +25,21 @@ Filed #89 (pi 1.5.0 prompt-anchor drift, found by a scratch devDep bump) and #90
   The operator kept #86 first and the drift separate (#89); the plan carries a local `MessageThreadOptOut` type that #89 removes.
 - The Tidy-First assessor recommended no preparatory commits, and moved the header-less check out of `planRecovery` into `syncFetch`, because the retry body always carries our header; it also surfaced the decision not to learn the floor from a header-less rejection.
 - Credit: the operator asked how reporters and PR authors would be credited, and chose co-author trailers for all three (G4bar, pandysp, denjzs) plus a named thank-you in each ship-time close comment; `cliff.toml` does not render trailers, so the commits and comments are the only credit surface.
+- Trailer emails: none of the three has a public email; `denjzs`'s PR commit used an address GitHub maps to a second account (`denusklo`), so the plan keeps the `denjzs` noreply address, which the operator confirmed.
+
+## Stage: Implementation — TDD (2026-11-13T01:12:29Z)
+
+### Session summary
+
+Completed all five plan steps: the OAuth-only `disableContinuation` opt-out, the `no-billing-header` hint variant, its wiring ahead of `planRecovery` in `syncFetch`, a live check, and the docs.
+Tests went from 236 to 246; `check`, `lint`, and `fallow:dead-code` stayed green.
+Live: pi 1.5.1 with `claude-fable-5-2` and a tool call now prints `done` (it returned the 400 with the `set-override` hint before), and pi 1.4.0 with `claude-haiku-4-5` is unaffected.
+
+### Observations
+
+- The step-3 test "does not learn the floor it names" was a genuine red, not the invariant pin the plan predicted: the old path learned the floor in `planRecovery` before `rebuildBody` failed.
+- Mutation verification caught a process slip: the `cp` that saved the green copy ran in the same tool batch as the mutating `Edit`, so the "green" copy held the mutation; restored by hand and re-saved in its own call before continuing.
+- Every planned mutation killed exactly the predicted tests; an extra mutation (`{ disableContinuation: false }` for API-key requests) confirmed the API-key pins too.
+- Added a JSDoc paragraph to `BillingVersionSync` for the header-less path, which the plan listed under Module-Level Changes.
+- Pre-completion reviewer: WARN.
+  Reviewer warnings: no test pins that a non-string body (`Uint8Array`, `ReadableStream`) with a `claude_code_version_too_old` 400 keeps the old `planRecovery` path; correct by reading, and optional.
