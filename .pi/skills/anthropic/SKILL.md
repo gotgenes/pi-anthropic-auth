@@ -45,8 +45,14 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
   An explicit `PI_ANTHROPIC_AUTH_CLAUDE_CODE_VERSION` override is absolute and is never raised.
   Measured live on pi 0.87.1 against `claude-opus-5-5`: with the pin forced to 2.1.260 the request succeeds; with the same value set through the env override it is rejected as `claude_code_version_too_old`.
 - When Anthropic raises a floor above both pi and the pin, the same `fetch` retries once at the floor the 400 names, and remembers it for the wrapper's lifetime (Issue #75).
-  Unrecovered rejections (override set, floor unnamed, body not rebuildable, retry rejected) reach the user with a `[pi-anthropic-auth]` hint appended to `error.message`.
+  Unrecovered rejections (no billing header, override set, floor unnamed, body not rebuildable, retry rejected) reach the user with a `[pi-anthropic-auth]` hint appended to `error.message`.
+  A header-less request was gated on pi's own `claude-cli` user-agent, so its hint says to upgrade pi and its floor is not learned (Issue #86).
   On pi 0.87.1 the retry is unreachable live without a patch, because pi's own 2.1.280 already meets every current floor; the live check forces the pin to 2.1.260 and disables the pi-version read in the working tree, then looks for the `claude-code-version-recovery` debug line.
+- OAuth requests set `disableContinuation: true`, opting out of pi-ai >=1.5.0's Anthropic message threads (Issue #86).
+  pi builds a `thread: continue` request after `onPayload` and leaves out `system`, and Anthropic rejects `system` on a continuation, so the billing header cannot reach one.
+  Claude Code itself does not use threads: `claude -p` 2.1.311/2.1.323 and interactive `claude` 2.1.311 send no `message-threads` beta and no `thread` field (local-server capture, 2026-11-13).
+  On pi 1.5.1 with `claude-fable-5-2`, the continuation after a tool call was rejected as `claude_code_version_too_old` on pi's user-agent, which recovery cannot change; with the opt-out it returns 200.
+  Header-less continuations returned 200 on the operator's account (haiku, sonnet, and opus 5.5 on pi 1.5.2), while PR #85 and a comment on Issue #86 report them rejected as third-party usage on other accounts; Issue #90 tracks whether OAuth can use threads.
 - The wrapper covers the main loop and compaction — everything that dispatches through `modelRuntime`.
 - It covers only the provider names this extension registers: `anthropic`, plus any the user names in `extensions/pi-anthropic-auth/config.json` (global, or a trusted project's `.pi/`).
   An Anthropic OAuth subscription another extension registers under its own name (pi-multi-pass's `anthropic-2`) is otherwise unshaped and fails real prompts with the extra-usage 400 (Issue #70).

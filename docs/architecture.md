@@ -53,7 +53,7 @@ flowchart TD
     MR --> PC["provider-composer.streamWith"]
     PC --> W["streamSimple wrapper (this extension)"]
     W --> D{"sk-ant-oat token?"}
-    D -->|"yes"| S["Inject onPayload shaping"]
+    D -->|"yes"| S["Inject onPayload shaping, fetch wrapper, thread opt-out"]
     D -->|"no"| P["Pass through unchanged"]
     S --> G["built-in anthropicMessagesApi().streamSimple"]
     P --> G
@@ -143,7 +143,15 @@ The same `fetch` wrapper recovers when Anthropic raises a model's floor above bo
 It inspects only a 400, through `response.clone()`, so a streaming success response is never read.
 When the body is a `claude_code_version_too_old` rejection naming a higher floor, the wrapper splices the billing header up to that floor and retries once, with the same exact-string replacement as above.
 The floor is learned for the wrapper's lifetime, owned by `createAnthropicOAuthStreamSimple` rather than by module state, so later requests go out at it directly.
-When recovery cannot run (an override is set, the floor is not named, the body cannot be rebuilt) or the retry is rejected too, the 400 is returned with a `[pi-anthropic-auth]` hint appended to `error.message`; status, headers, `error_code`, and `request_id` are preserved.
+When recovery cannot run (the request carried no billing header, an override is set, the floor is not named, the body cannot be rebuilt) or the retry is rejected too, the 400 is returned with a `[pi-anthropic-auth]` hint appended to `error.message`; status, headers, `error_code`, and `request_id` are preserved.
+A request without our billing header was gated on pi's own `claude-cli` user-agent, so its hint says to upgrade pi, and its named floor is not learned (Issue #86).
+
+For OAuth requests the wrapper also sets `disableContinuation: true` (Issue #86).
+pi-ai 1.5.0 sends Anthropic [message threads](https://platform.claude.com/docs/en/build-with-claude/message-threads): when a session's conversation prefix is unchanged, it sends each later turn as a `thread: continue` request carrying only the new messages.
+It builds that request after `onPayload` has run and leaves out `system` and `tools`, which Anthropic accepts only on the request that creates a thread, so a continuation can never carry the billing header.
+With the opt-out, every OAuth request is sent in full, as on pi <=1.4 and as Claude Code sends them (measured: Claude Code 2.1.311 and 2.1.323 send no `message-threads` beta and no `thread` field).
+Anthropic and pi both document threads as leaving tokens and prompt caching unchanged, so the cost is upload size only.
+API-key requests keep pi's threads; whether OAuth requests could use them is tracked in Issue #90.
 
 The wrapper composes, rather than replaces, any caller-provided `onPayload` and any caller-provided `fetch`.
 On the main loop, Pi still passes its own `onPayload` (which fires other extensions' `before_provider_request` handlers); the wrapper runs those first and applies our shaping last, closest to the wire.

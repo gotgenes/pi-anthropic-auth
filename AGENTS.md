@@ -57,9 +57,11 @@ The current implementation does the following:
 7. Recovers from a `claude_code_version_too_old` rejection by retrying once at the floor Anthropic names, remembering that floor for later requests, and appending a hint to the error when it cannot recover (Issue #75)
 8. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 9. Registers the same wrapper on any extra provider named in the extension's config file, for Anthropic OAuth subscriptions another extension registers under its own name (pi-multi-pass's `anthropic-2`, Issue #70)
+10. Opts OAuth requests out of Pi's Anthropic message-thread continuations (pi-ai >=1.5.0), which leave out `system` and so the billing header; every OAuth request is sent in full, as Claude Code sends them (Issue #86)
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and injects two steps: an `onPayload` shaping step, and an `options.fetch` wrapper for the version reconciliation and rejection recovery, which need the built request's headers and the response.
+For OAuth requests it also sets `disableContinuation: true`, because pi builds a thread continuation after `onPayload` and leaves out `system` (Issue #86).
 
 ## Principles
 
@@ -97,6 +99,7 @@ It uses one Pi extension seam:
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, system prompt shaping).
 It also injects an `options.fetch` wrapper for OAuth requests, because one fact — the Claude Code version pi reports in its `user-agent` — is only observable on the built request, downstream of `onPayload` (Issue #74).
+And it sets `disableContinuation: true` for OAuth requests, because pi-ai >=1.5.0 builds message-thread continuations after `onPayload` without `system`, where the billing header lives (Issue #86).
 The delegate is resolved at runtime rather than read from the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own `custom-provider-gitlab-duo` example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last.
 On pi <=0.80.7 it would also have recursed, because `registerProvider` bridged our wrapper into that slot.
 The pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.86.0` peer floor.
@@ -493,11 +496,11 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 
 Current suites map roughly to:
 
-1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, and delegation to the built-in transport.
+1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, the OAuth-only message-thread opt-out (Issue #86), and delegation to the built-in transport.
 2. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, the structural messages-payload guard, and mid-conversation system messages, including the content-less effort messages that survive shaping (PR #79).
 3. `test/claude-code-version.test.ts` — `claude-cli` user-agent parsing and numeric `X.Y.Z` comparison, including the unparseable-candidate fallbacks, and the learned floor.
 4. `test/billing-version-sync.test.ts` — the wire-level `cc_version` upgrade: pass-through when Pi is absent, lower, or equal; rewrite when Pi is higher; the env override's absolute precedence; and that nothing outside the billing block changes.
-   Also the rejection recovery: one retry at the named floor, the floor shared with later requests, success and unrelated 400 responses left unread, and each hint on an unrecovered rejection (Issue #75).
+   Also the rejection recovery: one retry at the named floor, the floor shared with later requests, success and unrelated 400 responses left unread, and each hint on an unrecovered rejection (Issue #75), including a request that carried no billing header (Issue #86).
 5. `test/version-rejection.test.ts` — parsing Anthropic's captured `claude_code_version_too_old` body, preserving its fields when a hint is appended, and each hint's wording.
 6. `test/claude-code-version-drift.test.ts` — the offline drift alarm against the installed pi-ai: `options.fetch` is forwarded, the `claude-cli` user-agent parses, and our pin is not below Pi's (Issue #74).
 7. `test/system-prompt-shaping.test.ts` — section-level removal and replacement, tag balance, tool-snippet and guideline preservation, appended-content preservation, extension-registered sections, and the degraded passthrough path.
@@ -579,7 +582,8 @@ Since Issue #75 the same `fetch` wrapper also recovers when Anthropic raises a f
 It reads only a 400, through `response.clone()`, and when the body is a `claude_code_version_too_old` rejection naming a higher floor, it rebuilds the billing header at that floor and retries once.
 The floor is remembered for the wrapper's lifetime (one floor for every model), so only the first request after a floor rise pays the rejected round trip.
 Measured live on 2026-09-23: every rejection (n=4, `claude-opus-5-5` and `claude-fable-5-1`) named its floor as `version X.Y.Z or newer is required`, the floor is inclusive, a rejection costs under 0.63 s of whole-process wall time, and six older models accept any version down to 1.0.0.
-When recovery cannot run (an env override is set, the floor is not named, the body cannot be rebuilt) or the retry is rejected too, the 400 reaches the user with a `[pi-anthropic-auth]` hint appended to `error.message`, which says whether to raise the override, set one, or upgrade pi.
+When recovery cannot run (the request carried no billing header, an env override is set, the floor is not named, the body cannot be rebuilt) or the retry is rejected too, the 400 reaches the user with a `[pi-anthropic-auth]` hint appended to `error.message`, which says whether to raise the override, set one, or upgrade pi.
+A header-less request was gated on pi's own `claude-cli` user-agent, so its hint says to upgrade pi and its floor is not learned (Issue #86).
 So a surfaced `claude_code_version_too_old` now always carries that hint, and the hint names the cause.
 
 Do not source the value from a local `claude --version`.
@@ -600,7 +604,7 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 ### Registering `streamSimple`
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
-The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step gated on the OAuth token.
+The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step, an `options.fetch` wrapper, and a message-thread opt-out, all gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last (on pi <=0.80.7 it would also have recursed, since the bridge put our wrapper in that slot).
 The resolver imports the `@earendil-works/pi-ai/compat` subpath — the path pi's own `custom-provider-gitlab-duo` example delegates through — which Pi's loader maps (through its `alias` or `virtualModules` table) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
 It reads the non-deprecated `anthropicMessagesApi().streamSimple` factory and throws if that handle is absent.

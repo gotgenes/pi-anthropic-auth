@@ -111,6 +111,15 @@ Check `/anthropic-auth:status`.
 If the failing provider is missing from `shaped providers`, name it in the config file (see [Additional Anthropic subscriptions](#additional-anthropic-subscriptions)).
 Its line under `accounts` shows which subscription that provider's login belongs to, and whether extra usage is enabled on it.
 
+### Requests fail after the first tool call on Pi 1.5
+
+Pi 1.5.0 started sending Anthropic requests as message threads: after the first request, each turn sends only the new messages and leaves out the system prompt, where this extension puts the Claude Code billing header.
+With pi-anthropic-auth releases from before the fix, the request after a tool call could fail with a `claude_code_version_too_old` error that recovery could not fix, or be reported as third-party usage.
+
+Upgrade pi-anthropic-auth.
+It now opts Anthropic OAuth requests out of message threads, so every request is sent in full with the billing header, as on Pi 1.4 and as Claude Code sends them.
+API-key requests keep Pi's message threads.
+
 ### Pi warns about extra usage on every OAuth session
 
 Pi prints this warning once per interactive session whenever an Anthropic model is selected and your stored Anthropic credentials are OAuth:
@@ -184,6 +193,7 @@ The rejection names the required version, so the extension rebuilds the billing 
 It remembers that version for the rest of the session, so only the first request after a floor rise pays for the rejected attempt.
 
 If the error still reaches you, it ends with a `[pi-anthropic-auth]` hint saying what to do: raise or unset an override, set one, or upgrade Pi.
+When the rejected request carried no billing header, Anthropic checked Pi's own `claude-cli` version, which no override changes, so the hint says to upgrade Pi.
 To pin the version yourself:
 
 ```bash
