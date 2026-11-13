@@ -8,7 +8,7 @@ description: |
 # Shell traps
 
 Load this skill before composing a non-trivial `bash` call.
-The zsh facts every session needs (no word-split of an unquoted parameter, `=word` expansion, `$status` read-only, an unquoted glob aborting) stay in `AGENTS.md`; this is the rest.
+The shell facts every session needs (which shell the tool runs, glob quoting) stay in `AGENTS.md`; this is the rest.
 
 ## Command flags and state
 
@@ -16,7 +16,7 @@ The zsh facts every session needs (no word-split of an unquoted parameter, `=wor
 Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
 Chain producer and consumer in one call, or re-derive the value.
 Pass file tool paths repo-relative (`src/x.ts`), not hand-built absolute ones — a mistyped absolute path fails confusingly instead of fast, and trips pi-permission-system's `external_directory` gate when that extension is installed.
-The zsh `echo` decodes backslash escapes (`\u2014` prints an em-dash; `bash` and `dash` print it literally), so it misreports a file's literal escape text; print bytes with `print -r --`, `printf '%s\n'`, or `sed -n`.
+If the shell is zsh, its `echo` decodes backslash escapes (`\u2014` prints an em-dash; `bash` and `dash` print it literally), so it misreports a file's literal escape text; print bytes with `print -r --`, `printf '%s\n'`, or `sed -n`.
 
 ## Bodies with backticks
 

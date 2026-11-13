@@ -157,7 +157,7 @@ Shared workflow skills (synced from `pi-packages`, adapted to this single packag
 8. `markdown-conventions`: rumdl-enforced markdown rules
 9. `mermaid`: Mermaid authoring and verification
 10. `pi-extension-lifecycle`: Pi turn/tool execution and extension event lifecycle
-11. `shell-traps`: bash traps beyond the zsh facts in Shell (`rg -r`, `pipefail`, backtick bodies, re-verifying counts)
+11. `shell-traps`: bash traps beyond the facts in Shell (`rg -r`, `pipefail`, backtick bodies, re-verifying counts)
 12. `edit-tool`: atomic `Edit` batches, non-ASCII `oldText`, scripted substitutions, block insertion
 
 ### Project Prompts
@@ -262,12 +262,8 @@ Use `pnpm`.
 
 ### Shell
 
-The `bash` tool runs zsh.
-Quote a glob pattern meant for a command rather than the shell — `--include='*.ts'`, `find . -name '*.ts'`.
-Unquoted, it expands against the cwd first: bash silently substitutes a matched filename, and zsh aborts with `no matches found`.
-In zsh an unquoted parameter is not word-split, so `perl -pi -e '…' $FILES` passes the whole list as a single filename — spell a multi-file list inline.
-Do not start a bash word with `=` — zsh's `equals` expansion reads `=word` as a command-path lookup, aborts, and discards the rest of an `A; B; C` chain; use `echo ---`, not `echo ===`.
-When a shell loop or script needs a status variable, do not name it `status` — zsh reserves `$status` (an alias for `$?`) as read-only, so the assignment aborts with `read-only variable: status`; use `state`/`rc` instead.
+The `bash` tool runs `/opt/homebrew/bin/bash` (`shellPath` in `~/.pi/agent/settings.json`), not the zsh in `$SHELL`; write bash syntax.
+Quote a glob pattern meant for a command rather than the shell — `--include='*.ts'`, `find . -name '*.ts'` — or bash silently substitutes a matching filename from the cwd.
 The remaining shell traps (`rg -r`, pipelines under `pipefail`, backtick bodies) live in the `shell-traps` skill.
 
 ### Git Workflow
