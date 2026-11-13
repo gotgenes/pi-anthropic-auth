@@ -395,3 +395,84 @@ test("shapeSystemBlocks passes through non-text blocks and blocks without the pr
     /my_ext_tool: Extension-registered tool snippet/,
   );
 });
+
+describe("shapeSystemBlocks with an unrecognized preamble", () => {
+  /** Spy on `console.warn` with both shaping latches cleared around the test. */
+  function captureWarnings() {
+    _resetShapingWarnings();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => {
+      warnSpy.mockRestore();
+      _resetShapingWarnings();
+    });
+    return warnSpy;
+  }
+
+  // Pi's own three sections under a preamble no known prefix matches: what
+  // the next upstream rewording of the preamble would look like.
+  const REWORDED_PROMPT = piPrompt({
+    preamble: "You are a careful assistant working within a coding harness.",
+  });
+
+  for (const attempt of ["first", "second"]) {
+    test(`passes the prompt through and warns once (${attempt} run)`, () => {
+      // Two runs with identical expectations: the second fails if
+      // `_resetShapingWarnings` stops clearing this latch.
+      const warnSpy = captureWarnings();
+      const blocks = [{ type: "text" as const, text: REWORDED_PROMPT }];
+
+      assert.deepEqual(shapeSystemBlocks(blocks), blocks);
+      assert.deepEqual(shapeSystemBlocks(blocks), blocks);
+      assert.equal(
+        warnSpy.mock.calls.length,
+        1,
+        "the unrecognized-preamble warning is latched to one emission",
+      );
+      assert.match(
+        String(warnSpy.mock.calls[0]?.[0]),
+        /does not recognize.*PI_DEFAULT_PROMPT_PREFIXES/s,
+      );
+    });
+  }
+
+  test("does not warn for a custom prompt carrying only tools and rules", () => {
+    // pi-permission-system writes these two sections under a subagent's
+    // custom prompt; Pi itself emits all three only with its default preamble.
+    const warnSpy = captureWarnings();
+    const prompt = piPrompt({
+      preamble: "You are the release subagent for Acme Corp.",
+      sections: [
+        section("tools", piToolsBody()),
+        section("rules", PI_RULES_BODY),
+        section("cwd", FIXTURE_CWD),
+      ],
+    });
+    const blocks = [{ type: "text" as const, text: prompt }];
+
+    assert.deepEqual(shapeSystemBlocks(blocks), blocks);
+    assert.equal(warnSpy.mock.calls.length, 0);
+  });
+
+  test("does not warn for the Claude Code identity block", () => {
+    const warnSpy = captureWarnings();
+    const blocks = [
+      {
+        type: "text" as const,
+        text: "You are Claude Code, Anthropic's official CLI for Claude.",
+      },
+    ];
+
+    assert.deepEqual(shapeSystemBlocks(blocks), blocks);
+    assert.equal(warnSpy.mock.calls.length, 0);
+  });
+
+  for (const wording of [PI_WORDING_1_4, PI_WORDING_1_5]) {
+    test(`does not warn for Pi's default prompt in ${wording.label}`, () => {
+      const warnSpy = captureWarnings();
+
+      shapeSystemBlocks([{ type: "text", text: piPrompt({}, wording) }]);
+
+      assert.equal(warnSpy.mock.calls.length, 0);
+    });
+  }
+});

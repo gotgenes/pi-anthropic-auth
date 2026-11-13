@@ -14,6 +14,7 @@ import {
 import {
   _resetShapingWarnings,
   shapeAnthropicOAuthSystemPrompt,
+  shapeSystemBlocks,
 } from "#src/system-prompt-shaping";
 import {
   APPENDED_NOTE,
@@ -146,8 +147,8 @@ test("the parser round-trips the installed pi's prompt byte-for-byte", () => {
 });
 
 test("shaping the installed pi's prompt takes the section path", () => {
-  // The latch is module-global, so a warning tripped earlier in this file would
-  // suppress the one this test is watching for.
+  // The latches are module-global, so a warning tripped earlier in this file
+  // would suppress the one this test is watching for.
   _resetShapingWarnings();
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   onTestFinished(() => {
@@ -155,13 +156,18 @@ test("shaping the installed pi's prompt takes the section path", () => {
     _resetShapingWarnings();
   });
 
-  const shaped = shapeAnthropicOAuthSystemPrompt(buildUpstreamPrompt());
+  // Through `shapeSystemBlocks`, the entry point request shaping uses, so the
+  // preamble gate is exercised along with the section rules.
+  const shaped = shapeSystemBlocks([
+    { type: "text", text: buildUpstreamPrompt() },
+  ])[0].text;
 
   assert.equal(
     warnSpy.mock.calls.length,
     0,
-    "shaping the prompt the installed pi builds degraded to the passthrough path. " +
-      "This is the mid-session stderr warning, caught at build time instead.",
+    "shaping the prompt the installed pi builds warned: either it degraded to the " +
+      "passthrough path or its preamble went unrecognized. This is the mid-session " +
+      "stderr warning, caught at build time instead.",
   );
 
   // Replaced: the Pi identity paragraph.
