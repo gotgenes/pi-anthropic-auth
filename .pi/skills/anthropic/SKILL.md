@@ -153,7 +153,7 @@ All request shaping runs in the transport wrapper (`src/oauth-transport.ts`), wh
 - billing-header injection
 - `system[]` block ordering
 - cache-control adjustments
-- system prompt de-fingerprinting (section-aware: replaces the untagged preamble, drops the `docs` section, strips the `tools` filler; preserves every other section byte-identically)
+- system prompt de-fingerprinting (section-aware: replaces the untagged preamble, drops the `docs` section, strips the `tools` filler; preserves every other section byte-identically; matches every Pi wording the peer range spans, and warns once when Pi's own sections arrive under an unrecognized preamble, Issue #89)
 - the same section rules applied to mid-conversation `role: "system"` updates (Issue #69)
 
 One step does not fit in `onPayload` and runs in an injected `options.fetch` instead (`src/billing-version-sync.ts`): raising `cc_version` to pi's reported `claude-cli` version, and recovering from a `claude_code_version_too_old` rejection.

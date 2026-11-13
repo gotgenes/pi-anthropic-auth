@@ -127,11 +127,17 @@ This replaces the previous, brittle approach of sniffing system-prompt markers a
 
 For OAuth requests, the injected `onPayload` runs `shapeAnthropicOAuthPayload`, which:
 
-1. sanitizes Pi's default prompt section by section (de-fingerprinting) — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools`, while preserving every other section byte-identically,
+1. sanitizes Pi's default prompt section by section (de-fingerprinting) — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools`, while preserving every other section byte-identically; the preamble prefix and both anchors are lists holding one entry per Pi wording (pi 1.5.0 reworded all three), because the peer range spans more than one,
 2. applies those same section rules to the mid-conversation `role: "system"` messages Pi 0.86.0 re-sends on models that accept them (Issue #69) — a message the rules empty is dropped unless it carries `output_config`, because on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) Pi pins the top-level effort to `"high"` and sends the requested effort as content-less system messages, which dropping would silently discard (PR #79), and
 3. prepends an `x-anthropic-billing-header` system block (without `cache_control`) that reports `cc_entrypoint=sdk-cli`, the label Claude Code sends from its print mode (Issue #83).
 
 Assistant messages pass through unmodified; see "Assistant block ordering is not normalized" below.
+
+Only a `system[]` block containing a known preamble prefix is shaped.
+When Pi rewords its preamble, its prompt fails that gate and reaches Anthropic whole, while every request still returns 200; that went unnoticed for pi 1.5.0 until the devDeps were bumped (Issue #89).
+So a block that fails the gate but carries all three of Pi's own sections (`tools`, `rules`, `docs`) is passed through with a one-time `console.warn` naming `PI_DEFAULT_PROMPT_PREFIXES`.
+Pi emits those three only with its default preamble; requiring all of them keeps a custom subagent prompt that pi-permission-system gives `tools` and `rules` sections from warning.
+The gate itself stays prefix-based, so such custom prompts are never rewritten.
 
 For OAuth requests the wrapper also injects an `options.fetch` wrapper.
 One fact it needs is not available at `onPayload` time: pi-ai's `createClient` adds `user-agent: claude-cli/<version>` to the built request, downstream of every other seam this extension can reach, and Anthropic gates new models on the `cc_version` we send rather than on that header.
@@ -152,6 +158,7 @@ It builds that request after `onPayload` has run and leaves out `system` and `to
 With the opt-out, every OAuth request is sent in full, as on pi <=1.4 and as Claude Code sends them (measured: Claude Code 2.1.311 and 2.1.323 send no `message-threads` beta and no `thread` field).
 Anthropic and pi both document threads as leaving tokens and prompt caching unchanged, so the cost is upload size only.
 API-key requests keep pi's threads; whether OAuth requests could use them is tracked in Issue #90.
+`test/message-thread-drift.test.ts` drives pi's own transport through two turns of one session, so a pi release that stops honoring the opt-out fails the suite rather than silently dropping the header (Issue #89).
 
 The wrapper composes, rather than replaces, any caller-provided `onPayload` and any caller-provided `fetch`.
 On the main loop, Pi still passes its own `onPayload` (which fires other extensions' `before_provider_request` handlers); the wrapper runs those first and applies our shaping last, closest to the wire.
