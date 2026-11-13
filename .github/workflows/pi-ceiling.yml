@@ -1,0 +1,109 @@
+name: Pi ceiling
+
+# Typechecks and tests this package against each new Pi release, once, within
+# about two hours of publication (Refs #56). The `check` job in ci.yml only
+# ever exercises the pinned devDependencies, so a Pi release that breaks
+# shaping used to surface at the next devDependency bump: Pi 1.5.0's reworded
+# prompt went unnoticed for eleven days (Refs #89).
+#
+# Nothing can trigger on another repository's npm release, so this polls.
+# Most runs find nothing new and finish in seconds. A cache entry keyed on the
+# tested versions marks a release as done, pass or fail, so a failing release
+# sends one notification rather than one an hour. A new run for that release
+# happens only when the entry is evicted (7 days without access) or when
+# dispatched with `force`.
+#
+# Not run on pull requests: a Pi release must not turn an unrelated PR red.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Test npm latest even if it equals the devDependency pins or was already tested"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pi-ceiling
+  cancel-in-progress: false
+
+jobs:
+  ceiling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Find an untested Pi release
+        id: target
+        env:
+          FORCE: ${{ inputs.force && 'true' || 'false' }}
+        run: |
+          if [ "$FORCE" = true ]; then
+            specs=$(./scripts/ci/pi-ceiling-specs.sh --force)
+          else
+            specs=$(./scripts/ci/pi-ceiling-specs.sh)
+          fi
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
+          # Cache keys reject commas; map the separators to be safe.
+          key="pi-ceiling-${specs//[ \/@]/-}"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          if [ -n "$specs" ]; then
+            echo "Candidate: $specs"
+          fi
+
+      - name: Check whether this release was already tested
+        id: seen
+        if: steps.target.outputs.specs != '' && !inputs.force
+        uses: actions/cache/restore@v6
+        with:
+          path: .pi-ceiling-tested
+          key: ${{ steps.target.outputs.key }}
+          lookup-only: true
+
+      - name: Install the Pi release
+        id: install
+        if: steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true'
+        env:
+          SPECS: ${{ steps.target.outputs.specs }}
+        run: |
+          echo "Installing $SPECS"
+          # shellcheck disable=SC2086 # one word per spec
+          pnpm add -D $SPECS
+
+      - name: Typecheck
+        if: steps.install.outcome == 'success'
+        run: pnpm run check
+
+      # Runs after a failed typecheck too: the two failures name different
+      # breakages (types versus behavior), and both are worth one run.
+      - name: Test
+        if: always() && steps.install.outcome == 'success'
+        run: pnpm run test
+
+      - name: Record the release as tested
+        if: always() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true'
+        env:
+          SPECS: ${{ steps.target.outputs.specs }}
+        run: |
+          mkdir -p .pi-ceiling-tested
+          echo "$SPECS" > .pi-ceiling-tested/specs
+
+      - name: Save the tested marker
+        if: always() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .pi-ceiling-tested
+          key: ${{ steps.target.outputs.key }}
