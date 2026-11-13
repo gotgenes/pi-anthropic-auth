@@ -21,6 +21,7 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 4. Prefer request shaping before prompt rewriting.
 5. A refusal blamed on request *content* needs an organic-data control before it becomes a diagnosis (Issue #65).
 6. Avoid `streamSimple` unless hooks are clearly insufficient — they are insufficient for compaction and background-agent calls, which is why this repo wraps the transport (Issue #18).
+7. Before deciding whether OAuth requests adopt or opt out of an Anthropic API feature, capture whether Claude Code sends it (see "Measured 2026-11-01" for the local-server technique) and state what the feature buys; Claude Code's request shape is the reference (Issue #86).
 
 ## Repo-Specific Findings
 

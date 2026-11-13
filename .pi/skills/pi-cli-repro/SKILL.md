@@ -80,6 +80,11 @@ Write a disposable extension whose `session_start` handler issues one request th
 Run it with `-ne -e ./src/index.ts -e <probe>` and `PI_ANTHROPIC_AUTH_DEBUG=all`, and count `before-provider-request` lines against a second lane.
 The debug line is the evidence: a short or synthetic payload often returns 200 even unshaped (Refs #53).
 
+### Reproduce on another pi version, and see what reaches the wire
+
+Install the version under test in a throwaway directory (`mkdir /tmp/piX && cd /tmp/piX && npm init -y && npm i @earendil-works/pi-coding-agent@<version>`) and run its `node_modules/.bin/pi` with `-ne -e <repo>/src/index.ts`; the operator's own `pi` stays untouched.
+No debug line covers the `fetch` boundary, so to see the built request, copy `src/` to `/tmp`, add a `console.error` of the body summary after `dispatch` in `syncFetch`, and load that copy with `-e` (Refs #86).
+
 ## Decision Rules
 
 When a live CLI repro fails:
