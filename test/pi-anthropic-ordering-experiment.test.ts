@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { type Context, Type } from "@earendil-works/pi-ai";
+import type { Context } from "@earendil-works/pi-ai";
 import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { test } from "vitest";
@@ -101,16 +101,20 @@ const TEST_TOOLS: Context["tools"] = [
   {
     name: "read",
     description: "Read a file",
-    parameters: Type.Object({
-      filePath: Type.String(),
-    }),
+    parameters: {
+      type: "object",
+      properties: { filePath: { type: "string" } },
+      required: ["filePath"],
+    },
   },
   {
     name: "glob",
     description: "Find files by glob",
-    parameters: Type.Object({
-      pattern: Type.String(),
-    }),
+    parameters: {
+      type: "object",
+      properties: { pattern: { type: "string" } },
+      required: ["pattern"],
+    },
   },
 ];
 
