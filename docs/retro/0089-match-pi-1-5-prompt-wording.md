@@ -37,3 +37,21 @@ The operator chose all three gate options: include the thread alarm now, add the
   - the named gate predicate.
 
   Two of its findings corrected the plan: `MessageThreadOptOut` has 4 references, not 3, and the bump alone reds the drift test until the anchors land, which fixed the step order.
+
+## Stage: Implementation — TDD (2026-11-13T02:12:52Z)
+
+### Session summary
+
+All 10 TDD steps ran as planned, as 10 commits (`016ba19`..`e7b129a`): three Tidy-First preparations, the anchor-list fix, the unrecognized-preamble warning, the 2.1.323 pin, the devDep bump to 1.5.2, the SDK-typed opt-out, the thread drift alarm, and docs.
+Tests went from 246 to 268 (+22): 11 from the per-wording fixture and mid-conversation cases, 6 from the warning, 3 from the thread alarm, and 2 from `managed-effort-drift` enumerating pi 1.5.2's new `claude-fable-5-2`.
+
+### Observations
+
+- Every killing mutation the plan named went red, as predicted; deleting the 1.5 prefix also reddened the extra 1.5 mid-conversation preamble-update case added beyond the plan.
+- The step-8 `tsc` rename probe first ran as a `sed` that matched nothing, because Biome had re-wrapped the constant; `git diff --stat` caught it, and an `Edit`-applied mutation confirmed `TS2561`.
+- Live: on pi 1.4.0 the 2.1.323 pin returned `PONG`; on the devDep's pi 1.5.2 (`./node_modules/.bin/pi`), debug output showed the preamble and tools replaced and `docs` dropped, and the request returned `PONG`.
+  The devDep's own `pi` binary is a cheap way to run a live repro on a Pi newer than the one installed globally.
+- Pre-completion reviewer: WARN.
+  On <=1.4 wording, a tool `promptSnippet` containing the new filler sentence "Additional tools may be available." now drops the whole tool-list paragraph, so the plan's "byte-identical on <=1.4" is slightly overstated.
+  The old anchor carried the same hazard; accepted as is.
+  The reviewer otherwise re-derived, with its own inputs against real 1.3.0 and 1.5.2 builders, that the gate decision is unchanged on <=1.4 and that the warning never fires for a prompt a supported Pi emits by itself.
