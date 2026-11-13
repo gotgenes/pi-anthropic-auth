@@ -9,7 +9,13 @@ import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { describe, test } from "vitest";
 
 import { BILLING_HEADER_MARKER } from "#src/billing-header";
+import { higherVersion } from "#src/claude-code-version";
 import { createAnthropicOAuthStreamSimple } from "#src/oauth-transport";
+// A filesystem path, like `test/upstream-prompt-drift.test.ts` uses: the
+// package `exports` map does not list `./package.json`.
+import piAiPackage from "../node_modules/@earendil-works/pi-ai/package.json" with {
+  type: "json",
+};
 
 // This suite drives the installed Pi's own Anthropic transport, the way
 // `test/managed-effort-drift.test.ts` does.  Depending on the internal *is*
@@ -21,6 +27,16 @@ import { createAnthropicOAuthStreamSimple } from "#src/oauth-transport";
 // (Issue #86).  `test/oauth-transport.test.ts` pins that the wrapper passes
 // the option; this suite pins that Pi still honors it, which no type check
 // can see.
+//
+// Message threads arrived in pi-ai 1.5.0, above this package's peer floor,
+// so CI's floor job (Issue #56) runs a Pi with no continuation to opt out
+// of.  The suite skips there.  The comparison fails open: `higherVersion`
+// returns its baseline, the installed version, unless "1.5.0" compares
+// strictly higher, and a prerelease or malformed version never compares
+// lower, so it runs the suite rather than silently skipping it.  Swapping the
+// arguments would fail closed, because an unparseable candidate always loses.
+const PI_HAS_MESSAGE_THREADS =
+  higherVersion(piAiPackage.version, "1.5.0") === piAiPackage.version;
 
 const OAUTH_TOKEN_STUB = "sk-ant-oat01-stub-token-for-drift-check";
 const API_KEY_STUB = "sk-ant-api03-stub-key-for-drift-check";
@@ -154,7 +170,7 @@ async function captureTwoTurns({
   return { firstReply, bodies };
 }
 
-describe("Anthropic message threads", () => {
+describe.skipIf(!PI_HAS_MESSAGE_THREADS)("Anthropic message threads", () => {
   test("Pi continues an OAuth session's second turn without system", async () => {
     // The control: without it, the opt-out test below would pass on a fixture
     // that never reaches pi's thread path at all.
