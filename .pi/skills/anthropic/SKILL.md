@@ -55,6 +55,12 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 - Background agents that pass `ctx.modelRegistry.streamSimple()` as their stream function (pi >=0.86.0) route through `modelRuntime` and are shaped; pi-observational-memory 3.1.x does this (measured live, Issue #53).
 - On pi >=0.80.8, callers that dispatch through pi-ai's `compat.streamSimple` (passed explicitly, or reached through the `setDefaultStreamFn` fallback when `streamFn` is omitted) are confirmed uncovered, and cannot be covered from this extension (Issue #46); see `docs/architecture.md` for why, and for the supported path for extension authors.
 
+### Measured 2026-11-01 (Issue #83)
+
+- To see what real Claude Code sends, point `ANTHROPIC_BASE_URL` at a local server that logs the billing block and answers 500; run interactive `claude` under `script -q /dev/null` for a TTY, and unset an inherited `CLAUDE_CODE_ENTRYPOINT`.
+- With this repo's prompt on Pi 1.4.0, the billing header alone or the sanitizer alone is accepted, and neither is rejected with the extra-usage 400; acceptance cannot test a `cc_entrypoint` value, so run the no-header control first.
+- Responses expose `anthropic-ratelimit-unified-7d-utilization` in 1% steps; an Ultra plan shows no 5-hour header, and `/api/oauth/profile` may lag a plan rename.
+
 ## Fast Debugging Workflow
 
 ### 0. Confirm the extension is loaded

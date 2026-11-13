@@ -51,7 +51,7 @@ Before investigating the issue, load skills relevant to the change:
    Note whether each is implemented yet — your plan must say what it depends on vs. defers.
    Then search for open issues the body does **not** reference but that touch the same module or symbol (`gh issue list --state open --search "<symbol>"`) — a sibling issue on the same file changes the framing, and the operator should not have to supply it.
    Sweep open PRs the same way (`gh pr list --state open`) — a third-party PR on the same module often carries a diagnosis the issue omits, and it becomes a close target at ship time.
-   When the diagnosis attributes the defect to an upstream dependency, search that tracker before treating the mechanism as settled (`gh issue list --repo <owner/repo> --state all --search "<mechanism>"`; `earendil-works/pi` for Pi).
+   When the diagnosis attributes the defect to an upstream dependency, search that tracker before treating the mechanism as settled (`gh issue list --repo <owner/repo> --state all --search "<mechanism>"`; `earendil-works/pi` for Pi, `anthropics/claude-code` for Anthropic server behavior such as metering, rejections, and version gates).
    Verifying the source and verifying the maintainer's posture are different claims.
    Searching the tracker is not reading the code: when the report blames a named project, read that project's source and the published tarball of the version the reporter ran (`pnpm view <pkg> dist.tarball`).
    When the design rests on the dependency's internal behavior rather than its API, also read that mechanism in the tracking checkout (`~/development/pi/pi` for Pi) and confirm it is unchanged from the pinned version.
