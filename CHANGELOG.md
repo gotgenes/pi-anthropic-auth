@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.5.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.5...v3.5.0) (2026-11-13)
+
+
+### Features
+
+* warn when Pi's default prompt opens with a preamble shaping does not recognize ([bf1bdfc](https://github.com/gotgenes/pi-anthropic-auth/commit/bf1bdfcfed137136601ca122f405c56dcf3c22de))
+
+### Bug Fixes
+
+* strip Pi 1.5's reworded identity, docs, and tool filler from OAuth prompts ([213970b](https://github.com/gotgenes/pi-anthropic-auth/commit/213970b9dd9624cec6f45c6b7e1c85b1f8a0a7fe))
+* report Claude Code 2.1.323 in the OAuth billing header ([1b724b0](https://github.com/gotgenes/pi-anthropic-auth/commit/1b724b042f6b8bf3317f5bac921a6b804112b1fa))
+
+### Documentation
+
+* document both Pi prompt wordings, the preamble warning, and the thread alarm ([e7b129a](https://github.com/gotgenes/pi-anthropic-auth/commit/e7b129af28eb3b6ee6c312addf1839592d1108d3))
+
+### Miscellaneous Chores
+
+* bump pi-ai and pi-coding-agent devDependencies to 1.5.2 ([d83f1e9](https://github.com/gotgenes/pi-anthropic-auth/commit/d83f1e9bd96996cc3a3de8ba88945d52ca4d92e8))
+
 ## [3.4.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.4...v3.4.5) (2026-11-13)
 
 
