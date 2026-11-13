@@ -55,6 +55,14 @@ export type RecoveryHintReason =
       /** No retry was possible, or the retry was rejected too. */
       kind: "set-override";
       requiredVersion: string | undefined;
+    }
+  | {
+      /**
+       * The request carried no billing header, so Anthropic read Pi's own
+       * `claude-cli` user-agent, which neither the pin nor the override changes.
+       */
+      kind: "no-billing-header";
+      userAgentVersion: string | undefined;
     };
 
 /**
@@ -109,6 +117,10 @@ export function describeRecoveryHint(reason: RecoveryHintReason): string {
           ? `${CLAUDE_CODE_VERSION_ENV}=${reason.requiredVersion}`
           : `${CLAUDE_CODE_VERSION_ENV} to ${CURRENT_RELEASE}`
       } and retry.`;
+    case "no-billing-header":
+      return `${HINT_PREFIX} This request carried no billing header, so Anthropic checked Pi's own claude-cli version${
+        reason.userAgentVersion ? ` (${reason.userAgentVersion})` : ""
+      }. Upgrade Pi.`;
   }
 }
 

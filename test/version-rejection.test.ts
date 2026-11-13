@@ -136,6 +136,26 @@ describe("describeRecoveryHint", () => {
     );
   });
 
+  test("blames Pi's own version when the request carried no billing header", () => {
+    assert.equal(
+      describeRecoveryHint({
+        kind: "no-billing-header",
+        userAgentVersion: "2.1.280",
+      }),
+      "[pi-anthropic-auth] This request carried no billing header, so Anthropic checked Pi's own claude-cli version (2.1.280). Upgrade Pi.",
+    );
+  });
+
+  test("omits Pi's version from the header-less hint when the user-agent did not name one", () => {
+    assert.equal(
+      describeRecoveryHint({
+        kind: "no-billing-header",
+        userAgentVersion: undefined,
+      }),
+      "[pi-anthropic-auth] This request carried no billing header, so Anthropic checked Pi's own claude-cli version. Upgrade Pi.",
+    );
+  });
+
   test("names the override to set when recovery did not succeed", () => {
     assert.equal(
       describeRecoveryHint({
