@@ -1,16 +1,18 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { describe, test } from "vitest";
 
 import {
   CLAUDE_CODE_VERSION,
   CLAUDE_CODE_VERSION_ENV,
   resolveClaudeCodeVersion,
 } from "#src/claude-code-version";
+import { MINIMAL_ANTHROPIC_OAUTH_PROMPT } from "#src/constants";
 import { shapeAnthropicOAuthPayload } from "#src/request-shaping";
 import {
   buildExpectedBillingHeader,
   withVersionOverride,
 } from "#test/billing-header-fixtures";
+import { PI_WORDING_1_5 } from "#test/system-prompt-fixture-parts";
 
 const TEST_MODEL = "claude-haiku-4-5";
 
@@ -442,6 +444,59 @@ test("strips the filler from a mid-conversation tools section update", () => {
     sectionUpdate("tools", "- read: Read file contents"),
     "the update keeps its framing and section tags; only the filler goes",
   );
+});
+
+describe("mid-conversation updates in pi >=1.5 wording", () => {
+  test("drops a docs section update", () => {
+    const body = [
+      PI_WORDING_1_5.docsIntro,
+      "- Main documentation: /home/user/.pi/agent/README.md",
+    ].join("\n");
+    const messages = shapedMessages(
+      payloadWithSystemMessage([
+        { type: "text", text: sectionUpdate("docs", body) },
+      ]),
+    );
+
+    assert.deepEqual(
+      messages.map((message) => message.role),
+      ["user"],
+    );
+  });
+
+  test("strips the filler from a tools section update", () => {
+    const body = [
+      "- read: Read file contents",
+      "",
+      PI_WORDING_1_5.toolsFiller,
+    ].join("\n");
+    const messages = shapedMessages(
+      payloadWithSystemMessage([
+        { type: "text", text: sectionUpdate("tools", body) },
+      ]),
+    );
+
+    assert.equal(
+      blockText(messages, 1),
+      sectionUpdate("tools", "- read: Read file contents"),
+    );
+  });
+
+  test("replaces a preamble update carrying the Pi identity", () => {
+    const messages = shapedMessages(
+      payloadWithSystemMessage([
+        {
+          type: "text",
+          text: `Updated system prompt section "preamble":\n\n${PI_WORDING_1_5.preamble}`,
+        },
+      ]),
+    );
+
+    assert.equal(
+      blockText(messages, 1),
+      `Updated system prompt section "preamble":\n\n${MINIMAL_ANTHROPIC_OAUTH_PROMPT}`,
+    );
+  });
 });
 
 test("replaces a mid-conversation preamble update carrying the Pi identity", () => {

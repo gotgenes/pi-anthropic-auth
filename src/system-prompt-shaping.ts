@@ -1,9 +1,9 @@
 import {
   MINIMAL_ANTHROPIC_OAUTH_PROMPT,
-  PI_DEFAULT_PROMPT_PREFIX,
-  PI_DOCS_SECTION_ANCHOR,
+  PI_DEFAULT_PROMPT_PREFIXES,
+  PI_DOCS_SECTION_ANCHORS,
   PI_OWNED_SECTIONS,
-  PI_TOOLS_FILLER_ANCHOR,
+  PI_TOOLS_FILLER_ANCHORS,
   TEXT_REPLACEMENTS,
 } from "./constants";
 import { debugLog, isToolUseOnlyDebugEnabled } from "./debug";
@@ -146,14 +146,20 @@ function decideSection(
 
   const text = applyTextReplacements(body, report);
 
-  if (name === PREAMBLE_SECTION && text.startsWith(PI_DEFAULT_PROMPT_PREFIX)) {
+  if (
+    name === PREAMBLE_SECTION &&
+    PI_DEFAULT_PROMPT_PREFIXES.some((prefix) => text.startsWith(prefix))
+  ) {
     return { kind: "replace", body: MINIMAL_ANTHROPIC_OAUTH_PROMPT };
   }
-  if (name === DOCS_SECTION && text.includes(PI_DOCS_SECTION_ANCHOR)) {
+  if (
+    name === DOCS_SECTION &&
+    PI_DOCS_SECTION_ANCHORS.some((anchor) => text.includes(anchor))
+  ) {
     return { kind: "drop" };
   }
   if (name === "tools") {
-    const stripped = removeParagraphContaining(text, PI_TOOLS_FILLER_ANCHOR);
+    const stripped = removeParagraphContaining(text, PI_TOOLS_FILLER_ANCHORS);
     if (stripped !== text) {
       return { kind: "replace", body: stripped };
     }
@@ -173,9 +179,14 @@ function withBody(chunk: PromptChunk, body: string): PromptChunk {
     : namedSection(chunk.name, body);
 }
 
-function removeParagraphContaining(text: string, anchor: string): string {
+function removeParagraphContaining(
+  text: string,
+  anchors: readonly string[],
+): string {
   const paragraphs = text.split(/\n\n+/);
-  const kept = paragraphs.filter((paragraph) => !paragraph.includes(anchor));
+  const kept = paragraphs.filter(
+    (paragraph) => !anchors.some((anchor) => paragraph.includes(anchor)),
+  );
   return kept.length === paragraphs.length ? text : kept.join("\n\n").trim();
 }
 
@@ -331,7 +342,7 @@ export function shapeSystemBlocks(blocks: TextBlock[]): TextBlock[] {
   });
 }
 
-/** Whether a system block carries Pi's default preamble. */
+/** Whether a system block carries Pi's default preamble, in any known wording. */
 function containsPiPreamble(text: string): boolean {
-  return text.includes(PI_DEFAULT_PROMPT_PREFIX);
+  return PI_DEFAULT_PROMPT_PREFIXES.some((prefix) => text.includes(prefix));
 }

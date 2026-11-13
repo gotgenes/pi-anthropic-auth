@@ -1,11 +1,17 @@
 /**
- * Prefix of Pi's built-in default system prompt preamble.
+ * Opening sentence of Pi's built-in default system prompt preamble, one entry
+ * per Pi wording, newest first.
  *
  * Used to detect whether a system block contains Pi's original verbose
- * preamble so it can be replaced with the minimal neutral prompt.
+ * preamble so it can be replaced with the minimal neutral prompt.  The peer
+ * range spans every wording listed here, so each must keep matching.
  */
-export const PI_DEFAULT_PROMPT_PREFIX =
-  "You are an expert coding assistant operating inside pi, a coding agent harness.";
+export const PI_DEFAULT_PROMPT_PREFIXES: readonly string[] = [
+  // pi >=1.5.0
+  "You are a coding assistant running inside pi, a coding agent harness.",
+  // pi 0.86.0 through 1.4.x
+  "You are an expert coding assistant operating inside pi, a coding agent harness.",
+];
 
 /**
  * Prefix of the minimal neutral Anthropic OAuth system prompt.
@@ -40,9 +46,12 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
 // registered sections after its own, so a section called `docs` need not be
 // Pi's.
 //
-// Anchors stay resilient to upstream rewording — as long as the anchor still
-// appears in the section, the rule fires regardless of surrounding changes.
-// `test/upstream-prompt-drift.test.ts` checks each one against the installed
+// Anchors stay resilient to upstream rewording around them — as long as an
+// anchor still appears in the section, the rule fires regardless of
+// surrounding changes.  When Pi rewords the anchor itself (pi 1.5.0 did, for
+// all three), the new wording is added to the front of its list rather than
+// replacing the old one, because the peer range still covers older Pi.
+// `test/upstream-prompt-drift.test.ts` checks the lists against the installed
 // Pi's own `buildSystemPrompt` output.
 // ---------------------------------------------------------------------------
 
@@ -56,22 +65,33 @@ export const MINIMAL_ANTHROPIC_OAUTH_PROMPT = [
 export const PI_OWNED_SECTIONS: readonly string[] = ["tools", "rules", "docs"];
 
 /**
- * Marks the `tools` section's trailing filler sentence about custom tools.
+ * Marks the `tools` section's trailing filler sentence about custom tools, one
+ * entry per Pi wording, newest first.
  *
- * The paragraph containing it is dropped; the section and its tool snippets
- * are kept, because extensions contribute those (Issue #10).
+ * The paragraph containing any of them is dropped; the section and its tool
+ * snippets are kept, because extensions contribute those (Issue #10).
  */
-export const PI_TOOLS_FILLER_ANCHOR = "In addition to the tools above";
+export const PI_TOOLS_FILLER_ANCHORS: readonly string[] = [
+  // pi >=1.5.0
+  "Additional tools may be available.",
+  // pi 0.86.0 through 1.4.x
+  "In addition to the tools above",
+];
 
 /**
  * Marks a `docs` section as Pi's own documentation block.
  *
  * Extensions may register a section named `docs` of their own, and upstream
  * applies custom sections after the built-ins, so the section is dropped on
- * this anchor rather than on its name alone.
+ * these anchors rather than on its name alone.  One entry per Pi wording,
+ * newest first.
  */
-export const PI_DOCS_SECTION_ANCHOR =
-  "Pi documentation (read only when the user asks about pi itself";
+export const PI_DOCS_SECTION_ANCHORS: readonly string[] = [
+  // pi >=1.5.0
+  "Pi documentation (read only when the user asks about the harness itself",
+  // pi 0.86.0 through 1.4.x
+  "Pi documentation (read only when the user asks about pi itself",
+];
 
 /**
  * Inline text replacements applied to Pi-generated sections.

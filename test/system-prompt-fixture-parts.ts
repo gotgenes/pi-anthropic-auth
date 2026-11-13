@@ -78,3 +78,13 @@ export const PI_WORDING_1_4: PiPromptWording = {
   docsIntro:
     "Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):",
 };
+
+/** Pi 1.5.0 and later ("tighten system prompt", earendil-works/pi@705d047). */
+export const PI_WORDING_1_5: PiPromptWording = {
+  label: "pi >=1.5 wording",
+  preamble:
+    "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.",
+  toolsFiller: "Additional tools may be available.",
+  docsIntro:
+    "Pi documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):",
+};

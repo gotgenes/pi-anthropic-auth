@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { onTestFinished, test, vi } from "vitest";
 
 import {
-  PI_DEFAULT_PROMPT_PREFIX,
-  PI_DOCS_SECTION_ANCHOR,
+  PI_DEFAULT_PROMPT_PREFIXES,
+  PI_DOCS_SECTION_ANCHORS,
   PI_OWNED_SECTIONS,
-  PI_TOOLS_FILLER_ANCHOR,
+  PI_TOOLS_FILLER_ANCHORS,
 } from "#src/constants";
 import {
   parseSystemPromptChunks,
@@ -73,14 +73,14 @@ function buildUpstreamPrompt(): string {
   });
 }
 
-test("PI_DEFAULT_PROMPT_PREFIX still opens the installed pi's default prompt", () => {
+test("PI_DEFAULT_PROMPT_PREFIXES still opens the installed pi's default prompt", () => {
   const built = buildUpstreamPrompt();
 
   assert.ok(
-    built.startsWith(PI_DEFAULT_PROMPT_PREFIX),
-    "PI_DEFAULT_PROMPT_PREFIX no longer opens the prompt the installed pi builds. " +
+    PI_DEFAULT_PROMPT_PREFIXES.some((prefix) => built.startsWith(prefix)),
+    "no entry of PI_DEFAULT_PROMPT_PREFIXES opens the prompt the installed pi builds. " +
       "Shaping would leave pi's identity paragraph in every OAuth request. " +
-      "Re-verify the constant against buildSystemPrompt in @earendil-works/pi-coding-agent.",
+      "Add the new wording to the front of the list, keeping the old ones the peer range still covers.",
   );
 });
 
@@ -106,31 +106,31 @@ test("the installed pi still emits every section shaping keys on", () => {
   }
 });
 
-test("PI_DOCS_SECTION_ANCHOR still matches the installed pi's docs section", () => {
+test("PI_DOCS_SECTION_ANCHORS still matches the installed pi's docs section", () => {
   const docs = parseSystemPromptChunks(buildUpstreamPrompt()).find(
     (chunk) => chunk.name === "docs",
   );
 
   assert.ok(docs, "the installed pi emits no docs section");
   assert.ok(
-    docs.body.includes(PI_DOCS_SECTION_ANCHOR),
-    "PI_DOCS_SECTION_ANCHOR no longer matches the docs section the installed pi builds. " +
+    PI_DOCS_SECTION_ANCHORS.some((anchor) => docs.body.includes(anchor)),
+    "no entry of PI_DOCS_SECTION_ANCHORS matches the docs section the installed pi builds. " +
       "The whole Pi documentation block would survive into shaped OAuth requests. " +
-      "Re-verify the anchor.",
+      "Add the new wording to the front of the list.",
   );
 });
 
-test("PI_TOOLS_FILLER_ANCHOR still matches the installed pi's tools section", () => {
+test("PI_TOOLS_FILLER_ANCHORS still matches the installed pi's tools section", () => {
   const tools = parseSystemPromptChunks(buildUpstreamPrompt()).find(
     (chunk) => chunk.name === "tools",
   );
 
   assert.ok(tools, "the installed pi emits no tools section");
   assert.ok(
-    tools.body.includes(PI_TOOLS_FILLER_ANCHOR),
-    "PI_TOOLS_FILLER_ANCHOR no longer matches the tools section the installed pi builds. " +
+    PI_TOOLS_FILLER_ANCHORS.some((anchor) => tools.body.includes(anchor)),
+    "no entry of PI_TOOLS_FILLER_ANCHORS matches the tools section the installed pi builds. " +
       "The custom-tool filler sentence would survive into shaped OAuth requests. " +
-      "Re-verify the anchor.",
+      "Add the new wording to the front of the list.",
   );
 });
 
@@ -166,10 +166,12 @@ test("shaping the installed pi's prompt takes the section path", () => {
 
   // Replaced: the Pi identity paragraph.
   assert.match(shaped, /^You are an expert coding assistant\./);
-  assert.doesNotMatch(shaped, /operating inside pi, a coding agent harness/);
+  assert.doesNotMatch(shaped, /inside pi, a coding agent harness/);
 
   // Removed: the custom-tool filler and the whole Pi documentation section.
-  assert.doesNotMatch(shaped, /In addition to the tools above/);
+  for (const anchor of PI_TOOLS_FILLER_ANCHORS) {
+    assert.ok(!shaped.includes(anchor), `filler survived: ${anchor}`);
+  }
   assert.doesNotMatch(shaped, /Pi documentation \(read only/);
   assert.doesNotMatch(shaped, /<docs>/);
   assert.doesNotMatch(shaped, /<\/docs>/);

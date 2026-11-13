@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { onTestFinished, test, vi } from "vitest";
+import { describe, onTestFinished, test, vi } from "vitest";
 
 import {
   _resetShapingWarnings,
@@ -14,6 +14,7 @@ import {
   FIXTURE_CWD,
   FIXTURE_TOOL_SNIPPETS,
   PI_WORDING_1_4,
+  PI_WORDING_1_5,
   type PiPromptWording,
   PROJECT_INSTRUCTION,
 } from "#test/system-prompt-fixture-parts";
@@ -110,19 +111,6 @@ function unbalancedTags(text: string): string[] {
   return [...unmatched, ...remaining.map((name) => `</${name}>`)];
 }
 
-test("the fixture is well-formed before shaping", () => {
-  // Guards the tag-balance assertions below from false-greening on a fixture
-  // that was already unbalanced.
-  assert.deepEqual(unbalancedTags(piPrompt()), []);
-});
-
-test("leaves no unbalanced section tags in the shaped prompt", () => {
-  assert.deepEqual(
-    unbalancedTags(shapeAnthropicOAuthSystemPrompt(piPrompt())),
-    [],
-  );
-});
-
 // Assert the preamble-replacement invariant shared across shaping tests:
 // the minimal prompt replaces pi's identity paragraph.
 function assertPreambleReplaced(
@@ -136,58 +124,89 @@ function assertPreambleReplaced(
   );
 }
 
-test("replaces the untagged preamble with the minimal prompt", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
+// The peer range spans more than one wording of Pi's own text, so every rule
+// that keys on that text runs against each of them.
+for (const wording of [PI_WORDING_1_4, PI_WORDING_1_5]) {
+  describe(wording.label, () => {
+    test("the fixture is well-formed before shaping", () => {
+      // Guards the tag-balance assertions below from false-greening on a
+      // fixture that was already unbalanced.
+      assert.deepEqual(unbalancedTags(piPrompt({}, wording)), []);
+    });
 
-  assertPreambleReplaced(shaped);
-  assert.match(shaped, /Be concise and helpful\./);
-  assert.match(
-    shaped,
-    /Use the available tools to answer the user's request\./,
-  );
-});
+    test("leaves no unbalanced section tags in the shaped prompt", () => {
+      assert.deepEqual(
+        unbalancedTags(shapeAnthropicOAuthSystemPrompt(piPrompt({}, wording))),
+        [],
+      );
+    });
 
-test("drops the whole docs section", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
+    test("replaces the untagged preamble with the minimal prompt", () => {
+      const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt({}, wording));
 
-  assert.doesNotMatch(shaped, /<docs>/);
-  assert.doesNotMatch(shaped, /<\/docs>/);
-  assert.ok(
-    !shaped.includes(PI_WORDING_1_4.docsIntro),
-    "pi's documentation intro must not survive shaping",
-  );
-  assert.doesNotMatch(shaped, /- Main documentation:/);
-});
+      assertPreambleReplaced(shaped, wording);
+      assert.match(shaped, /Be concise and helpful\./);
+      assert.match(
+        shaped,
+        /Use the available tools to answer the user's request\./,
+      );
+    });
 
-test("strips the filler from the tools section but keeps the section", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
+    test("drops the whole docs section", () => {
+      const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt({}, wording));
 
-  assert.ok(
-    !shaped.includes(PI_WORDING_1_4.toolsFiller),
-    "the custom-tool filler must not survive shaping",
-  );
-  assert.match(
-    shaped,
-    /<tools>\n- read: Read file contents\n- bash: Execute shell commands\n- my_ext_tool: Extension-registered tool snippet\n<\/tools>/,
-  );
-});
+      assert.doesNotMatch(shaped, /<docs>/);
+      assert.doesNotMatch(shaped, /<\/docs>/);
+      assert.ok(
+        !shaped.includes(wording.docsIntro),
+        "pi's documentation intro must not survive shaping",
+      );
+      assert.doesNotMatch(shaped, /- Main documentation:/);
+    });
 
-test("preserves rules, addendum, project context, skills, and cwd verbatim", () => {
-  const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt());
+    test("strips the filler from the tools section but keeps the section", () => {
+      const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt({}, wording));
 
-  assert.ok(shaped.includes(section("rules", PI_RULES_BODY)));
-  assert.ok(
-    shaped.includes(
-      section("addendum", `${APPENDED_NOTE}\n${APPENDED_NOTE_BODY}`),
-    ),
-  );
-  assert.match(shaped, /<project_context>/);
-  assert.ok(shaped.includes(PROJECT_INSTRUCTION));
-  assert.ok(
-    shaped.includes(section("skills", "- deploy: how to ship this project")),
-  );
-  assert.ok(shaped.endsWith(section("cwd", FIXTURE_CWD)));
-});
+      assert.ok(
+        !shaped.includes(wording.toolsFiller),
+        "the custom-tool filler must not survive shaping",
+      );
+      assert.match(
+        shaped,
+        /<tools>\n- read: Read file contents\n- bash: Execute shell commands\n- my_ext_tool: Extension-registered tool snippet\n<\/tools>/,
+      );
+    });
+
+    test("preserves rules, addendum, project context, skills, and cwd verbatim", () => {
+      const shaped = shapeAnthropicOAuthSystemPrompt(piPrompt({}, wording));
+
+      assert.ok(shaped.includes(section("rules", PI_RULES_BODY)));
+      assert.ok(
+        shaped.includes(
+          section("addendum", `${APPENDED_NOTE}\n${APPENDED_NOTE_BODY}`),
+        ),
+      );
+      assert.match(shaped, /<project_context>/);
+      assert.ok(shaped.includes(PROJECT_INSTRUCTION));
+      assert.ok(
+        shaped.includes(
+          section("skills", "- deploy: how to ship this project"),
+        ),
+      );
+      assert.ok(shaped.endsWith(section("cwd", FIXTURE_CWD)));
+    });
+
+    test("shapeSystemBlocks recognizes the prompt and shapes it", () => {
+      const prompt = piPrompt({}, wording);
+      const shaped = shapeSystemBlocks([{ type: "text", text: prompt }]);
+
+      assert.deepEqual(shaped, [
+        { type: "text", text: shapeAnthropicOAuthSystemPrompt(prompt) },
+      ]);
+      assert.notEqual(shaped[0]?.text, prompt);
+    });
+  });
+}
 
 test("keeps an extension-registered section it knows nothing about", () => {
   const shaped = shapeAnthropicOAuthSystemPrompt(
