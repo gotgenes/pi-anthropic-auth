@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.4.5](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.4...v3.4.5) (2026-11-13)
+
+
+### Bug Fixes
+
+* opt OAuth requests out of message threads so every request carries the billing header ([451f42d](https://github.com/gotgenes/pi-anthropic-auth/commit/451f42d6c68df606607080ad808934fc300573f6)), closes [#86](https://github.com/gotgenes/pi-anthropic-auth/issues/86)
+* point header-less version rejections at Pi's own claude-cli version instead of the env override ([0f08565](https://github.com/gotgenes/pi-anthropic-auth/commit/0f08565b5651f9bb544ea1e4ebe8a1fc88ab300b)), closes [#86](https://github.com/gotgenes/pi-anthropic-auth/issues/86)
+
+### Documentation
+
+* document the message-thread opt-out and the header-less hint ([aae20fe](https://github.com/gotgenes/pi-anthropic-auth/commit/aae20fe53e01bd79bf64eb4a863df2d1ceb0ebce)), closes [#86](https://github.com/gotgenes/pi-anthropic-auth/issues/86)
+
 ## [3.4.4](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.3...v3.4.4) (2026-11-01)
 
 
