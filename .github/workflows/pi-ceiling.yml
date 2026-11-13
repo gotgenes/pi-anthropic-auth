@@ -9,9 +9,9 @@ name: Pi ceiling
 # Nothing can trigger on another repository's npm release, so this polls.
 # Most runs find nothing new and finish in seconds. A cache entry keyed on the
 # tested versions marks a release as done, pass or fail, so a failing release
-# sends one notification rather than one an hour. A new run for that release
-# happens only when the entry is evicted (7 days without access) or when
-# dispatched with `force`.
+# sends one notification rather than one an hour. A failed install, transient
+# or not, also marks it. A release is re-tested when dispatched with `force`,
+# or if GitHub evicts the entry.
 #
 # Not run on pull requests: a Pi release must not turn an unrelated PR red.
 
@@ -57,6 +57,10 @@ jobs:
             specs=$(./scripts/ci/pi-ceiling-specs.sh)
           fi
           echo "specs=$specs" >> "$GITHUB_OUTPUT"
+          if [ "$FORCE" = true ] && [ -z "$specs" ]; then
+            # Only the release-age gate empties a forced run; see the log line above.
+            echo "::warning::Forced, but npm latest is younger than minimumReleaseAge; nothing was tested."
+          fi
           # Cache keys reject commas; map the separators to be safe.
           key="pi-ceiling-${specs//[ \/@]/-}"
           echo "key=$key" >> "$GITHUB_OUTPUT"
@@ -90,11 +94,12 @@ jobs:
       # Runs after a failed typecheck too: the two failures name different
       # breakages (types versus behavior), and both are worth one run.
       - name: Test
-        if: always() && steps.install.outcome == 'success'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm run test
 
+      # `!cancelled()`, not `always()`: a cancelled run tested nothing.
       - name: Record the release as tested
-        if: always() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true'
+        if: ${{ !cancelled() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true' }}
         env:
           SPECS: ${{ steps.target.outputs.specs }}
         run: |
@@ -102,7 +107,7 @@ jobs:
           echo "$SPECS" > .pi-ceiling-tested/specs
 
       - name: Save the tested marker
-        if: always() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true'
+        if: ${{ !cancelled() && steps.target.outputs.specs != '' && steps.seen.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v6
         with:
           path: .pi-ceiling-tested
