@@ -56,6 +56,8 @@ The contradiction is often an already-filed issue.
 ## 4. Verify empirically in a scratch worktree
 
 This step is mandatory.
+Start from the `pi-ceiling` workflow's run for the release, if one exists (`gh run list --workflow pi-ceiling.yml`): it already typechecked and tested this package against npm `latest`, and its failures are the first leads.
+It does not replace the scratch tree, which covers versions other than `latest` and the runtime probes below.
 Diff reading alone predicts that something breaks; it does not establish the failure mode, and the exact failure mode is what the report is for.
 
 ```bash

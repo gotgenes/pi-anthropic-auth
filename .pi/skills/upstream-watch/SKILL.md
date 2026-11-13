@@ -22,7 +22,7 @@ The classes differ in what detects them, and two of the three are not detected b
 
 | Class | Shows up as | Detected by |
 | --- | --- | --- |
-| Compile-time | `tsc` error against the new types | Scratch-tree typecheck. Free and deterministic. |
+| Compile-time | `tsc` error against the new types | The `pi-ceiling` workflow's typecheck, or a scratch-tree typecheck. Free and deterministic. |
 | Behavioral-silent | Shaping still runs but emits wrong output; requests still succeed | A canary test, or nothing |
 | Coverage-gap | New upstream code path routes around our seam entirely | Reading the watchlist diff. Nothing else. |
 
@@ -50,7 +50,7 @@ Paths are relative to `~/development/pi/pi`.
 | OAuth `params.system` is `[identity, prompt]` text blocks | `packages/ai/src/api/anthropic-messages.ts` (`params.system`) | Behavioral-silent |
 | `messages[]` carries `role: "system"` entries only for section updates and per-message effort, both handled by `shapeSystemRoleMessages` | `packages/ai/src/api/anthropic-messages.ts` (`convertMessages`, `insertThinkingLevelMessages`) | Coverage-gap (a new system-message kind reaches Anthropic unshaped, or is dropped when shaping empties it) |
 | Managed-effort models (`compat.supportsMidConvoEffort`) pin top-level `output_config.effort` to `"high"` and carry the requested effort in content-less `role: "system"` messages with `output_config` (PR #79) | `packages/ai/src/api/anthropic-messages.ts` (`insertThinkingLevelMessages`) | Behavioral-silent (the keep rule goes dead, or effort is lost); `test/managed-effort-drift.test.ts` alarms |
-| Pi's default prompt is an untagged preamble plus `<name>` sections matching `PI_OWNED_SECTIONS` and an entry of each anchor list (one entry per Pi wording; pi 1.5.0 reworded all three, Issue #89) | `packages/coding-agent/src/core/system-prompt.ts` (`buildSystemPromptSections`), `packages/ai/src/utils/text.ts` (`getSystemMessageText`) | Behavioral-silent; a reworded preamble now warns once at runtime, and `test/upstream-prompt-drift.test.ts` alarms only once the devDeps reach the new Pi |
+| Pi's default prompt is an untagged preamble plus `<name>` sections matching `PI_OWNED_SECTIONS` and an entry of each anchor list (one entry per Pi wording; pi 1.5.0 reworded all three, Issue #89) | `packages/coding-agent/src/core/system-prompt.ts` (`buildSystemPromptSections`), `packages/ai/src/utils/text.ts` (`getSystemMessageText`) | Behavioral-silent; a reworded preamble now warns once at runtime, and the `pi-ceiling` workflow runs `test/upstream-prompt-drift.test.ts` against each new Pi release within about two hours |
 | Mid-conversation section updates keep the `Updated/Removed system prompt section "<name>"` framing | `packages/ai/src/utils/text.ts` (`renderSystemMessageUpdate`) | Behavioral-silent |
 | Requests without an `sk-ant-oat` token pass through untouched, including Anthropic workload identity federation (pi 0.99.2), which reaches our wrapper with no `apiKey` and its ids in `options.env` | `packages/ai/src/api/anthropic-messages.ts` (`getAnthropicFederation`), `packages/ai/src/providers/anthropic.ts` | Behavioral-silent (a non-OAuth path gets shaped, or loses the caller's `fetch`) |
 | Built-in extension sections such as `mcp_servers` (pi 0.99.2) carry neutral text, so shaping keeps them byte-identical, including their mid-conversation re-sends | `packages/coding-agent/src/extensions/mcp/index.ts` (`renderServersSection`) | Behavioral-silent (Pi identity text in such a section reaches Anthropic unshaped) |

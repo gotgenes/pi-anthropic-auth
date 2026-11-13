@@ -354,6 +354,12 @@ pnpm fallow:dupes      # duplicated code blocks
 Fallow runs in CI (`.github/workflows/ci.yml`, mirroring `pi-packages`): a `fallow audit` on pull requests, a `fallow dead-code` gate on `main`, and a non-blocking full `fallow` report on `main`.
 It is not part of `pnpm run lint`, so run the `fallow:*` scripts locally before pushing.
 
+CI also runs Pi versions other than the pinned devDependencies (Issue #56).
+The `floor` job in `ci.yml` installs each Pi package at its `peerDependencies` floor (`scripts/ci/pi-floor-specs.sh`) and runs the test suite, without a typecheck because types newer than the floor are expected.
+The `pi-ceiling` workflow (`.github/workflows/pi-ceiling.yml`) polls hourly, and runs the typecheck and the test suite once against each new npm `latest` that differs from the pins (`scripts/ci/pi-ceiling-specs.sh`), so a breaking Pi release is flagged within about two hours rather than at the next devDependency bump.
+It never runs on pull requests, and dispatching it with `force` re-tests a release.
+Kill criterion: if either catches nothing across a few Pi minor bumps, remove it rather than keep it for symmetry.
+
 ### TypeScript
 
 This repo uses `module: "ESNext"` and `moduleResolution: "Bundler"`.
@@ -507,12 +513,13 @@ Current suites map roughly to:
 8. `test/system-prompt-sections.test.ts` — chunk parsing and the byte-exact round-trip, including attribute-bearing tags, nested same-name tags, and unmatched open tags.
 9. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use and interleaved-thinking serialization behavior, and our passthrough of both (Issue #66).
 10. `test/upstream-prompt-drift.test.ts` — the prompt prefix, section names, and anchor lists in `src/constants.ts` checked against the installed Pi's own `buildSystemPrompt` output, plus pins that the parser round-trips that prompt and that shaping through `shapeSystemBlocks` takes the section path with no warning.
-    It verifies only the installed wording; the older entries are guarded by the hand-built fixtures in `test/system-prompt-shaping.test.ts`.
+    Each run verifies only the installed wording: the pins in `check`, the peer floor in `floor`, and each new release in `pi-ceiling`; the entries between them are guarded by the hand-built fixtures in `test/system-prompt-shaping.test.ts`.
 11. `test/extension-config.test.ts` — config paths, the parsing rules (`anthropic` and duplicates dropped, malformed files and entries warned), and a missing file staying silent.
 12. `test/extra-provider-shaping.test.ts` — one `{ api, streamSimple }` registration per named provider, no unregister, first layer wins, and per-layer warning replacement.
 13. `test/managed-effort-drift.test.ts` — the offline drift alarm for per-message effort: Pi's catalog still flags a managed-effort model, and for every model it flags, Pi still carries historical and active effort in content-less system messages, and OAuth shaping keeps every one of them (PR #79).
 14. `test/account-profile.test.ts` — the profile lookup: no request without an OAuth token, the request's headers, tolerant field parsing, and each `unavailable` reason (Issue #80).
 15. `test/message-thread-drift.test.ts` — the offline drift alarm for message threads: Pi still continues an OAuth session's second turn without `system` (the control), the OAuth wrapper still sends it in full with the billing header, and API-key sessions keep Pi's threads (Issue #86, Issue #89).
+    It skips on pi-ai below 1.5.0, which has no threads, as the `floor` job installs (Issue #56).
 
 Priority areas for new tests:
 
