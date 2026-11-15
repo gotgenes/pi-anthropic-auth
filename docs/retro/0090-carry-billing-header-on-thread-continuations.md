@@ -74,3 +74,62 @@ Tests went from 268 to 282.
 #### Deferred tidyings
 
 - `src/thread-continuation.ts` and `src/billing-version-sync.ts` each define a private `isRecord`; a shared guard module could hold one copy.
+
+## Stage: Final Retrospective (2026-11-15T21:17:32Z)
+
+### Session summary
+
+One session took an exploration issue from planning through the v3.6.0 release.
+OAuth requests now use pi's message threads, and the `fetch` wrapper splices `system: [billing block]` into each continuation, reversing the #86 opt-out.
+The close comment credits @kcocoa and asks @G4bar and @denjzs to report if a continuation is still rejected.
+
+### Observations
+
+#### What went well
+
+- Testing the premise before the gate overturned two of the issue's four obstacles.
+  A `gh issue list --repo anthropics/claude-code` search turned up anthropics/claude-code#98464, which showed that the #86 local-server capture could never have seen threads.
+  `strings` on the installed Claude Code binary then showed its continuation builder keeping the billing block (`Adr`/`UG`), and seven wire variants confirmed that Anthropic accepts that shape.
+  The operator answered the single gate without a bounce, unlike #86's first gate.
+- Reading a compiled competitor binary was new here, and it answered "what does Claude Code send?" in four tool calls, where a capture could not.
+- The plan's killing mutations caught a vacuous test before commit.
+  The `create` fixture in `test/thread-continuation.test.ts` survived the `"continue"`→`"create"` mutation, and reworking that fixture made the thread check pinned.
+- The live check ran the `models.json` escape hatch for real, gated by `ask_user`, so the README documents a measured fallback rather than a code-read one.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, recurring): in TDD step 1 the green-copy `cp` ran in the same tool batch as the mutating `Edit`, so the saved copy held the mutation.
+  `.pi/prompts/tdd-plan.md` has said "alone in its own turn" since #86, where the same slip happened.
+  Impact: two extra tool calls; `git checkout` was safe only because step 1 touched no `src/`.
+  The rule is in the prompt and recurred anyway, so its form is the problem: "its own turn" competes with the harness's standing instruction to batch independent calls.
+- `other`: the plan's step-3 killing mutation predicted that `"continue"`→`"create"` would kill the `create` test, but that fixture carried `system` and had no `"continue"` token, so two earlier guards decided it.
+  The `testing` skill's "name both outcomes … under the fixture's defaults" covers this; I did not apply it to the fixture when writing the plan.
+  Impact: one fixture rework mid-step, recorded as a deviation in the commit body.
+- `missing-context` (user-caught): the plan's Open Question asked whether Pro logins are billed differently, while the issue's own comments already showed that plan type does not decide (one Pro accepted, one Pro rejected).
+  Impact: one operator question; the narrower framing went into the TDD notes and the close comment, and the plan file kept the stale wording.
+- `other` (user-caught): the pre-completion reviewer's bash call into `../pi` waited 600 s on a forwarded permission prompt, timed out, and fell back to `node_modules`.
+  Its report said "blocked by the permission gate", and my summary did not pass that on.
+  The operator noticed the pending prompt and asked whether the live check had been blocked.
+  Impact: about 10 minutes of review wall time, plus one operator question.
+  The permission log shows `effect: unproven` and `matchedPattern: "*"` for `/Users/chris/development/pi/pi`, a path whose `external_directory_read` rule is `allow`.
+  The parent session was blocked on the subagent call, so nobody saw the forwarded prompt.
+
+#### What caused friction (user side)
+
+- The operator's two questions ("is the report sufficient?", "did the live check get blocked?") each surfaced a real gap that the agent had passed over.
+  Both were redirecting questions rather than corrections, which is the cheap form.
+- The plan-edit offer after the Open Question went unanswered when `/tdd-plan` started.
+  A one-word "skip" or "yes" would have kept the plan file in step with the retro.
+
+### Diagnostic details
+
+- **Model-performance correlation:** planning, TDD, and this retro ran on `claude-opus-5-5`, and the ship stage ran on `claude-sonnet-5-5` cleanly.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on `claude-sonnet-5-5` per their transcripts.
+  The reviewer's five-point re-derivation, read against pi's `dist`, was judgment-heavy, and it held up.
+- **Feedback-loop gap analysis:** each TDD step ran its test file, `pnpm run check`, Biome, and ESLint before committing, and `fallow:dead-code` ran after step 3; no verification was end-loaded.
+
+### Changes made
+
+1. `.pi/agents/pre-completion-reviewer.md`: the reviewer now reads the sibling pi checkout with the `read`/`grep` tools at `~/development/pi/pi`, not through bash, because a bash command whose effect the permission system cannot prove waits on an operator prompt.
+
+Declined: proposal A, which would have chained the green-copy `cp` onto the passing test run in `.pi/prompts/tdd-plan.md` step 3.

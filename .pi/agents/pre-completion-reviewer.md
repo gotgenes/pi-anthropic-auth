@@ -36,6 +36,7 @@ Two reads outside the repo are sanctioned, and neither is a search:
 
 - The sibling Pi checkout (`../pi`, which is `~/development/pi/pi`) for Pi SDK mechanism.
   It tracks `main` and runs ahead of the pinned dependency, so confirm any API against the installed version too.
+  Read it with the `read`/`grep` tools at `~/development/pi/pi`, not through bash: a bash command whose effect the permission system cannot prove waits on an operator prompt.
 - The published tarball for an exact version (`pnpm view <pkg>@<version> dist.tarball`), for a version-boundary question.
 
 A version-boundary question — "at which release did X change?" — is the signal to stop searching the working tree.
