@@ -94,3 +94,16 @@ Issue #86, PR #85, and PR #87 were closed with named thanks and co-author traile
 3. `.pi/prompts/tdd-plan.md`: the green-copy `cp` now runs "alone in its own turn", since a separate call in the same batch still runs concurrently.
 
 Declined: widening the `/plan-issue` `Co-authored-by` rule to diagnoses and measurements, with noreply resolution (proposal C).
+
+## Stage: Post-ship follow-up (2026-11-15T17:38:59Z)
+
+### Session summary
+
+@kcocoa objected on #86 that `disableContinuation` is a workaround: the reported error was a version mismatch that pi 1.5.2 fixes, and header-less continuations work on their account.
+Two live runs (`claude-fable-5-2`, n=1 each) confirmed the version half: on pi 1.5.2 with the opt-out off, the continuation returned 200; on pi 1.5.1 with threads on, retrying a rejected continuation with the `claude-cli` user-agent raised to the named floor returned 200, so the user-agent is not a fixed thread field.
+Replied on #86 and added the measurement to #90 as a new direction; the opt-out stays until #90 settles whether header-less continuations are billed to the plan on every plan type.
+
+### Observations
+
+- The disagreement reduced to #90's obstacle 2 (attribution of header-less continuations, now two accounts accepting and two rejecting, possibly plan-dependent); the version-gate obstacle has a measured answer.
+- Planning had dismissed the user-agent option as "untested"; it took one prototype run to test, and that run should have been in the planning matrix next to the two opt-out mechanisms.
