@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.6.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.5.0...v3.6.0) (2026-11-15)
+
+
+### Features
+
+* send Anthropic OAuth requests as message threads, with the billing header on every continuation ([46af01f](https://github.com/gotgenes/pi-anthropic-auth/commit/46af01f8889f3dea00c23f692c2b3705052fa8cb))
+
+### Documentation
+
+* record that OAuth requests use message threads with the billing header attached ([2b4625a](https://github.com/gotgenes/pi-anthropic-auth/commit/2b4625a8361beb6fb3bf96a9aed050e8ec4d7d88))
+
 ## [3.5.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.4.5...v3.5.0) (2026-11-13)
 
 
