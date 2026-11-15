@@ -718,6 +718,68 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
   });
 });
 
+// pi-ai >=1.5.0 builds a continuation after `onPayload` and leaves out
+// `system`; the sync puts the billing block back, as Claude Code sends it.
+describe("message-thread continuations", () => {
+  test("attaches the billing block at the pin when Pi reports no higher version", async () => {
+    const body = await dispatch(
+      requestInit(`claude-cli/${PI_BEHIND}`, continuationBody()),
+    );
+
+    assert.equal(body, continuationWithBlock(CLAUDE_CODE_VERSION));
+  });
+
+  test("raises the attached block to Pi's claude-cli version", async () => {
+    const body = await dispatch(
+      requestInit(`claude-cli/${PI_AHEAD}`, continuationBody()),
+    );
+
+    assert.equal(body, continuationWithBlock(PI_AHEAD));
+  });
+
+  test("sends a continuation at a learned floor without a rejection", async () => {
+    const floor = createLearnedClaudeCodeFloor();
+    floor.learn(REQUIRED);
+    const base = createCapturingFetch([okResponse()]);
+    const sync = createBillingVersionSync(floor, base.fetch);
+    sync.recordRequest(shapedPayload());
+
+    await sync.fetch(MESSAGES_URL, requestInit(undefined, continuationBody()));
+
+    assert.equal(sentBody(base), continuationWithBlock(REQUIRED));
+  });
+
+  test("retries a rejected continuation once at the named floor", async () => {
+    const recovered = okResponse();
+    const base = createCapturingFetch([
+      claudeCodeVersionTooOldResponse(REQUIRED),
+      recovered,
+    ]);
+    const sync = createBillingVersionSync(
+      createLearnedClaudeCodeFloor(),
+      base.fetch,
+    );
+    sync.recordRequest(shapedPayload());
+
+    const response = await sync.fetch(
+      MESSAGES_URL,
+      requestInit(undefined, continuationBody()),
+    );
+
+    assert.equal(base.calls.length, 2);
+    assert.equal(bodyOfCall(base, 1), continuationWithBlock(REQUIRED));
+    assert.equal(response, recovered);
+  });
+
+  test("leaves a continuation untouched when no request was recorded", async () => {
+    const body = await dispatch(requestInit(undefined, continuationBody()), {
+      record: false,
+    });
+
+    assert.equal(body, continuationBody());
+  });
+});
+
 /**
  * What pi-ai >=1.5.0 sends on a message-thread continuation: only the new
  * messages, and no `system`.
@@ -736,4 +798,16 @@ function continuationBody(): string {
     ],
     thread: { type: "continue", previous_message_id: "msg_01" },
   });
+}
+
+/**
+ * {@link continuationBody} as it should go out: the billing block for
+ * `USER_TEXT` at `version` spliced in ahead of every byte pi built.
+ */
+function continuationWithBlock(version: string): string {
+  const block = JSON.stringify({
+    type: "text",
+    text: buildExpectedBillingHeader(USER_TEXT, version),
+  });
+  return `{"system":[${block}],${continuationBody().slice(1)}`;
 }

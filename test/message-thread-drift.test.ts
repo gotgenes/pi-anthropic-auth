@@ -23,14 +23,14 @@ import piAiPackage from "../node_modules/@earendil-works/pi-ai/package.json" wit
 //
 // pi-ai >=1.5.0 sends later turns of a session as Anthropic message-thread
 // continuations, built after `onPayload` and without `system`, where our
-// billing header lives.  OAuth requests opt out with `disableContinuation`
-// (Issue #86).  `test/oauth-transport.test.ts` pins that the wrapper passes
-// the option; this suite pins that Pi still honors it, which no type check
-// can see.
+// billing header lives.  The OAuth wrapper's `fetch` puts the billing block
+// back on each continuation, as Claude Code sends it (Issue #90).  This suite
+// pins that pi still strips `system` there, and that the block reaches the
+// body pi actually serializes, which no type check can see.
 //
 // Message threads arrived in pi-ai 1.5.0, above this package's peer floor,
-// so CI's floor job (Issue #56) runs a Pi with no continuation to opt out
-// of.  The suite skips there.  The comparison fails open: `higherVersion`
+// so CI's floor job (Issue #56) runs a Pi with no continuation at all.  The
+// suite skips there.  The comparison fails open: `higherVersion`
 // returns its baseline, the installed version, unless "1.5.0" compares
 // strictly higher, and a prerelease or malformed version never compares
 // lower, so it runs the suite rather than silently skipping it.  Swapping the
@@ -172,7 +172,7 @@ async function captureTwoTurns({
 
 describe.skipIf(!PI_HAS_MESSAGE_THREADS)("Anthropic message threads", () => {
   test("Pi continues an OAuth session's second turn without system", async () => {
-    // The control: without it, the opt-out test below would pass on a fixture
+    // The control: without it, the OAuth test below would pass on a fixture
     // that never reaches pi's thread path at all.
     const { firstReply, bodies } = await captureTwoTurns({
       wrapped: false,
@@ -188,24 +188,28 @@ describe.skipIf(!PI_HAS_MESSAGE_THREADS)("Anthropic message threads", () => {
     assert.equal("system" in (bodies[1] ?? {}), false);
   });
 
-  test("the OAuth wrapper sends the second turn in full, with the billing header", async () => {
+  test("the OAuth wrapper continues the thread with the billing block as its only system", async () => {
     const { bodies } = await captureTwoTurns({
       wrapped: true,
       apiKey: OAUTH_TOKEN_STUB,
       sessionId: "thread-drift-oauth",
     });
 
-    assert.deepEqual(
-      bodies.map((body) => "thread" in body),
-      [false, false],
-    );
+    const firstTurn = bodies[0];
     const secondTurn = bodies[1];
+    assert.ok(firstTurn);
     assert.ok(secondTurn);
+    const billingBlock = firstTurn.system?.[0];
     assert.ok(
-      secondTurn.system?.[0]?.text?.includes(BILLING_HEADER_MARKER),
-      "the second OAuth turn must lead with the billing header block",
+      billingBlock?.text?.startsWith(BILLING_HEADER_MARKER),
+      "the first OAuth turn must lead with the billing header block",
     );
-    assert.equal(secondTurn.messages?.length, 3);
+    assert.deepEqual(secondTurn.thread, {
+      type: "continue",
+      previous_message_id: "msg_1",
+    });
+    assert.deepEqual(secondTurn.system, [billingBlock]);
+    assert.equal(secondTurn.messages?.length, 1);
   });
 
   test("the wrapper leaves API-key sessions on Pi's threads", async () => {
