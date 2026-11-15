@@ -109,15 +109,11 @@ export function createBillingVersionSync(
 
   const syncFetch = (async (input, init) => {
     const dispatch = baseFetch ?? globalThis.fetch;
-    const pinned = resolveClaudeCodeVersion();
     const userAgent = readUserAgent(input, init);
-    const target = targetVersion(userAgent);
-    const upgraded =
-      target === pinned ? undefined : rebuildBody(init?.body, pinned, target);
-    const sentInit =
-      upgraded === undefined ? init : { ...init, body: upgraded };
-    // When the upgrade could not be verified, the body still carries the pin.
-    const sentVersion = upgraded === undefined ? pinned : target;
+    const { init: sentInit, version: sentVersion } = prepareOutgoing(
+      init,
+      userAgent,
+    );
 
     const response = await dispatch(input, sentInit);
     const rejection = await readVersionRejection(response);
@@ -162,6 +158,25 @@ export function createBillingVersionSync(
         : { kind: "set-override", requiredVersion: second.requiredVersion },
     );
   }) as FetchFunction;
+
+  /**
+   * The request as it goes out, and the version its billing header carries:
+   * the header raised from the pin to {@link targetVersion} when that can be
+   * verified, and the caller's request untouched otherwise.
+   */
+  function prepareOutgoing(
+    init: RequestInit | undefined,
+    userAgent: string | undefined,
+  ): { init: RequestInit | undefined; version: string } {
+    const pinned = resolveClaudeCodeVersion();
+    const target = targetVersion(userAgent);
+    const upgraded =
+      target === pinned ? undefined : rebuildBody(init?.body, pinned, target);
+    // When the upgrade could not be verified, the body still carries the pin.
+    return upgraded === undefined
+      ? { init, version: pinned }
+      : { init: { ...init, body: upgraded }, version: target };
+  }
 
   /**
    * Decides whether a rejected request can be retried at the floor Anthropic
