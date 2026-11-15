@@ -117,8 +117,16 @@ Pi 1.5.0 started sending Anthropic requests as message threads: after the first 
 With pi-anthropic-auth releases from before the fix, the request after a tool call could fail with a `claude_code_version_too_old` error that recovery could not fix, or be reported as third-party usage.
 
 Upgrade pi-anthropic-auth.
-It now opts Anthropic OAuth requests out of message threads, so every request is sent in full with the billing header, as on Pi 1.4 and as Claude Code sends them.
-API-key requests keep Pi's message threads.
+It now puts the billing header back on each message-thread continuation, as the only system block, which is how Claude Code sends its own continuations.
+OAuth requests keep Pi's message threads, like API-key requests.
+
+If a request after a tool call is still reported as third-party usage, you can turn message threads off for the `anthropic` provider in `~/.pi/agent/models.json`, so every request is sent in full:
+
+```json
+{ "providers": { "anthropic": { "compat": { "supportsMessageThreads": false } } } }
+```
+
+Please also [open an issue](https://github.com/gotgenes/pi-anthropic-auth/issues) with your plan type, so the default can be revisited.
 
 ### Pi warns about extra usage on every OAuth session
 

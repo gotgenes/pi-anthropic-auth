@@ -53,7 +53,7 @@ flowchart TD
     MR --> PC["provider-composer.streamWith"]
     PC --> W["streamSimple wrapper (this extension)"]
     W --> D{"sk-ant-oat token?"}
-    D -->|"yes"| S["Inject onPayload shaping, fetch wrapper, thread opt-out"]
+    D -->|"yes"| S["Inject onPayload shaping and fetch wrapper"]
     D -->|"no"| P["Pass through unchanged"]
     S --> G["built-in anthropicMessagesApi().streamSimple"]
     P --> G
@@ -152,13 +152,15 @@ The floor is learned for the wrapper's lifetime, owned by `createAnthropicOAuthS
 When recovery cannot run (the request carried no billing header, an override is set, the floor is not named, the body cannot be rebuilt) or the retry is rejected too, the 400 is returned with a `[pi-anthropic-auth]` hint appended to `error.message`; status, headers, `error_code`, and `request_id` are preserved.
 A request without our billing header was gated on pi's own `claude-cli` user-agent, so its hint says to upgrade pi, and its named floor is not learned (Issue #86).
 
-For OAuth requests the wrapper also sets `disableContinuation: true` (Issue #86).
+The same `fetch` wrapper also puts the billing header back on message-thread continuations (Issue #90).
 pi-ai 1.5.0 sends Anthropic [message threads](https://platform.claude.com/docs/en/build-with-claude/message-threads): when a session's conversation prefix is unchanged, it sends each later turn as a `thread: continue` request carrying only the new messages.
-It builds that request after `onPayload` has run and leaves out `system` and `tools`, which Anthropic accepts only on the request that creates a thread, so a continuation can never carry the billing header.
-With the opt-out, every OAuth request is sent in full, as on pi <=1.4 and as Claude Code sends them (measured: Claude Code 2.1.311 and 2.1.323 send no `message-threads` beta and no `thread` field).
-Anthropic and pi both document threads as leaving tokens and prompt caching unchanged, so the cost is upload size only.
-API-key requests keep pi's threads; whether OAuth requests could use them is tracked in Issue #90.
-`test/message-thread-drift.test.ts` drives pi's own transport through two turns of one session, so a pi release that stops honoring the opt-out fails the suite rather than silently dropping the header (Issue #89).
+It builds that request after `onPayload` has run and leaves out `system` and `tools`, so the continuation pi builds carries no billing header.
+`src/thread-continuation.ts` splices `system: [billing block]` into such a body as text, at the pin, and the version raise and rejection recovery above then apply to it like any other request.
+That is the shape Claude Code sends: its continuations keep only the `x-anthropic-billing-header:` block of `system` (read from the 2.1.311 binary; a capture behind a custom `ANTHROPIC_BASE_URL` sees no threads, because Claude Code drops them for any non-default base URL).
+Measured live on pi 1.5.2: Anthropic accepts a billing-only `system` on a continuation and leaves it out of the thread fingerprint, while any other `system` change is a `thread_fingerprint_mismatch`; and a well-formed header gates the Claude Code version on a continuation exactly as on a `create`.
+The Issue #86 opt-out (`disableContinuation: true`) sent every OAuth request in full instead; it was removed, and a caller's own `disableContinuation` (pi's cache warmer) still passes through.
+Users who want full requests set `compat.supportsMessageThreads: false` on the `anthropic` provider in `models.json`.
+`test/message-thread-drift.test.ts` drives pi's own transport through two turns of one session, so a pi release that changes how it builds continuations fails the suite rather than silently dropping the header (Issue #89).
 
 The wrapper composes, rather than replaces, any caller-provided `onPayload` and any caller-provided `fetch`.
 On the main loop, Pi still passes its own `onPayload` (which fires other extensions' `before_provider_request` handlers); the wrapper runs those first and applies our shaping last, closest to the wire.
@@ -317,7 +319,8 @@ pi-observational-memory 3.1.x is the worked example: `resolveWorkerStreamSimple`
 - `src/anthropic-message.ts` — loose structural types for the `messages[]` entries that shaping and billing-header construction both read.
 - `src/billing-header.ts` — the `x-anthropic-billing-header` recipe, with the Claude Code version as an explicit parameter so the same header can be rebuilt at a different version.
 - `src/claude-code-version.ts` — the Claude Code version floor, its environment override, `claude-cli` user-agent parsing, and numeric version comparison (Issue #74), plus the floor learned from rejections (Issue #75).
-- `src/billing-version-sync.ts` — the per-request `fetch` wrapper that raises `cc_version` to pi's reported version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75).
+- `src/billing-version-sync.ts` — the per-request `fetch` wrapper that attaches the billing block to message-thread continuations (Issue #90), raises `cc_version` to pi's reported version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75).
+- `src/thread-continuation.ts` — splices the billing block into a continuation body without `system`, as text, never re-serializing it (Issue #90).
 - `src/version-rejection.ts` — parser for Anthropic's `claude_code_version_too_old` rejection body, and the wording of the hint appended when recovery cannot help (Issue #75).
 - `src/system-prompt-sections.ts` — parser for Pi's XML-sectioned system prompt; splits it into ordered chunks and renders them back byte-exactly, so an unrecognized section is copied rather than re-serialized (Issue #67).
 - `src/system-prompt-shaping.ts` — section-aware sanitizer that replaces Pi's preamble, drops the `docs` section, strips the `tools` filler, and preserves everything else.

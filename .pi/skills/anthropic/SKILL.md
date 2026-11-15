@@ -21,7 +21,8 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 4. Prefer request shaping before prompt rewriting.
 5. A refusal blamed on request *content* needs an organic-data control before it becomes a diagnosis (Issue #65).
 6. Avoid `streamSimple` unless hooks are clearly insufficient — they are insufficient for compaction and background-agent calls, which is why this repo wraps the transport (Issue #18).
-7. Before deciding whether OAuth requests adopt or opt out of an Anthropic API feature, capture whether Claude Code sends it (see "Measured 2026-11-01" for the local-server technique) and state what the feature buys; Claude Code's request shape is the reference (Issue #86).
+7. Before deciding whether OAuth requests adopt or opt out of an Anthropic API feature, capture whether Claude Code sends it (see "Measured 2026-11-01" for the local-server technique, and its caveat) and state what the feature buys; Claude Code's request shape is the reference (Issue #86).
+   A local-server capture cannot see features Claude Code gates on the default base URL, such as message threads; for those, read the installed binary (`strings` on `$(readlink -f "$(which claude)")`) and test the shape against the real API (Issue #90).
 
 ## Repo-Specific Findings
 
@@ -49,11 +50,13 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
   Unrecovered rejections (no billing header, override set, floor unnamed, body not rebuildable, retry rejected) reach the user with a `[pi-anthropic-auth]` hint appended to `error.message`.
   A header-less request was gated on pi's own `claude-cli` user-agent, so its hint says to upgrade pi and its floor is not learned (Issue #86).
   On pi 0.87.1 the retry is unreachable live without a patch, because pi's own 2.1.280 already meets every current floor; the live check forces the pin to 2.1.260 and disables the pi-version read in the working tree, then looks for the `claude-code-version-recovery` debug line.
-- OAuth requests set `disableContinuation: true`, opting out of pi-ai >=1.5.0's Anthropic message threads (Issue #86).
-  pi builds a `thread: continue` request after `onPayload` and leaves out `system`, and Anthropic rejects `system` on a continuation, so the billing header cannot reach one.
-  Claude Code itself does not use threads: `claude -p` 2.1.311/2.1.323 and interactive `claude` 2.1.311 send no `message-threads` beta and no `thread` field (local-server capture, 2026-11-13).
-  On pi 1.5.1 with `claude-fable-5-2`, the continuation after a tool call was rejected as `claude_code_version_too_old` on pi's user-agent, which recovery cannot change; with the opt-out it returns 200.
-  Header-less continuations returned 200 on the operator's account (haiku, sonnet, and opus 5.5 on pi 1.5.2), while PR #85 and a comment on Issue #86 report them rejected as third-party usage on other accounts; Issue #90 tracks whether OAuth can use threads.
+- OAuth requests use pi-ai >=1.5.0's Anthropic message threads, and the `fetch` wrapper splices `system: [billing block]` into each continuation (Issue #90, replacing the Issue #86 `disableContinuation` opt-out).
+  pi builds a `thread: continue` request after `onPayload` and leaves out `system`, so without the splice no continuation carries the billing header.
+  Claude Code uses threads too: its 2.1.311 binary sends continuations with `system` filtered to the `x-anthropic-billing-header:` block (or the full `system`, behind a server flag); it drops threads for any non-default `ANTHROPIC_BASE_URL` (anthropics/claude-code#98464), which is why a local-server capture on 2026-11-13 saw none.
+  Measured live on pi 1.5.2 (n=1 each): a continuation with a billing-only or an identical full `system` returns 200; a changed non-billing block is `thread_fingerprint_mismatch`; the billing block is outside the fingerprint.
+  On `claude-fable-5-2` a well-formed billing header gates the version on a continuation exactly as on a `create`, and a header with a stale version suffix is ignored in favor of pi's user-agent, so build probe headers with `buildBillingHeaderValue`.
+  Header-less continuations returned 200 on two accounts (Max 20x; one Pro) and were rejected as third-party usage on two (PR #85's Pro, and a comment on Issue #86), so plan type alone does not decide; whether a rejecting account accepts a continuation that carries the header is unmeasured.
+  Users can turn threads off with `compat.supportsMessageThreads: false` on the `anthropic` provider in `models.json` (verified live).
 - The wrapper covers the main loop and compaction — everything that dispatches through `modelRuntime`.
 - It covers only the provider names this extension registers: `anthropic`, plus any the user names in `extensions/pi-anthropic-auth/config.json` (global, or a trusted project's `.pi/`).
   An Anthropic OAuth subscription another extension registers under its own name (pi-multi-pass's `anthropic-2`) is otherwise unshaped and fails real prompts with the extra-usage 400 (Issue #70).
@@ -65,6 +68,7 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 ### Measured 2026-11-01 (Issue #83)
 
 - To see what real Claude Code sends, point `ANTHROPIC_BASE_URL` at a local server that logs the billing block and answers 500; run interactive `claude` under `script -q /dev/null` for a TTY, and unset an inherited `CLAUDE_CODE_ENTRYPOINT`.
+  The custom base URL itself changes what Claude Code sends: it drops message threads (and a `<total_tokens>` notice), so this capture is blind to them (Issue #90).
 - With this repo's prompt on Pi 1.4.0, the billing header alone or the sanitizer alone is accepted, and neither is rejected with the extra-usage 400; acceptance cannot test a `cc_entrypoint` value, so run the no-header control first.
 - Responses expose `anthropic-ratelimit-unified-7d-utilization` in 1% steps; an Ultra plan shows no 5-hour header, and `/api/oauth/profile` may lag a plan rename.
 

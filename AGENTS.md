@@ -57,11 +57,11 @@ The current implementation does the following:
 7. Recovers from a `claude_code_version_too_old` rejection by retrying once at the floor Anthropic names, remembering that floor for later requests, and appending a hint to the error when it cannot recover (Issue #75)
 8. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 9. Registers the same wrapper on any extra provider named in the extension's config file, for Anthropic OAuth subscriptions another extension registers under its own name (pi-multi-pass's `anthropic-2`, Issue #70)
-10. Opts OAuth requests out of Pi's Anthropic message-thread continuations (pi-ai >=1.5.0), which leave out `system` and so the billing header; every OAuth request is sent in full, as Claude Code sends them (Issue #86)
+10. Puts the billing header back on Pi's Anthropic message-thread continuations (pi-ai >=1.5.0), which Pi builds after `onPayload` without `system`: each continuation carries `system: [billing block]`, the shape Claude Code sends, so OAuth requests use Pi's threads like API-key requests (Issue #90, replacing the Issue #86 opt-out)
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and injects two steps: an `onPayload` shaping step, and an `options.fetch` wrapper for the version reconciliation and rejection recovery, which need the built request's headers and the response.
-For OAuth requests it also sets `disableContinuation: true`, because pi builds a thread continuation after `onPayload` and leaves out `system` (Issue #86).
+The same `fetch` wrapper splices the billing block into each message-thread continuation, because pi builds a continuation after `onPayload` and leaves out `system` (Issue #90).
 
 ## Principles
 
@@ -99,7 +99,7 @@ It uses one Pi extension seam:
 The `streamSimple` wrapper is the single shaping point.
 It delegates to Pi's built-in Anthropic `streamSimple` transport (resolved at runtime by `src/host-transport.ts`) while injecting an `onPayload` step that runs all provider-specific logic (billing header injection, system prompt shaping).
 It also injects an `options.fetch` wrapper for OAuth requests, because one fact — the Claude Code version pi reports in its `user-agent` — is only observable on the built request, downstream of `onPayload` (Issue #74).
-And it sets `disableContinuation: true` for OAuth requests, because pi-ai >=1.5.0 builds message-thread continuations after `onPayload` without `system`, where the billing header lives (Issue #86).
+That `fetch` wrapper also splices `system: [billing block]` into each message-thread continuation, because pi-ai >=1.5.0 builds continuations after `onPayload` without `system`, where the billing header lives; Anthropic accepts that block on a continuation and reads it for the version gate (Issue #90).
 The delegate is resolved at runtime rather than read from the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own `custom-provider-gitlab-duo` example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last.
 On pi <=0.80.7 it would also have recursed, because `registerProvider` bridged our wrapper into that slot.
 The pi-ai 0.79.x lazy-registration clobber (Issue #28) is precluded by the `>=0.86.0` peer floor.
@@ -124,15 +124,16 @@ Current source layout:
 5. `src/anthropic-message.ts`: loose structural types for the `messages[]` entries shaping and billing-header construction both read
 6. `src/billing-header.ts`: the `x-anthropic-billing-header` recipe — salt, sampled positions, entrypoint, and `buildBillingHeaderValue(messageText, version)`
 7. `src/claude-code-version.ts`: the Claude Code version floor, its env override, `claude-cli` user-agent parsing, numeric version comparison (Issue #74), and the floor learned from rejections (Issue #75)
-8. `src/billing-version-sync.ts`: per-request `fetch` wrapper that raises `cc_version` to Pi's reported `claude-cli` version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75)
-9. `src/version-rejection.ts`: parser for Anthropic's `claude_code_version_too_old` rejection body and the recovery hint wording (Issue #75)
-10. `src/system-prompt-sections.ts`: parser for Pi's XML-sectioned system prompt, splitting it into ordered chunks and rendering them back byte-exactly (Issue #67)
-11. `src/system-prompt-shaping.ts`: section-aware Anthropic OAuth prompt sanitizer that replaces Pi's preamble, drops the `docs` section, strips the `tools` filler, and preserves everything else
-12. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
-13. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, argument completions, and handler factory for the `/anthropic-auth:status` command, including its per-provider `accounts:` block (Issue #80)
-14. `src/extension-config.ts`: the config file paths and a parser that turns malformed files and entries into warnings instead of throwing (Issue #70)
-15. `src/extra-provider-shaping.ts`: registers the wrapper on each provider the config names, never unregistering it, and records the naming layer and warnings for the status command (Issue #70)
-16. `src/account-profile.ts`: looks up the Anthropic account behind a provider's OAuth login via `GET /api/oauth/profile`, never throwing, for the status command (Issue #80)
+8. `src/billing-version-sync.ts`: per-request `fetch` wrapper that attaches the billing block to message-thread continuations (Issue #90), raises `cc_version` to Pi's reported `claude-cli` version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75)
+9. `src/thread-continuation.ts`: splices the billing block into a message-thread continuation body that carries no `system`, as text so the body is never re-serialized (Issue #90)
+10. `src/version-rejection.ts`: parser for Anthropic's `claude_code_version_too_old` rejection body and the recovery hint wording (Issue #75)
+11. `src/system-prompt-sections.ts`: parser for Pi's XML-sectioned system prompt, splitting it into ordered chunks and rendering them back byte-exactly (Issue #67)
+12. `src/system-prompt-shaping.ts`: section-aware Anthropic OAuth prompt sanitizer that replaces Pi's preamble, drops the `docs` section, strips the `tools` filler, and preserves everything else
+13. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
+14. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, argument completions, and handler factory for the `/anthropic-auth:status` command, including its per-provider `accounts:` block (Issue #80)
+15. `src/extension-config.ts`: the config file paths and a parser that turns malformed files and entries into warnings instead of throwing (Issue #70)
+16. `src/extra-provider-shaping.ts`: registers the wrapper on each provider the config names, never unregistering it, and records the naming layer and warnings for the status command (Issue #70)
+17. `src/account-profile.ts`: looks up the Anthropic account behind a provider's OAuth login via `GET /api/oauth/profile`, never throwing, for the status command (Issue #80)
 
 ### Project Skills
 
@@ -498,11 +499,12 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 
 Current suites map roughly to:
 
-1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, the OAuth-only message-thread opt-out (Issue #86), and delegation to the built-in transport.
+1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, a caller's own `disableContinuation` passing through untouched (Issue #90), and delegation to the built-in transport.
 2. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, the structural messages-payload guard, and mid-conversation system messages, including the content-less effort messages that survive shaping (PR #79).
 3. `test/claude-code-version.test.ts` — `claude-cli` user-agent parsing and numeric `X.Y.Z` comparison, including the unparseable-candidate fallbacks, and the learned floor.
 4. `test/billing-version-sync.test.ts` — the wire-level `cc_version` upgrade: pass-through when Pi is absent, lower, or equal; rewrite when Pi is higher; the env override's absolute precedence; and that nothing outside the billing block changes.
    Also the rejection recovery: one retry at the named floor, the floor shared with later requests, success and unrelated 400 responses left unread, and each hint on an unrecovered rejection (Issue #75), including a request that carried no billing header (Issue #86).
+   Also message-thread continuations: the billing block attached at the pin, raised to Pi's version or a learned floor, and retried at a named floor (Issue #90).
 5. `test/version-rejection.test.ts` — parsing Anthropic's captured `claude_code_version_too_old` body, preserving its fields when a hint is appended, and each hint's wording.
 6. `test/claude-code-version-drift.test.ts` — the offline drift alarm against the installed pi-ai: `options.fetch` is forwarded, the `claude-cli` user-agent parses, and our pin is not below Pi's (Issue #74).
 7. `test/system-prompt-shaping.test.ts` — section-level removal and replacement, tag balance, tool-snippet and guideline preservation, appended-content preservation, extension-registered sections, the degraded passthrough path, each Pi prompt wording the peer range spans, and the one-time warning for an unrecognized preamble.
@@ -514,8 +516,9 @@ Current suites map roughly to:
 12. `test/extra-provider-shaping.test.ts` — one `{ api, streamSimple }` registration per named provider, no unregister, first layer wins, and per-layer warning replacement.
 13. `test/managed-effort-drift.test.ts` — the offline drift alarm for per-message effort: Pi's catalog still flags a managed-effort model, and for every model it flags, Pi still carries historical and active effort in content-less system messages, and OAuth shaping keeps every one of them (PR #79).
 14. `test/account-profile.test.ts` — the profile lookup: no request without an OAuth token, the request's headers, tolerant field parsing, and each `unavailable` reason (Issue #80).
-15. `test/message-thread-drift.test.ts` — the offline drift alarm for message threads: Pi still continues an OAuth session's second turn without `system` (the control), the OAuth wrapper still sends it in full with the billing header, and API-key sessions keep Pi's threads (Issue #86, Issue #89).
+15. `test/message-thread-drift.test.ts` — the offline drift alarm for message threads: Pi still continues an OAuth session's second turn without `system` (the control), the OAuth wrapper's continuation carries the first turn's billing block as its only `system`, and API-key sessions keep Pi's threads (Issue #86, Issue #89, Issue #90).
     It skips on pi-ai below 1.5.0, which has no threads, as the `floor` job installs (Issue #56).
+16. `test/thread-continuation.test.ts` — the continuation splice: byte-exact output, a `"system"` key nested in a tool input, and every body left alone (`create`, no `thread`, an existing `system`, invalid JSON, an array).
 
 Priority areas for new tests:
 
@@ -609,7 +612,7 @@ Pi's built-in Anthropic provider is already much closer to the desired Claude Co
 ### Registering `streamSimple`
 
 The extension registers a `streamSimple` wrapper, because hooks proved insufficient: `before_provider_request` does not fire for compaction or background-agent calls (Issue #18).
-The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step, an `options.fetch` wrapper, and a message-thread opt-out, all gated on the OAuth token.
+The wrapper stays thin — it delegates to Pi's own built-in Anthropic `streamSimple` transport (resolved at runtime via `src/host-transport.ts`) and only injects an `onPayload` shaping step and an `options.fetch` wrapper (which also puts the billing block back on message-thread continuations), both gated on the OAuth token.
 The delegate is resolved at runtime rather than read out of the api registry: `anthropicMessagesApi()` is the non-deprecated handle pi's own example uses, and reading from a registry this extension does not participate in would bind the delegate to whatever another extension registered there last (on pi <=0.80.7 it would also have recursed, since the bridge put our wrapper in that slot).
 The resolver imports the `@earendil-works/pi-ai/compat` subpath — the path pi's own `custom-provider-gitlab-duo` example delegates through — which Pi's loader maps (through its `alias` or `virtualModules` table) to its own bundled pi-ai compat entrypoint (`dist/compat.js` on pi >=0.80.x).
 It reads the non-deprecated `anthropicMessagesApi().streamSimple` factory and throws if that handle is absent.
