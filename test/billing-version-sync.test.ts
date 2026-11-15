@@ -63,6 +63,26 @@ function shapedPayload(version: string = CLAUDE_CODE_VERSION) {
   };
 }
 
+/**
+ * A shaped payload whose first user message holds no text, so shaping builds
+ * no billing header for it and none can be built for its requests.
+ */
+function textlessPayload() {
+  return {
+    model: "claude-haiku-4-5",
+    stream: true,
+    system: [{ type: "text", text: "You are an expert coding assistant." }],
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "toolu_01", content: "hi" },
+        ],
+      },
+    ],
+  };
+}
+
 function requestInit(
   userAgent: string | undefined,
   body: BodyInit | undefined = JSON.stringify(shapedPayload()),
@@ -621,11 +641,11 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
         createLearnedClaudeCodeFloor(),
         base.fetch,
       );
-      sync.recordRequest(shapedPayload());
+      sync.recordRequest(textlessPayload());
 
       const response = await sync.fetch(
         MESSAGES_URL,
-        requestInit("claude-cli/2.1.280", headerlessBody()),
+        requestInit("claude-cli/2.1.280", continuationBody()),
       );
 
       await assertHinted(response, {
@@ -644,11 +664,11 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
         createLearnedClaudeCodeFloor(),
         base.fetch,
       );
-      sync.recordRequest(shapedPayload());
+      sync.recordRequest(textlessPayload());
 
       const response = await sync.fetch(
         MESSAGES_URL,
-        requestInit("claude-cli/2.1.280", headerlessBody()),
+        requestInit("claude-cli/2.1.280", continuationBody()),
       );
 
       await assertHinted(response, {
@@ -665,11 +685,11 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
         createLearnedClaudeCodeFloor(),
         base.fetch,
       );
-      sync.recordRequest(shapedPayload());
+      sync.recordRequest(textlessPayload());
 
       const response = await sync.fetch(
         MESSAGES_URL,
-        requestInit(undefined, headerlessBody()),
+        requestInit(undefined, continuationBody()),
       );
 
       await assertHinted(response, {
@@ -686,11 +706,11 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
         claudeCodeVersionTooOldResponse(REQUIRED),
       ]);
       const sync = createBillingVersionSync(floor, base.fetch);
-      sync.recordRequest(shapedPayload());
+      sync.recordRequest(textlessPayload());
 
       await sync.fetch(
         MESSAGES_URL,
-        requestInit("claude-cli/2.1.280", headerlessBody()),
+        requestInit("claude-cli/2.1.280", continuationBody()),
       );
 
       assert.equal(floor.applyTo("1.0.0"), "1.0.0");
@@ -700,9 +720,9 @@ describe("hints on unrecovered claude_code_version_too_old rejections", () => {
 
 /**
  * What pi-ai >=1.5.0 sends on a message-thread continuation: only the new
- * messages, and no `system`, so no billing header.
+ * messages, and no `system`.
  */
-function headerlessBody(): string {
+function continuationBody(): string {
   return JSON.stringify({
     model: "claude-haiku-4-5",
     stream: true,
