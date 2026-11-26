@@ -28,3 +28,24 @@ Plan committed as `docs/plans/0091-configurable-cc-entrypoint.md` (`67b24ff`): t
 #### Deferred tidyings
 
 - `src/extra-provider-shaping.ts`: `ExtraProviderShaping.warnings()` now reports every config warning, not only provider ones; extract a `ConfigWarnings` owner when a third config consumer arrives.
+
+## Stage: Implementation — TDD (2026-11-26T18:29:05Z)
+
+### Session summary
+
+All eight plan steps landed as eight commits (`0de8479`..`a9ba4a8`): three preparatory refactors, the label threaded through header construction, `EntrypointSetting`, the config key wired in (`3f702f7`, with the `Co-authored-by` trailer), the status line, and docs.
+Tests went from 282 to 330 (+48, 20 files); check, lint, and `fallow dead-code` are clean.
+The live repro (global `{"entrypoint": "pi-agent"}`, `-ne`, Haiku 4.5, this repo's prompt) showed `entrypoint: pi-agent (global)` in the status report and returned `PONG`; the temporary config was removed.
+
+### Observations
+
+- No deviations in scope; every Module-Level Changes file changed, and the predicted-unchanged files (`test/extra-provider-shaping.test.ts`, the drift suites, `test/thread-continuation.test.ts`) stayed untouched.
+- Additions beyond the plan's text: the `/anthropic-auth:status` command description now names the entrypoint label, and the parser's accepted/rejected tables include Claude Code labels (`remote_baku`, `claude-desktop-3p`) and extra rejects (`-pi`, `pi/agent`, `pï`, an array).
+- Every named killing mutation killed its tests; three killed more than predicted, each for a reason the design implies:
+  - Step 4 (d), the shaping label ignored, also failed the transport raise and once-per-request tests, because the sync could no longer find the header.
+  - Step 6 (c), `readEntrypoint` dropped in `index.ts`, also failed the untrusted-project test, whose expected value is the global label.
+  - Step 6 (e), the trust check bypassed, also failed the existing providers untrusted test.
+- Friction: in step 3 the `cp` of the green file ran in the same tool batch as the mutating `Edit`, so the copy captured the mutation and the restore was a no-op; caught by a red rerun before commit and reverted by hand.
+  Later steps saved copies in their own turn, as `/tdd-plan` says.
+- Pre-completion reviewer: PASS.
+  It re-derived the allowlist over every code point and found exactly 254 accepted single-position candidates, all ASCII `[A-Za-z0-9._-]` and unchanged by `JSON.stringify`; `$` (special in `String.replace`) is excluded too.
