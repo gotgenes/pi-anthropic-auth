@@ -706,6 +706,22 @@ describe("index registration: the entrypoint label", () => {
     );
   });
 
+  test("is shown in the status report with its layer", async () => {
+    writeGlobalConfig({ entrypoint: "pi-agent" });
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, commands } = createFakePi();
+    await registerExtension(pi);
+    await commands
+      .get("anthropic-auth:status")
+      ?.handler("", createCommandContext());
+
+    const [report] = consoleSpy.mock.calls[0];
+    assert.match(report, /^ {2}entrypoint: pi-agent \(global\)$/m);
+  });
+
   test("warns about an invalid label and keeps sdk-cli", async () => {
     writeGlobalConfig({ entrypoint: "a b" });
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

@@ -144,6 +144,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   };
   const readDiagnostics = (): ExtensionDiagnostics => ({
     ...loadDiagnostics,
+    entrypoint: entrypoint.current(),
     shapedProviders: extraProviders.shapedProviders(),
     configWarnings: extraProviders.warnings(),
   });
@@ -157,7 +158,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // only with `--account`, because users paste this report into issues.
   pi.registerCommand("anthropic-auth:status", {
     description:
-      "Show pi-anthropic-auth diagnostics: version, loaded module path, transport status, shaped providers, and each provider's subscription (--account adds email and organization).",
+      "Show pi-anthropic-auth diagnostics: version, loaded module path, transport status, billing entrypoint label, shaped providers, and each provider's subscription (--account adds email and organization).",
     getArgumentCompletions: statusArgumentCompletions,
     handler: createStatusCommandHandler(readDiagnostics),
   });

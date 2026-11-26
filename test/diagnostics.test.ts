@@ -23,6 +23,7 @@ const SAMPLE: ExtensionDiagnostics = {
   modulePath:
     "/root/.pi/agent/node_modules/@gotgenes/pi-anthropic-auth/src/index.ts",
   transportResolved: true,
+  entrypoint: { label: "sdk-cli", source: "default" },
   shapedProviders: [],
   configWarnings: [],
 };
@@ -182,6 +183,29 @@ describe("formatDiagnosticsReport", () => {
   test("includes a transport-resolved marker when resolved", () => {
     const report = formatDiagnosticsReport(SAMPLE);
     assert.match(report, /resolved/i);
+  });
+
+  describe("entrypoint", () => {
+    test("shows the default label as the default", () => {
+      const report = formatDiagnosticsReport(SAMPLE);
+      assert.match(report, /^ {2}entrypoint: sdk-cli \(default\)$/m);
+    });
+
+    test("shows a configured label with the layer that set it", () => {
+      const report = formatDiagnosticsReport({
+        ...SAMPLE,
+        entrypoint: { label: "pi-agent", source: "project" },
+      });
+      assert.match(report, /^ {2}entrypoint: pi-agent \(project\)$/m);
+    });
+
+    test("follows the transport line and precedes the shaped providers line", () => {
+      const report = formatDiagnosticsReport(SAMPLE);
+      assert.match(
+        report,
+        /transport: resolved\n {2}entrypoint: sdk-cli \(default\)\n {2}shaped providers:/,
+      );
+    });
   });
 
   describe("shaped providers", () => {

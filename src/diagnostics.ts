@@ -4,6 +4,7 @@ import {
   lookupProviderAccount,
   type ProviderCredentials,
 } from "./account-profile";
+import type { ActiveEntrypoint } from "./entrypoint-setting";
 import type { ShapedProvider } from "./extra-provider-shaping";
 
 /**
@@ -20,6 +21,8 @@ export interface ExtensionDiagnostics {
    * failure aborts extension load before `registerCommand` runs.
    */
   transportResolved: boolean;
+  /** The billing header's `cc_entrypoint` label, and which layer set it. */
+  entrypoint: ActiveEntrypoint;
   /**
    * Extra providers the config files named, each registered with the shaping
    * wrapper.  `anthropic` is always shaped and is not listed here.
@@ -104,6 +107,7 @@ export function formatDiagnosticsReport(
     `  version: ${d.version}`,
     `  module:  ${d.modulePath}`,
     `  built-in Anthropic transport: ${transport}`,
+    `  entrypoint: ${d.entrypoint.label} (${d.entrypoint.source})`,
     formatShapedProviders(d.shapedProviders),
     ...formatAccounts(accounts),
     ...formatConfigWarnings(d.configWarnings),
