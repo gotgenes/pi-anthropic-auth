@@ -75,12 +75,29 @@ export function parseExtensionConfig(
     return withWarning(`${path}: must contain a JSON object`);
   }
 
-  const configured = (parsed as { providers?: unknown }).providers;
-  if (configured === undefined) return EMPTY_CONFIG;
+  const providers = parseProviders(parsed, path);
+  return {
+    providers: providers.providers,
+    warnings: providers.warnings,
+  };
+}
+
+/** A parsed config file, before any of its keys are checked. */
+type ConfigObject = { providers?: unknown };
+
+interface ParsedProviders {
+  providers: readonly string[];
+  warnings: readonly string[];
+}
+
+function parseProviders(config: ConfigObject, path: string): ParsedProviders {
+  const configured = config.providers;
+  if (configured === undefined) return { providers: [], warnings: [] };
   if (!Array.isArray(configured)) {
-    return withWarning(
-      `${path}: "providers" must be an array of provider names`,
-    );
+    return {
+      providers: [],
+      warnings: [`${path}: "providers" must be an array of provider names`],
+    };
   }
 
   return parseProviderEntries(configured, path);
@@ -99,7 +116,7 @@ const ALWAYS_SHAPED_PROVIDER = "anthropic";
 function parseProviderEntries(
   entries: readonly unknown[],
   path: string,
-): LoadedExtensionConfig {
+): ParsedProviders {
   const providers: string[] = [];
   const warnings: string[] = [];
   entries.forEach((entry, index) => {
