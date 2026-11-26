@@ -51,12 +51,18 @@ function createCapturingFetch(
  * Builds the payload our shaping produces, with the billing header already
  * prepended at `version`.
  */
-function shapedPayload(version: string = CLAUDE_CODE_VERSION) {
+function shapedPayload(
+  version: string = CLAUDE_CODE_VERSION,
+  entrypoint?: string,
+) {
   return {
     model: "claude-haiku-4-5",
     stream: true,
     system: [
-      { type: "text", text: buildExpectedBillingHeader(USER_TEXT, version) },
+      {
+        type: "text",
+        text: buildExpectedBillingHeader(USER_TEXT, version, entrypoint),
+      },
       { type: "text", text: "You are an expert coding assistant." },
     ],
     messages: [{ role: "user", content: [{ type: "text", text: USER_TEXT }] }],
@@ -780,6 +786,77 @@ describe("message-thread continuations", () => {
   });
 });
 
+describe("a non-default entrypoint label", () => {
+  const LABEL = "pi-agent";
+
+  test("raises a labeled header to Pi's claude-cli version", async () => {
+    const base = createCapturingFetch();
+    const sync = createBillingVersionSync(
+      createLearnedClaudeCodeFloor(),
+      base.fetch,
+      LABEL,
+    );
+    sync.recordRequest(shapedPayload(CLAUDE_CODE_VERSION, LABEL));
+
+    await sync.fetch(
+      MESSAGES_URL,
+      requestInit(
+        `claude-cli/${PI_AHEAD}`,
+        JSON.stringify(shapedPayload(CLAUDE_CODE_VERSION, LABEL)),
+      ),
+    );
+
+    assert.equal(
+      sentBody(base),
+      JSON.stringify(shapedPayload(PI_AHEAD, LABEL)),
+    );
+  });
+
+  test("retries a labeled header at the named floor", async () => {
+    const base = createCapturingFetch([
+      claudeCodeVersionTooOldResponse(REQUIRED),
+      okResponse(),
+    ]);
+    const sync = createBillingVersionSync(
+      createLearnedClaudeCodeFloor(),
+      base.fetch,
+      LABEL,
+    );
+    sync.recordRequest(shapedPayload(CLAUDE_CODE_VERSION, LABEL));
+
+    await sync.fetch(
+      MESSAGES_URL,
+      requestInit(
+        undefined,
+        JSON.stringify(shapedPayload(CLAUDE_CODE_VERSION, LABEL)),
+      ),
+    );
+
+    assert.equal(base.calls.length, 2);
+    assert.equal(
+      bodyOfCall(base, 1),
+      JSON.stringify(shapedPayload(REQUIRED, LABEL)),
+    );
+  });
+
+  test("attaches a labeled block to a continuation", async () => {
+    const base = createCapturingFetch();
+    const sync = createBillingVersionSync(
+      createLearnedClaudeCodeFloor(),
+      base.fetch,
+      LABEL,
+    );
+    sync.recordRequest(shapedPayload(CLAUDE_CODE_VERSION, LABEL));
+
+    await sync.fetch(MESSAGES_URL, requestInit(undefined, continuationBody()));
+
+    assert.equal(
+      sentBody(base),
+      continuationWithBlock(CLAUDE_CODE_VERSION, LABEL),
+    );
+  });
+});
+
 /**
  * What pi-ai >=1.5.0 sends on a message-thread continuation: only the new
  * messages, and no `system`.
@@ -804,10 +881,10 @@ function continuationBody(): string {
  * {@link continuationBody} as it should go out: the billing block for
  * `USER_TEXT` at `version` spliced in ahead of every byte pi built.
  */
-function continuationWithBlock(version: string): string {
+function continuationWithBlock(version: string, entrypoint?: string): string {
   const block = JSON.stringify({
     type: "text",
-    text: buildExpectedBillingHeader(USER_TEXT, version),
+    text: buildExpectedBillingHeader(USER_TEXT, version, entrypoint),
   });
   return `{"system":[${block}],${continuationBody().slice(1)}`;
 }

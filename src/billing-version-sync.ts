@@ -3,6 +3,7 @@ import type { MessageParam } from "./anthropic-message";
 import {
   BILLING_HEADER_MARKER,
   buildBillingHeaderValue,
+  DEFAULT_CLAUDE_CODE_ENTRYPOINT,
   getFirstUserText,
 } from "./billing-header";
 import {
@@ -71,9 +72,15 @@ export interface BillingVersionSync {
   fetch: FetchFunction;
 }
 
+/**
+ * @param entrypoint The `cc_entrypoint` label shaping put in this request's
+ *   billing header.  Every header the sync builds must carry the same label,
+ *   or the exact-string rebuild cannot find the one shaping emitted.
+ */
 export function createBillingVersionSync(
   learnedFloor: LearnedClaudeCodeFloor,
   baseFetch?: FetchFunction,
+  entrypoint: string = DEFAULT_CLAUDE_CODE_ENTRYPOINT,
 ): BillingVersionSync {
   let firstUserText = "";
 
@@ -91,8 +98,16 @@ export function createBillingVersionSync(
   ): string | undefined {
     if (!firstUserText || typeof body !== "string") return undefined;
 
-    const fromHeader = buildBillingHeaderValue(firstUserText, fromVersion);
-    const toHeader = buildBillingHeaderValue(firstUserText, toVersion);
+    const fromHeader = buildBillingHeaderValue(
+      firstUserText,
+      fromVersion,
+      entrypoint,
+    );
+    const toHeader = buildBillingHeaderValue(
+      firstUserText,
+      toVersion,
+      entrypoint,
+    );
     if (!fromHeader || !toHeader || !body.includes(fromHeader)) {
       return undefined;
     }
@@ -203,7 +218,7 @@ export function createBillingVersionSync(
     version: string,
   ): string | undefined {
     if (typeof body !== "string") return undefined;
-    const header = buildBillingHeaderValue(firstUserText, version);
+    const header = buildBillingHeaderValue(firstUserText, version, entrypoint);
     return header === undefined
       ? undefined
       : withBillingBlockOnContinuation(body, header);

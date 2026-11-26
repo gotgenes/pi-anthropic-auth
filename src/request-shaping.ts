@@ -2,6 +2,7 @@ import type { MessageBlock, MessageParam } from "./anthropic-message";
 import {
   BILLING_HEADER_MARKER,
   buildBillingHeaderValue,
+  DEFAULT_CLAUDE_CODE_ENTRYPOINT,
   getFirstUserText,
 } from "./billing-header";
 import { resolveClaudeCodeVersion } from "./claude-code-version";
@@ -73,10 +74,12 @@ function normalizeSystemBlock(block: unknown): TextBlock {
 function prependBillingHeader(
   system: unknown,
   messages: MessageParam[],
+  entrypoint: string,
 ): unknown {
   const billingHeader = buildBillingHeaderValue(
     getFirstUserText(messages),
     resolveClaudeCodeVersion(),
+    entrypoint,
   );
   if (!billingHeader) {
     return system;
@@ -206,8 +209,15 @@ function shouldLogRequestDebug(messages: MessageParam[]): boolean {
  * `docs/architecture.md`), while the split moved signed `thinking` blocks away
  * from the content they were produced against, which Anthropic *does* reject
  * (Issue #66).
+ *
+ * @param entrypoint The billing header's `cc_entrypoint` label.  The
+ *   billing-version sync must build its headers with the same label, or it
+ *   cannot find the header shaping emitted (Issue #91).
  */
-export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
+export function shapeAnthropicOAuthPayload(
+  payload: unknown,
+  entrypoint: string = DEFAULT_CLAUDE_CODE_ENTRYPOINT,
+): unknown {
   if (!isAnthropicMessagesPayload(payload)) {
     return payload;
   }
@@ -218,7 +228,11 @@ export function shapeAnthropicOAuthPayload(payload: unknown): unknown {
   const shapedSystem = Array.isArray(payload.system)
     ? shapeSystemBlocks(payload.system as TextBlock[])
     : payload.system;
-  const finalSystem = prependBillingHeader(shapedSystem, normalizedMessages);
+  const finalSystem = prependBillingHeader(
+    shapedSystem,
+    normalizedMessages,
+    entrypoint,
+  );
 
   if (shouldLogRequestDebug(messages)) {
     debugLog("before-provider-request", {

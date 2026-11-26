@@ -5,6 +5,7 @@ import type {
   SimpleStreamOptions,
   TranscriptContext,
 } from "@earendil-works/pi-ai";
+import { DEFAULT_CLAUDE_CODE_ENTRYPOINT } from "./billing-header";
 import { createBillingVersionSync } from "./billing-version-sync";
 import {
   createLearnedClaudeCodeFloor,
@@ -51,6 +52,12 @@ export interface AnthropicOAuthStreamOptions {
    * can observe it.
    */
   learnedFloor?: LearnedClaudeCodeFloor;
+  /**
+   * Returns the billing header's `cc_entrypoint` label.  Called once per OAuth
+   * request, so shaping and the billing-version sync build that request's
+   * headers with one label; defaults to `DEFAULT_CLAUDE_CODE_ENTRYPOINT`.
+   */
+  readEntrypoint?: () => string;
 }
 
 /**
@@ -114,6 +121,7 @@ export function createAnthropicOAuthStreamSimple(
   delegate: AnthropicStreamSimpleDelegate,
   {
     learnedFloor = createLearnedClaudeCodeFloor(),
+    readEntrypoint = () => DEFAULT_CLAUDE_CODE_ENTRYPOINT,
   }: AnthropicOAuthStreamOptions = {},
 ): AnthropicStreamSimple {
   return (model, context, options) => {
@@ -132,8 +140,12 @@ export function createAnthropicOAuthStreamSimple(
     // billing block back (Issue #90).  The sync object is constructed only
     // for OAuth requests, so an API-key request keeps the caller's `fetch`
     // (or none) untouched.
+    //
+    // The sync rebuilds the header shaping emitted by exact string, so both
+    // must use one label: it is read once here (Issue #91).
+    const entrypoint = isOAuthRequest ? readEntrypoint() : undefined;
     const versionSync = isOAuthRequest
-      ? createBillingVersionSync(learnedFloor, options.fetch)
+      ? createBillingVersionSync(learnedFloor, options.fetch, entrypoint)
       : undefined;
 
     const composeCallerOnPayload = async (
@@ -155,7 +167,7 @@ export function createAnthropicOAuthStreamSimple(
       }
 
       versionSync?.recordRequest(upstream);
-      return shapeAnthropicOAuthPayload(upstream);
+      return shapeAnthropicOAuthPayload(upstream, entrypoint);
     };
 
     // `provider-composer` only invokes this transport when

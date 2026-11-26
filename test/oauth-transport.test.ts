@@ -8,10 +8,12 @@ import type {
 } from "@earendil-works/pi-ai";
 import { normalizeContext } from "@earendil-works/pi-ai";
 import { beforeEach, describe, test } from "vitest";
+import { CLAUDE_CODE_VERSION } from "#src/claude-code-version";
 import {
   createAnthropicOAuthStreamSimple,
   isAnthropicOAuthToken,
 } from "#src/oauth-transport";
+import { buildExpectedBillingHeader } from "#test/billing-header-fixtures";
 import {
   claudeCodeVersionTooOldResponse,
   okResponse,
@@ -323,5 +325,93 @@ describe("createAnthropicOAuthStreamSimple", () => {
 
       assert.equal(delegatedOptions().disableContinuation, true);
     });
+  });
+});
+
+// Shaping and the billing-version sync each build the billing header, and the
+// sync only raises or retries a header it can find byte for byte, so both must
+// use the same label for a request.
+describe("entrypoint label", () => {
+  const USER_TEXT = "Summarize the repository status.";
+  const PI_AHEAD = "2.9.9";
+
+  /** Runs one OAuth request and returns the shaped payload and sent body. */
+  async function sendOne(readEntrypoint: () => string): Promise<{
+    shaped: unknown;
+    sentBody: string;
+  }> {
+    const capturing = createCapturingDelegate();
+    const wrapped = createAnthropicOAuthStreamSimple(capturing.delegate, {
+      readEntrypoint,
+    });
+    let sentBody = "";
+    const callerFetch = ((_input: unknown, init?: RequestInit) => {
+      sentBody = typeof init?.body === "string" ? init.body : "";
+      return Promise.resolve(okResponse());
+    }) as typeof fetch;
+
+    wrapped(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN, fetch: callerFetch });
+    const shaped = await resolveOnPayload(capturing.calls)(
+      samplePayload(),
+      MODEL,
+    );
+    const injected = capturing.calls[0]?.options?.fetch;
+    assert.ok(injected);
+    await injected("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "user-agent": `claude-cli/${PI_AHEAD} (external, sdk-cli)` },
+      body: JSON.stringify(shaped),
+    });
+    return { shaped, sentBody };
+  }
+
+  test("shapes the billing header with the configured label", async () => {
+    const { shaped } = await sendOne(() => "pi-agent");
+
+    assert.equal(
+      systemTexts(shaped)[0],
+      buildExpectedBillingHeader(USER_TEXT, CLAUDE_CODE_VERSION, "pi-agent"),
+    );
+  });
+
+  test("raises a labeled header to Pi's claude-cli version", async () => {
+    const { sentBody } = await sendOne(() => "pi-agent");
+
+    assert.ok(
+      sentBody.includes(
+        buildExpectedBillingHeader(USER_TEXT, PI_AHEAD, "pi-agent"),
+      ),
+    );
+  });
+
+  test("reads the label once per request", async () => {
+    const labels = ["first", "second"];
+    const { shaped, sentBody } = await sendOne(() => labels.shift() ?? "");
+
+    assert.equal(
+      systemTexts(shaped)[0],
+      buildExpectedBillingHeader(USER_TEXT, CLAUDE_CODE_VERSION, "first"),
+    );
+    assert.ok(
+      sentBody.includes(
+        buildExpectedBillingHeader(USER_TEXT, PI_AHEAD, "first"),
+      ),
+    );
+  });
+
+  test("never reads the label for API-key requests", async () => {
+    let reads = 0;
+    const capturing = createCapturingDelegate();
+    const wrapped = createAnthropicOAuthStreamSimple(capturing.delegate, {
+      readEntrypoint: () => {
+        reads += 1;
+        return "pi-agent";
+      },
+    });
+
+    wrapped(MODEL, CONTEXT, { apiKey: API_KEY });
+    await resolveOnPayload(capturing.calls)(samplePayload(), MODEL);
+
+    assert.equal(reads, 0);
   });
 });

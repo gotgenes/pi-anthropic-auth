@@ -21,7 +21,7 @@ export const BILLING_HEADER_SALT = "59cf53e54c78";
 export const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
 
 /**
- * Entrypoint identifier included in the billing header (`cc_entrypoint`).
+ * Default entrypoint label in the billing header (`cc_entrypoint`).
  *
  * Claude Code sends `sdk-cli` from print mode (`claude -p`) and `cli` from
  * its interactive app (observed on 2.1.309).  `sdk-cli` seems the closer fit
@@ -29,9 +29,11 @@ export const BILLING_HEADER_POSITIONS = [4, 7, 20] as const;
  *
  * Users have reported `sdk-*` labels drawing down the 5-hour window faster
  * (https://github.com/anthropics/claude-code/issues/97074); Anthropic has not
- * said whether that is intended.  See Issue #83 before changing this value.
+ * said whether that is intended.  Users can set their own label with the
+ * `entrypoint` key in the extension's config file (Issue #91).  See Issue #83
+ * before changing this default.
  */
-export const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
+export const DEFAULT_CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
 
 /** Prefix every billing header carries, used to detect an already-shaped block. */
 export const BILLING_HEADER_MARKER = "x-anthropic-billing-header:";
@@ -65,11 +67,13 @@ export function getFirstUserText(messages: MessageParam[]): string {
  * Builds the `x-anthropic-billing-header` value for a request.
  *
  * Returns `undefined` when there is no first user text to hash, since the
- * header's `cch` field is derived from it.
+ * header's `cch` field is derived from it.  The `entrypoint` label is plain
+ * text: neither hash reads it.
  */
 export function buildBillingHeaderValue(
   messageText: string,
   claudeCodeVersion: string,
+  entrypoint: string,
 ): string | undefined {
   if (!messageText) {
     return undefined;
@@ -90,7 +94,7 @@ export function buildBillingHeaderValue(
   return [
     BILLING_HEADER_MARKER,
     `cc_version=${claudeCodeVersion}.${suffix};`,
-    `cc_entrypoint=${CLAUDE_CODE_ENTRYPOINT};`,
+    `cc_entrypoint=${entrypoint};`,
     `cch=${cch};`,
   ].join(" ");
 }

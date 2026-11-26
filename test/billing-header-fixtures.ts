@@ -37,6 +37,9 @@ export function withVersionOverride(value: string): void {
 export function buildExpectedBillingHeader(
   messageText: string,
   claudeCodeVersion: string = CLAUDE_CODE_VERSION,
+  // Deliberate pin, not a stale fixture: see DEFAULT_CLAUDE_CODE_ENTRYPOINT
+  // (Issue #83, Issue #91).
+  entrypoint = "sdk-cli",
 ): string {
   const cch = createHash("sha256")
     .update(messageText)
@@ -53,8 +56,7 @@ export function buildExpectedBillingHeader(
   return [
     "x-anthropic-billing-header:",
     `cc_version=${claudeCodeVersion}.${suffix};`,
-    // Deliberate pin, not a stale fixture: see CLAUDE_CODE_ENTRYPOINT (Issue #83).
-    "cc_entrypoint=sdk-cli;",
+    `cc_entrypoint=${entrypoint};`,
     `cch=${cch};`,
   ].join(" ");
 }

@@ -89,6 +89,25 @@ test("prepends the billing header block without adding cache control on OAuth pa
   assert.equal(shaped["anthropic-beta"], "existing-beta");
 });
 
+test("prepends a billing header carrying the given entrypoint label", () => {
+  const payload = createOAuthPayload();
+
+  const shaped = shapeAnthropicOAuthPayload(
+    payload,
+    "pi-agent",
+  ) as typeof payload;
+  const systemBlocks = shaped.system as Array<{ text: string }>;
+
+  assert.equal(
+    systemBlocks[0]?.text,
+    buildExpectedBillingHeader(
+      "Please summarize this repository status.",
+      CLAUDE_CODE_VERSION,
+      "pi-agent",
+    ),
+  );
+});
+
 test("pins a Claude Code version at or above the Opus 5.5 floor", () => {
   // Anthropic rejects OAuth requests for claude-opus-5-5 when the reported
   // Claude Code version is below 2.1.280 (error_code: claude_code_version_too_old).
