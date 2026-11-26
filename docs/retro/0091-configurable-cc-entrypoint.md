@@ -49,3 +49,47 @@ The live repro (global `{"entrypoint": "pi-agent"}`, `-ne`, Haiku 4.5, this repo
   Later steps saved copies in their own turn, as `/tdd-plan` says.
 - Pre-completion reviewer: PASS.
   It re-derived the allowlist over every code point and found exactly 254 accepted single-position candidates, all ASCII `[A-Za-z0-9._-]` and unchanged by `JSON.stringify`; `$` (special in `String.replace`) is excluded too.
+
+## Stage: Final Retrospective (2026-11-26T18:51:05Z)
+
+### Session summary
+
+One session ran plan, TDD, ship, and retro for a third-party request to make `cc_entrypoint` configurable.
+The operator chose the proposal as written, which reverses Issue #83's "behind a config file" Non-Goal for user-chosen labels while keeping the `sdk-cli` default; it shipped as v3.7.0 (`2853afe`), and #91 closed crediting `@colinperel`.
+Eight plan steps landed as planned with no scope deviation; tests went from 282 to 330.
+
+### Observations
+
+#### What went well
+
+- `rg -a -o 'var gos=\{[^}]*\}'` over the 353 MB `claude` 2.1.326 binary returned Claude Code's 27-entry entrypoint table in one call, where #83's `strings` scan timed out at 120 s; the `anthropic` skill still prescribes `strings`.
+- The gate led with the #83 collision and the verified fact that every cited precedent spawns the real `claude` binary, so the operator decided direction and three design facets in two `ask_user` calls with no bounce.
+- A one-line `JSON.stringify` probe at planning time turned the issue's "reject `;` and whitespace" into a measured allowlist requirement before the design settled; the reviewer later confirmed it exhaustively.
+- Verifying the Tidy-First assessor's lifecycle claim against `agent-session-runtime.ts` (one `session_start` per extension instance) kept a non-problem out of the design, while its three Recommended tidyings each made a later step a one-key change.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, recurring: #56, #86, #90, now #91) — in TDD step 3 the green-copy `cp`, the mutating `Edit`, and the test run went out in one batch, so `/tmp/green-oauth.ts` held the mutation and the restore was a no-op.
+  The commit's chained `pnpm test && git commit` failed red, which caught it.
+  `.pi/prompts/tdd-plan.md` has said "alone in its own turn" since #86, and #90's retro already concluded the rule's form loses to the harness's standing instruction to batch independent calls, but changed nothing.
+  Impact: three extra tool calls and a hand revert; no bad commit.
+- `instruction-violation` (self-identified) — the first plan draft defined `[#91]:` for the plan's own issue, which `markdown-conventions` forbids; `rumdl` would not have flagged it.
+  Impact: one scripted fix before the plan commit.
+- `other` (self-identified) — the plan first recorded the assessor's test call-site counts (`14 and 32`) from `rg -c`, which counted import lines; a recount gave 14 and 30.
+  `/plan-issue` already says an assessor's count is a lead, not a finding.
+  Impact: one fix before the plan commit.
+
+#### What caused friction (user side)
+
+- None. Both gates were answered in one round each, and the operator's choices (proposal as written, `entrypoint`, both layers, neutral README) fixed the design before the Tidy-First dispatch.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning, TDD, and retro ran on `claude-opus-5-5`; ship ran on `claude-sonnet-5-5` (mechanical, appropriate).
+  Both subagents ran on `claude-sonnet-5-5`: the `tidy-first-assessor` gave sound Recommended tidyings but one false lifecycle claim, which inline verification caught; the `pre-completion-reviewer` was notably thorough (an exhaustive code-point scan of the allowlist).
+- **Feedback-loop gap analysis** — every TDD step ran its test file and `pnpm run check` before committing, and each named mutation ran before its commit; `fallow:dead-code` ran at baseline and at the end only, which was enough here since no export went unused.
+
+### Changes made
+
+1. `docs/retro/0091-configurable-cc-entrypoint.md` — this entry only.
+   Two proposals were declined by the operator and are recorded here unlanded: chaining the green-copy `cp` onto the green re-run in `.pi/prompts/tdd-plan.md` (`pnpm test <test-path> && cp <file> /tmp/green.ts`), and replacing `strings` with `rg -a -o '<pattern>'` for binary scans in the `anthropic` skill's Core Lessons item 7.
