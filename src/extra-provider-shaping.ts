@@ -1,8 +1,5 @@
-import type { LoadedExtensionConfig } from "./extension-config";
+import type { ConfigLayer, LoadedExtensionConfig } from "./extension-config";
 import type { AnthropicStreamSimple } from "./oauth-transport";
-
-/** Which config file named a provider. */
-export type ConfigLayer = "global" | "project";
 
 export interface ShapedProvider {
   name: string;

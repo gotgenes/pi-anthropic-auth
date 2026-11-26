@@ -25,6 +25,9 @@ export interface LoadedExtensionConfig {
   warnings: readonly string[];
 }
 
+/** Which config file a value came from. */
+export type ConfigLayer = "global" | "project";
+
 const EXTENSION_ID = "pi-anthropic-auth";
 const CONFIG_FILENAME = "config.json";
 
