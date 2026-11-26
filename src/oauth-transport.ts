@@ -41,6 +41,18 @@ export type AnthropicStreamSimple = (
   options?: SimpleStreamOptions,
 ) => AssistantMessageEventStream;
 
+/** Optional collaborators for {@link createAnthropicOAuthStreamSimple}. */
+export interface AnthropicOAuthStreamOptions {
+  /**
+   * The Claude Code version floor learned from Anthropic's
+   * `claude_code_version_too_old` rejections.  It is owned once per
+   * registered wrapper, because it must outlive the per-request billing
+   * version sync; it defaults to a fresh floor, and the option exists so tests
+   * can observe it.
+   */
+  learnedFloor?: LearnedClaudeCodeFloor;
+}
+
 /**
  * Returns true when the resolved API key is an Anthropic OAuth access token.
  *
@@ -96,14 +108,13 @@ export function isAnthropicOAuthToken(
  *   also have recursed, because `registerProvider` bridged this wrapper into
  *   that slot.  The related 0.79.x lazy-registration clobber is precluded by
  *   the >=0.86.0 peer floor (Issue #28, Issue #40).
- * @param learnedFloor The Claude Code version floor learned from Anthropic's
- *   `claude_code_version_too_old` rejections.  It is owned here, once per
- *   registered wrapper, because it must outlive the per-request billing
- *   version sync; the parameter exists so tests can observe it.
+ * @param options See {@link AnthropicOAuthStreamOptions}.
  */
 export function createAnthropicOAuthStreamSimple(
   delegate: AnthropicStreamSimpleDelegate,
-  learnedFloor: LearnedClaudeCodeFloor = createLearnedClaudeCodeFloor(),
+  {
+    learnedFloor = createLearnedClaudeCodeFloor(),
+  }: AnthropicOAuthStreamOptions = {},
 ): AnthropicStreamSimple {
   return (model, context, options) => {
     // Resolved once per request rather than per payload: the token decides
