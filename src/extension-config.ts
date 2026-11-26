@@ -21,6 +21,11 @@ import { join } from "node:path";
 export interface LoadedExtensionConfig {
   /** Provider names to shape, de-duplicated, never including `anthropic`. */
   providers: readonly string[];
+  /**
+   * The billing header's `cc_entrypoint` label this file sets; the key is
+   * absent when the file sets none or sets an invalid one.
+   */
+  entrypoint?: string;
   /** One line per problem, each prefixed with the file path. */
   warnings: readonly string[];
 }
