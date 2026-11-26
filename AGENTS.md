@@ -58,6 +58,7 @@ The current implementation does the following:
 8. Gates all shaping on the `sk-ant-oat` OAuth access-token prefix, so API-key and non-Anthropic requests pass through untouched
 9. Registers the same wrapper on any extra provider named in the extension's config file, for Anthropic OAuth subscriptions another extension registers under its own name (pi-multi-pass's `anthropic-2`, Issue #70)
 10. Puts the billing header back on Pi's Anthropic message-thread continuations (pi-ai >=1.5.0), which Pi builds after `onPayload` without `system`: each continuation carries `system: [billing block]`, the shape Claude Code sends, so OAuth requests use Pi's threads like API-key requests (Issue #90, replacing the Issue #86 opt-out)
+11. Lets the user replace the billing header's default `cc_entrypoint=sdk-cli` label with the config file's `entrypoint` key, global or trusted-project, and shows the active label in `/anthropic-auth:status` (Issue #91)
 
 It wraps, but does not reimplement, Pi's built-in Anthropic streaming transport.
 The wrapper delegates to Pi's own built-in Anthropic `streamSimple` transport and injects two steps: an `onPayload` shaping step, and an `options.fetch` wrapper for the version reconciliation and rejection recovery, which need the built request's headers and the response.
@@ -122,7 +123,7 @@ Current source layout:
 3. `src/oauth-transport.ts`: token-gated `streamSimple` wrapper that applies shaping on every Anthropic call path reaching `provider-composer` (Issue #46)
 4. `src/request-shaping.ts`: Anthropic OAuth request shaping helpers
 5. `src/anthropic-message.ts`: loose structural types for the `messages[]` entries shaping and billing-header construction both read
-6. `src/billing-header.ts`: the `x-anthropic-billing-header` recipe — salt, sampled positions, entrypoint, and `buildBillingHeaderValue(messageText, version)`
+6. `src/billing-header.ts`: the `x-anthropic-billing-header` recipe — salt, sampled positions, the default entrypoint, and `buildBillingHeaderValue(messageText, version, entrypoint)`
 7. `src/claude-code-version.ts`: the Claude Code version floor, its env override, `claude-cli` user-agent parsing, numeric version comparison (Issue #74), and the floor learned from rejections (Issue #75)
 8. `src/billing-version-sync.ts`: per-request `fetch` wrapper that attaches the billing block to message-thread continuations (Issue #90), raises `cc_version` to Pi's reported `claude-cli` version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75)
 9. `src/thread-continuation.ts`: splices the billing block into a message-thread continuation body that carries no `system`, as text so the body is never re-serialized (Issue #90)
@@ -130,10 +131,11 @@ Current source layout:
 11. `src/system-prompt-sections.ts`: parser for Pi's XML-sectioned system prompt, splitting it into ordered chunks and rendering them back byte-exactly (Issue #67)
 12. `src/system-prompt-shaping.ts`: section-aware Anthropic OAuth prompt sanitizer that replaces Pi's preamble, drops the `docs` section, strips the `tools` filler, and preserves everything else
 13. `src/debug.ts`: opt-in structured debug logging for live OAuth repros
-14. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, argument completions, and handler factory for the `/anthropic-auth:status` command, including its per-provider `accounts:` block (Issue #80)
-15. `src/extension-config.ts`: the config file paths and a parser that turns malformed files and entries into warnings instead of throwing (Issue #70)
-16. `src/extra-provider-shaping.ts`: registers the wrapper on each provider the config names, never unregistering it, and records the naming layer and warnings for the status command (Issue #70)
+14. `src/diagnostics.ts`: `ExtensionDiagnostics` value object, formatter, argument completions, and handler factory for the `/anthropic-auth:status` command, including its per-provider `accounts:` block (Issue #80) and its `entrypoint:` line (Issue #91)
+15. `src/extension-config.ts`: the config file paths and a parser for its `providers` and `entrypoint` keys that turns malformed files and entries into warnings instead of throwing (Issue #70, Issue #91)
+16. `src/extra-provider-shaping.ts`: registers the wrapper on each provider the config names, never unregistering it, and records the naming layer and every config warning for the status command (Issue #70)
 17. `src/account-profile.ts`: looks up the Anthropic account behind a provider's OAuth login via `GET /api/oauth/profile`, never throwing, for the status command (Issue #80)
+18. `src/entrypoint-setting.ts`: resolves the billing header's `cc_entrypoint` label across the config layers — project, then global, then the `sdk-cli` default (Issue #91)
 
 ### Project Skills
 
@@ -499,7 +501,7 @@ Use `tool-use` by default when debugging real CLI flows so logs stay quiet until
 
 Current suites map roughly to:
 
-1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, a caller's own `disableContinuation` passing through untouched (Issue #90), and delegation to the built-in transport.
+1. `test/oauth-transport.test.ts` — `sk-ant-oat` token gating, `onPayload` composition, `fetch` injection and composition, a caller's own `disableContinuation` passing through untouched (Issue #90), one entrypoint label per OAuth request shared by shaping and the version sync (Issue #91), and delegation to the built-in transport.
 2. `test/request-shaping.test.ts` — billing header injection, system block layering, beta-header merging, the structural messages-payload guard, and mid-conversation system messages, including the content-less effort messages that survive shaping (PR #79).
 3. `test/claude-code-version.test.ts` — `claude-cli` user-agent parsing and numeric `X.Y.Z` comparison, including the unparseable-candidate fallbacks, and the learned floor.
 4. `test/billing-version-sync.test.ts` — the wire-level `cc_version` upgrade: pass-through when Pi is absent, lower, or equal; rewrite when Pi is higher; the env override's absolute precedence; and that nothing outside the billing block changes.
@@ -512,13 +514,14 @@ Current suites map roughly to:
 9. `test/pi-anthropic-ordering-experiment.test.ts` — pinned experiments documenting Pi's tool-use and interleaved-thinking serialization behavior, and our passthrough of both (Issue #66).
 10. `test/upstream-prompt-drift.test.ts` — the prompt prefix, section names, and anchor lists in `src/constants.ts` checked against the installed Pi's own `buildSystemPrompt` output, plus pins that the parser round-trips that prompt and that shaping through `shapeSystemBlocks` takes the section path with no warning.
     Each run verifies only the installed wording: the pins in `check`, the peer floor in `floor`, and each new release in `pi-ceiling`; the entries between them are guarded by the hand-built fixtures in `test/system-prompt-shaping.test.ts`.
-11. `test/extension-config.test.ts` — config paths, the parsing rules (`anthropic` and duplicates dropped, malformed files and entries warned), and a missing file staying silent.
+11. `test/extension-config.test.ts` — config paths, the parsing rules (`anthropic` and duplicates dropped, malformed files and entries warned, an `entrypoint` label checked against its header-safe pattern independently of `providers`), and a missing file staying silent.
 12. `test/extra-provider-shaping.test.ts` — one `{ api, streamSimple }` registration per named provider, no unregister, first layer wins, and per-layer warning replacement.
 13. `test/managed-effort-drift.test.ts` — the offline drift alarm for per-message effort: Pi's catalog still flags a managed-effort model, and for every model it flags, Pi still carries historical and active effort in content-less system messages, and OAuth shaping keeps every one of them (PR #79).
 14. `test/account-profile.test.ts` — the profile lookup: no request without an OAuth token, the request's headers, tolerant field parsing, and each `unavailable` reason (Issue #80).
 15. `test/message-thread-drift.test.ts` — the offline drift alarm for message threads: Pi still continues an OAuth session's second turn without `system` (the control), the OAuth wrapper's continuation carries the first turn's billing block as its only `system`, and API-key sessions keep Pi's threads (Issue #86, Issue #89, Issue #90).
     It skips on pi-ai below 1.5.0, which has no threads, as the `floor` job installs (Issue #56).
 16. `test/thread-continuation.test.ts` — the continuation splice: byte-exact output, a `"system"` key nested in a tool input, and every body left alone (`create`, no `thread`, an existing `system`, invalid JSON, an array).
+17. `test/entrypoint-setting.test.ts` — the entrypoint label's layer precedence (project, then global, then the default) and each layer's replace-on-apply (Issue #91).
 
 Priority areas for new tests:
 

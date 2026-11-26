@@ -105,6 +105,8 @@ Reproduced live on 2026-09-24 (pi 0.87.1, `claude-haiku-4-5`, this repository's 
 The user names those providers in the extension's config file, `{ "providers": ["anthropic-2"] }`, and each is registered with the same wrapper instance as `anthropic`, so they share one learned Claude Code floor.
 The global file (`<agentDir>/extensions/pi-anthropic-auth/config.json`) is applied when the extension loads; the project file (`<cwd>/.pi/extensions/pi-anthropic-auth/config.json`) is applied at `session_start`, and only when `ctx.isProjectTrusted()`.
 That is early enough: `session_start` is awaited before the first prompt, and `ModelRuntime.streamSimple` looks the provider up per request.
+The same file's optional `entrypoint` key sets the billing header's `cc_entrypoint` label (Issue #91): a trusted project's label overrides the global one, which overrides the `sdk-cli` default.
+The wrapper reads the label once per request and hands it to both the `onPayload` shaping and the billing-version sync, which rebuilds headers by exact string and so must build them with the same label.
 Explicit naming was chosen over auto-detection through `ModelRegistry.getRegisteredProviderIds()`, which would need an event-time scan and a check that spares providers with a built-in base such as `cloudflare-ai-gateway`.
 
 A named provider is registered but never unregistered first, unlike `anthropic` (Issue #43): it belongs to the other extension, and `unregisterProvider` would drop that owner's `models` and `oauth`.
@@ -129,7 +131,7 @@ For OAuth requests, the injected `onPayload` runs `shapeAnthropicOAuthPayload`, 
 
 1. sanitizes Pi's default prompt section by section (de-fingerprinting) — replacing the untagged preamble with a minimal neutral prompt, dropping the `docs` section, and stripping the custom-tool filler from inside `tools`, while preserving every other section byte-identically; the preamble prefix and both anchors are lists holding one entry per Pi wording (pi 1.5.0 reworded all three), because the peer range spans more than one,
 2. applies those same section rules to the mid-conversation `role: "system"` messages Pi 0.86.0 re-sends on models that accept them (Issue #69) — a message the rules empty is dropped unless it carries `output_config`, because on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) Pi pins the top-level effort to `"high"` and sends the requested effort as content-less system messages, which dropping would silently discard (PR #79), and
-3. prepends an `x-anthropic-billing-header` system block (without `cache_control`) that reports `cc_entrypoint=sdk-cli`, the label Claude Code sends from its print mode (Issue #83).
+3. prepends an `x-anthropic-billing-header` system block (without `cache_control`) that reports `cc_entrypoint=sdk-cli`, the label Claude Code sends from its print mode (Issue #83), unless the config file's `entrypoint` key sets another (Issue #91).
 
 Assistant messages pass through unmodified; see "Assistant block ordering is not normalized" below.
 
@@ -310,14 +312,15 @@ pi-observational-memory 3.1.x is the worked example: `resolveWorkerStreamSimple`
 ## Related files
 
 - `src/index.ts` — resolves the built-in Anthropic transport at runtime; registers the `streamSimple` wrapper on `anthropic` and on the providers the config files name, the `session_start` handler that applies the project config, and the `/anthropic-auth:status` diagnostics command.
-- `src/extension-config.ts` — the config file paths and a parser that turns malformed files and entries into warnings instead of throwing (Issue #70).
-- `src/extra-provider-shaping.ts` — registers the wrapper on each named provider without unregistering it, and records the naming layer and warnings for the status command (Issue #70).
+- `src/extension-config.ts` — the config file paths and a parser for its `providers` and `entrypoint` keys that turns malformed files and entries into warnings instead of throwing (Issue #70, Issue #91).
+- `src/extra-provider-shaping.ts` — registers the wrapper on each named provider without unregistering it, and records the naming layer and every config warning for the status command (Issue #70).
+- `src/entrypoint-setting.ts` — resolves the billing header's `cc_entrypoint` label across the config layers: project, then global, then the `sdk-cli` default (Issue #91).
 - `src/host-transport.ts` — resolves Pi's built-in Anthropic transport at runtime via an `@earendil-works/pi-ai/compat` import through Pi's loader indirection, reading the `anthropicMessagesApi()` factory (Issue #28, Issue #31, Issue #35, Issue #54); `import.meta.resolve` bypassed that indirection and failed under `pi install` / Bun.
   See `docs/builtin-transport-seam-gap.md` for why no resolution handle is both loader-safe and durable past pi-ai's `compat` removal, and the committed near-term direction.
 - `src/oauth-transport.ts` — the token-gated `streamSimple` wrapper.
 - `src/request-shaping.ts` — the shaping pipeline applied via `onPayload`.
 - `src/anthropic-message.ts` — loose structural types for the `messages[]` entries that shaping and billing-header construction both read.
-- `src/billing-header.ts` — the `x-anthropic-billing-header` recipe, with the Claude Code version as an explicit parameter so the same header can be rebuilt at a different version.
+- `src/billing-header.ts` — the `x-anthropic-billing-header` recipe, with the Claude Code version as an explicit parameter so the same header can be rebuilt at a different version, and the `cc_entrypoint` label as another, so it can come from the config file (Issue #91).
 - `src/claude-code-version.ts` — the Claude Code version floor, its environment override, `claude-cli` user-agent parsing, and numeric version comparison (Issue #74), plus the floor learned from rejections (Issue #75).
 - `src/billing-version-sync.ts` — the per-request `fetch` wrapper that attaches the billing block to message-thread continuations (Issue #90), raises `cc_version` to pi's reported version at the wire (Issue #74), and retries or hints a `claude_code_version_too_old` rejection (Issue #75).
 - `src/thread-continuation.ts` — splices the billing block into a continuation body without `system`, as text, never re-serializing it (Issue #90).

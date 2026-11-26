@@ -66,6 +66,23 @@ The file is read from two places, and the providers from both are shaped:
 A malformed file or entry is ignored with a warning rather than failing the extension; run `/anthropic-auth:status` to see which providers are shaped and any config warnings.
 A provider removed from the file stays shaped until you run `/reload`.
 
+### Billing entrypoint label
+
+The billing header this extension adds to OAuth requests carries a `cc_entrypoint` label, `sdk-cli` by default.
+To send a different label, set `entrypoint` in the same config file:
+
+```json
+{
+  "entrypoint": "my-label"
+}
+```
+
+Both files listed above are read, and a trusted project's label overrides the global one.
+A label may use letters, digits, `.`, `_`, and `-`, and must start with a letter or digit; anything else is ignored with a warning, and the default applies.
+The label applies to every shaped provider; a change takes effect at `/reload` or in the next session.
+Run `/anthropic-auth:status` to see the active label.
+See [Pi uses the 5-hour window faster than Claude Code](#pi-uses-the-5-hour-window-faster-than-claude-code) for why the label may matter.
+
 ## Troubleshooting
 
 ### Verify the extension is loaded
@@ -77,6 +94,7 @@ pi-anthropic-auth diagnostics
   version: 0.6.5
   module:  /root/.pi/agent/.../src/index.ts
   built-in Anthropic transport: resolved
+  entrypoint: sdk-cli (default)
   shaped providers: anthropic, anthropic-2 (global)
   accounts:
     anthropic: claude_max, rate limit default_claude_max_20x, subscription active, extra usage off
@@ -85,6 +103,7 @@ pi-anthropic-auth diagnostics
 
 The `module` line shows which copy of the extension loaded.
 If the command is not found, the extension is not loaded at all.
+The `entrypoint` line shows the billing header's `cc_entrypoint` label and where it came from: `default`, `global`, or `project`.
 The `shaped providers` line lists `anthropic` and every provider named in a config file, with the file (`global` or `project`) that named it.
 
 The `accounts` block asks Anthropic which subscription each shaped provider's OAuth login belongs to: plan type, seat, rate-limit tier, subscription status, and whether extra usage is enabled.
@@ -160,7 +179,7 @@ Because the warning concerns real billing on paths this extension does not cover
 
 ### Pi uses the 5-hour window faster than Claude Code
 
-The billing header this extension sends reports `cc_entrypoint=sdk-cli`.
+By default, the billing header this extension sends reports `cc_entrypoint=sdk-cli`.
 That is the label Claude Code itself sends from its non-interactive print mode; captured from Claude Code 2.1.309:
 
 | Claude Code mode | `cc_entrypoint` |
@@ -168,12 +187,14 @@ That is the label Claude Code itself sends from its non-interactive print mode; 
 | `claude -p` (print mode) | `sdk-cli` |
 | interactive `claude` | `cli` |
 
-Users in [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) have reported requests labeled `sdk-cli` (or `sdk-ts`, from the Agent SDK) drawing down the 5-hour window about twice as fast as the interactive labels for the same tokens.
-The same reports suggest the weekly limit is not affected.
+Users in [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) have reported requests labeled `sdk-cli` (or `sdk-ts`, from the Agent SDK) drawing down the 5-hour window about twice as fast as the interactive labels, or a label naming their own tool, for the same tokens.
+The weekly limit was first thought unaffected, but [one controlled measurement](https://github.com/anthropics/claude-code/issues/97074#issuecomment-6612846004) found `sdk-ts` using the weekly window 1.14 times as fast as a custom label with prompt caching on, and 1.32 times as fast as `cli` without it.
+These measurements were made with Claude Code itself, not through Pi.
 Anthropic has not said whether this is intended.
 
-For now the extension keeps `sdk-cli`, since Pi is closer to a program driving the model than to Claude Code's interactive app.
-That may change as Anthropic clarifies how it treats these labels; see [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83).
+The extension's default stays `sdk-cli`, since Pi is closer to a program driving the model than to Claude Code's interactive app; see [#83](https://github.com/gotgenes/pi-anthropic-auth/issues/83).
+You can send a different label with the `entrypoint` key; see [Billing entrypoint label](#billing-entrypoint-label).
+Which label to send, if any, is your choice; Anthropic does not document how it treats this field, and that may change.
 
 ### `ANTHROPIC_API_KEY` is ignored when OAuth credentials exist
 

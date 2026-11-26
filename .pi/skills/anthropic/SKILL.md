@@ -35,8 +35,11 @@ compatibility: Intended for the pi-anthropic-auth repository and Pi Anthropic OA
 
 - OAuth Anthropic payload shaping prepends an `x-anthropic-billing-header` system block.
 - The billing block must not add `cache_control`, or Anthropic can reject the request for exceeding the cache-control block limit.
-- The billing block reports `cc_entrypoint=sdk-cli`, the label Claude Code sends from `claude -p`; interactive `claude` sends `cli` (both captured from Claude Code 2.1.309 against a local server).
-  Users in [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) report `sdk-*` labels drawing down the 5-hour window faster, and Anthropic has not said whether that is intended; the extension keeps `sdk-cli` for now and revisits as Anthropic's policy becomes clearer (Issue #83).
+- The billing block reports `cc_entrypoint=sdk-cli` by default, the label Claude Code sends from `claude -p`; interactive `claude` sends `cli` (both captured from Claude Code 2.1.309 against a local server).
+  Users in [anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074) report `sdk-*` labels drawing down the 5-hour window faster, and Anthropic has not said whether that is intended; the extension keeps the `sdk-cli` default for now and revisits as Anthropic's policy becomes clearer (Issue #83).
+  Users can set their own label with the config file's `entrypoint` key, global or trusted-project (Issue #91).
+  The label must stay free of characters `JSON.stringify` escapes (`"`, `\`, control characters): the billing-version sync finds the header shaping emitted by exact string in the serialized body, so an escaped label silently disables the version raise, the retry, and the continuation splice.
+  For the same reason the wrapper reads the label once per request and hands that one value to both shaping and the sync.
 - Content-less `role: "system"` messages carrying `output_config` must survive system-message shaping: on managed-effort models (those pi-ai flags `compat.supportsMidConvoEffort`, which `test/managed-effort-drift.test.ts` enumerates from the installed catalog) they are the only carrier of the requested effort, since Pi pins the top-level effort to `"high"`.
   Dropping them errors nowhere and silently runs every request at `"high"`; Anthropic accepts them with `content: []` (verified live on pi 0.87.1, PR #79).
 - Assistant block ordering must *not* be normalized: measured 2026-09-20, Anthropic returns 200 for `[tool_use..., text]` and `[text, tool_use, text, tool_use]` on sonnet-4-5, haiku-4-5, sonnet-5, fable-5, and opus-4-8.
@@ -183,7 +186,7 @@ Do not "fix" that by calling `registerApiProvider` — the registry is keyed by 
 - wholesale OpenCode debranding logic
 - `mcp_` tool prefix transport hacks
 - reimplementing Pi's Anthropic transport (the wrapper delegates to the built-in transport resolved by `src/host-transport.ts`)
-- changing `cc_entrypoint` without first reading Issue #83 for the current reasoning
+- changing the default `cc_entrypoint` without first reading Issue #83 and Issue #91 for the current reasoning
 - assistant block reordering "to satisfy Anthropic" — measured unnecessary and removed in Issue #66; re-add only against a fresh live rejection, never against a claim ported from another project
 
 ## Useful References
@@ -193,6 +196,7 @@ Do not "fix" that by calling `registerApiProvider` — the registry is keyed by 
 - `docs/plans/gap-analysis-and-next-steps.md`
 - `src/index.ts`
 - `src/diagnostics.ts`
+- `src/entrypoint-setting.ts`
 - `src/extension-config.ts`
 - `src/extra-provider-shaping.ts`
 - `src/oauth-transport.ts`
