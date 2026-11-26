@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.7.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.6.0...v3.7.0) (2026-11-26)
+
+
+### Features
+
+* set the billing header's cc_entrypoint label in config.json ([3f702f7](https://github.com/gotgenes/pi-anthropic-auth/commit/3f702f70a30bca1179ab4c4f5a08188bf697786b))
+* show the active entrypoint label in /anthropic-auth:status ([8e5c4c1](https://github.com/gotgenes/pi-anthropic-auth/commit/8e5c4c131bcf93d3c804da05108e723207547dd7))
+
+### Documentation
+
+* document the entrypoint config key ([#91](https://github.com/gotgenes/pi-anthropic-auth/issues/91)) ([a9ba4a8](https://github.com/gotgenes/pi-anthropic-auth/commit/a9ba4a81a31eccf26c7767b82006f78d0749c8bf))
+
 ## [3.6.0](https://github.com/gotgenes/pi-anthropic-auth/compare/v3.5.0...v3.6.0) (2026-11-15)
 
 
