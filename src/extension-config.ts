@@ -4,16 +4,20 @@ import { join } from "node:path";
 /**
  * The extension's JSON config file, read from a global and a project layer.
  *
- * Its one key names extra providers to shape alongside `anthropic`:
+ * Both keys are optional:
  *
  * ```json
- * { "providers": ["anthropic-2", "anthropic-3"] }
+ * { "providers": ["anthropic-2", "anthropic-3"], "entrypoint": "pi-agent" }
  * ```
  *
- * Pi applies an extension's `streamSimple` per provider *name*, so an
- * Anthropic OAuth subscription another extension registers under its own
- * name (pi-multi-pass's `anthropic-2`) is shaped only when the user names it
- * here (Issue #70).
+ * `providers` names extra providers to shape alongside `anthropic`.  Pi
+ * applies an extension's `streamSimple` per provider *name*, so an Anthropic
+ * OAuth subscription another extension registers under its own name
+ * (pi-multi-pass's `anthropic-2`) is shaped only when the user names it here
+ * (Issue #70).
+ *
+ * `entrypoint` replaces the billing header's default `cc_entrypoint` label
+ * (Issue #91).
  *
  * Nothing in this module throws: a malformed file or entry becomes a warning,
  * so a typo can never take down `anthropic` shaping with it.
@@ -84,14 +88,18 @@ export function parseExtensionConfig(
   }
 
   const providers = parseProviders(parsed, path);
+  const entrypoint = parseEntrypoint(parsed, path);
   return {
     providers: providers.providers,
-    warnings: providers.warnings,
+    ...(entrypoint.entrypoint !== undefined && {
+      entrypoint: entrypoint.entrypoint,
+    }),
+    warnings: [...providers.warnings, ...entrypoint.warnings],
   };
 }
 
 /** A parsed config file, before any of its keys are checked. */
-type ConfigObject = { providers?: unknown };
+type ConfigObject = { providers?: unknown; entrypoint?: unknown };
 
 interface ParsedProviders {
   providers: readonly string[];
@@ -109,6 +117,36 @@ function parseProviders(config: ConfigObject, path: string): ParsedProviders {
   }
 
   return parseProviderEntries(configured, path);
+}
+
+interface ParsedEntrypoint {
+  entrypoint: string | undefined;
+  warnings: readonly string[];
+}
+
+/**
+ * Labels the billing header can carry verbatim.  `;` and whitespace would end
+ * the `cc_entrypoint` field; `"`, `\`, and control characters would be escaped
+ * in the JSON request body, where the billing-version sync's exact-string
+ * rebuild could no longer find the header (Issue #91).
+ */
+const ENTRYPOINT_LABEL_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+
+function parseEntrypoint(config: ConfigObject, path: string): ParsedEntrypoint {
+  const configured = config.entrypoint;
+  if (configured === undefined) return { entrypoint: undefined, warnings: [] };
+  if (
+    typeof configured !== "string" ||
+    !ENTRYPOINT_LABEL_PATTERN.test(configured)
+  ) {
+    return {
+      entrypoint: undefined,
+      warnings: [
+        `${path}: "entrypoint" must be a label of letters, digits, ".", "_", and "-" that starts with a letter or digit, received ${JSON.stringify(configured)}`,
+      ],
+    };
+  }
+  return { entrypoint: configured, warnings: [] };
 }
 
 /**

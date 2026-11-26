@@ -119,6 +119,97 @@ describe("parseExtensionConfig", () => {
       );
     });
   });
+
+  describe("the entrypoint key", () => {
+    const entrypointWarning = (received: string) =>
+      `${PATH}: "entrypoint" must be a label of letters, digits, ".", "_", and "-" that starts with a letter or digit, received ${received}`;
+
+    test("returns a label set without providers", () => {
+      assert.deepEqual(
+        parseExtensionConfig('{ "entrypoint": "pi-agent" }', PATH),
+        {
+          providers: [],
+          entrypoint: "pi-agent",
+          warnings: [],
+        },
+      );
+    });
+
+    test("returns a label set beside providers", () => {
+      assert.deepEqual(
+        parseExtensionConfig(
+          '{ "providers": ["anthropic-2"], "entrypoint": "pi-agent" }',
+          PATH,
+        ),
+        { providers: ["anthropic-2"], entrypoint: "pi-agent", warnings: [] },
+      );
+    });
+
+    test.each([
+      "sdk-cli",
+      "cli",
+      "pi-agent",
+      "Paseo",
+      "t3-code",
+      "xmatrix",
+      "remote_baku",
+      "claude-desktop-3p",
+      "pi.1",
+    ])("accepts %j", (label) => {
+      assert.deepEqual(
+        parseExtensionConfig(JSON.stringify({ entrypoint: label }), PATH),
+        { providers: [], entrypoint: label, warnings: [] },
+      );
+    });
+
+    test.each([
+      "",
+      null,
+      3,
+      ["pi"],
+      "a b",
+      " pi",
+      "pi\n",
+      "a;b",
+      'a"b',
+      "a\\b",
+      "-pi",
+      "pi/agent",
+      "pï",
+    ])("drops %j with a warning", (value) => {
+      assert.deepEqual(
+        parseExtensionConfig(JSON.stringify({ entrypoint: value }), PATH),
+        { providers: [], warnings: [entrypointWarning(JSON.stringify(value))] },
+      );
+    });
+
+    test("an invalid label keeps valid providers", () => {
+      assert.deepEqual(
+        parseExtensionConfig(
+          '{ "providers": ["anthropic-2"], "entrypoint": "a b" }',
+          PATH,
+        ),
+        {
+          providers: ["anthropic-2"],
+          warnings: [entrypointWarning('"a b"')],
+        },
+      );
+    });
+
+    test("invalid providers keep a valid label", () => {
+      assert.deepEqual(
+        parseExtensionConfig(
+          '{ "providers": "anthropic-2", "entrypoint": "pi-agent" }',
+          PATH,
+        ),
+        {
+          providers: [],
+          entrypoint: "pi-agent",
+          warnings: [`${PATH}: "providers" must be an array of provider names`],
+        },
+      );
+    });
+  });
 });
 
 describe("loadExtensionConfig", () => {

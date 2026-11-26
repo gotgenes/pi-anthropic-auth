@@ -58,7 +58,13 @@ export class ExtraProviderShaping {
     return Array.from(this.shaped, ([name, layer]) => ({ name, layer }));
   }
 
-  /** Global warnings first, then project warnings. */
+  /**
+   * Every warning the config files produced, global first, then project.
+   *
+   * That includes warnings about keys other than `providers` (the
+   * `entrypoint` label, Issue #91): this class receives each layer's whole
+   * parse result, so it reports them all, and no other consumer keeps them.
+   */
   warnings(): readonly string[] {
     return [
       ...(this.warningsByLayer.get("global") ?? []),

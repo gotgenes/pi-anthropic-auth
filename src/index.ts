@@ -8,6 +8,7 @@ import {
   type ExtensionDiagnostics,
   statusArgumentCompletions,
 } from "./diagnostics";
+import { EntrypointSetting } from "./entrypoint-setting";
 import {
   globalConfigPath,
   loadExtensionConfig,
@@ -74,10 +75,19 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   const builtinAnthropicStreamSimple =
     await resolveBuiltinAnthropicStreamSimple();
 
+  // The global config is read once and handed to every consumer: the extra
+  // providers below, and the billing header's `cc_entrypoint` label, which
+  // the wrapper reads per request.  A trusted project's `entrypoint` replaces
+  // the global one at `session_start`, before the first request (Issue #91).
+  const globalConfig = loadExtensionConfig(globalConfigPath(getAgentDir()));
+  const entrypoint = new EntrypointSetting();
+  entrypoint.apply(globalConfig, "global");
+
   // One wrapper instance owns the learned Claude Code floor (Issue #75), so
   // every provider it is registered on shares that floor.
   const streamSimple = createAnthropicOAuthStreamSimple(
     builtinAnthropicStreamSimple,
+    { readEntrypoint: () => entrypoint.current().label },
   );
 
   // Defensively clear any prior `anthropic` registration before installing our
@@ -110,10 +120,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // applied here, so a named provider is shaped before any request reaches
   // it, like `anthropic`.
   const extraProviders = new ExtraProviderShaping(pi, streamSimple);
-  extraProviders.apply(
-    loadExtensionConfig(globalConfigPath(getAgentDir())),
-    "global",
-  );
+  extraProviders.apply(globalConfig, "global");
 
   // The project layer needs the session's cwd and trust decision, which only
   // arrive with `session_start`.  An untrusted project's file is never read.
@@ -123,10 +130,9 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // in hand.
   pi.on("session_start", (_event, ctx) => {
     if (ctx.isProjectTrusted()) {
-      extraProviders.apply(
-        loadExtensionConfig(projectConfigPath(ctx.cwd)),
-        "project",
-      );
+      const projectConfig = loadExtensionConfig(projectConfigPath(ctx.cwd));
+      extraProviders.apply(projectConfig, "project");
+      entrypoint.apply(projectConfig, "project");
     }
     reportConfigWarnings(extraProviders.warnings(), ctx);
   });

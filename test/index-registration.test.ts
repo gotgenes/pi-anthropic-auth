@@ -644,6 +644,82 @@ describe("index registration: the project config at session start", () => {
   });
 });
 
+// The config files' `entrypoint` key sets the billing header's
+// `cc_entrypoint` label; a trusted project's value wins (Issue #91).
+describe("index registration: the entrypoint label", () => {
+  beforeEach(() => {
+    resetApiProviders();
+    delegateCalls.length = 0;
+    builtinTransportMock.mockClear();
+  });
+
+  /** Registers the extension, fires `session_start`, and sends one request. */
+  async function sentEntrypoint(
+    ctx: FakeSessionContext = createSessionContext(),
+  ): Promise<string | undefined> {
+    const { default: registerExtension } = await import("#src/index");
+    const { pi, dispatch, fireSessionStart } = createFakePi();
+    await registerExtension(pi);
+    await fireSessionStart(ctx);
+
+    dispatch(MODEL, CONTEXT, { apiKey: OAUTH_TOKEN });
+    const onPayload = delegateCalls[0]?.options?.onPayload;
+    assert.ok(onPayload);
+    const shaped = await onPayload(samplePayload(), MODEL);
+    const billing = systemTexts(shaped).find((text) =>
+      text.startsWith("x-anthropic-billing-header:"),
+    );
+    return /cc_entrypoint=([^;]*);/.exec(billing ?? "")?.[1];
+  }
+
+  test("is sdk-cli without a config file", async () => {
+    assert.equal(await sentEntrypoint(), "sdk-cli");
+  });
+
+  test("comes from the global config", async () => {
+    writeGlobalConfig({ entrypoint: "pi-agent" });
+
+    assert.equal(await sentEntrypoint(), "pi-agent");
+  });
+
+  test("comes from a trusted project's config over the global one", async () => {
+    writeGlobalConfig({ entrypoint: "global-label" });
+    const cwd = writeProjectConfig('{ "entrypoint": "project-label" }');
+
+    assert.equal(
+      await sentEntrypoint(
+        createSessionContext({ cwd, isProjectTrusted: () => true }),
+      ),
+      "project-label",
+    );
+  });
+
+  test("ignores an untrusted project's config", async () => {
+    writeGlobalConfig({ entrypoint: "global-label" });
+    const cwd = writeProjectConfig('{ "entrypoint": "project-label" }');
+
+    assert.equal(
+      await sentEntrypoint(
+        createSessionContext({ cwd, isProjectTrusted: () => false }),
+      ),
+      "global-label",
+    );
+  });
+
+  test("warns about an invalid label and keeps sdk-cli", async () => {
+    writeGlobalConfig({ entrypoint: "a b" });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => warnSpy.mockRestore());
+
+    assert.equal(await sentEntrypoint(), "sdk-cli");
+    assert.equal(warnSpy.mock.calls.length, 1);
+    assert.match(
+      String(warnSpy.mock.calls[0]?.[0]),
+      /^\[pi-anthropic-auth\] .*config\.json: "entrypoint" must be a label/,
+    );
+  });
+});
+
 // Registering an api-registry override would place this extension in the
 // dispatch path of every `anthropic-messages` provider — not just `anthropic` —
 // because the registry is keyed by api and `registerApiProvider` is a
